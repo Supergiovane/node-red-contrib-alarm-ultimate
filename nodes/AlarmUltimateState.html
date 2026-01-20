@@ -1,0 +1,95 @@
+<script type="text/javascript">
+  RED.nodes.registerType("AlarmUltimateState", {
+    category: "Alarm Ultimate",
+    color: "#ffb3b3",
+    defaults: {
+      name: { value: "" },
+      alarmId: { value: "", required: true },
+      topic: { value: "" },
+      outputInitialState: { value: true },
+    },
+    inputs: 0,
+    outputs: 1,
+    icon: "font-awesome/fa-shield",
+    label: function () {
+      return this.name || "Alarm State";
+    },
+    paletteLabel: function () {
+      return "Alarm State";
+    },
+    oneditprepare: function () {
+      const alarmSelect = $("#node-input-alarmId");
+      const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
+      const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
+      const url = `${root}alarm-ultimate/alarm/nodes`;
+      const panelButton = $("#node-input-alarm-panel");
+
+      panelButton.off("click").on("click", (evt) => {
+        evt.preventDefault();
+        const alarmId = alarmSelect.val() || this.alarmId || "";
+        const idPart = alarmId ? `?id=${encodeURIComponent(alarmId)}` : "";
+        window.open(
+          `${root}alarm-ultimate/alarm-panel${idPart}`,
+          "_blank",
+          "noopener,noreferrer",
+        );
+      });
+
+      try {
+        $.getJSON(url)
+          .done((data) => {
+            const nodes = Array.isArray(data && data.nodes) ? data.nodes : [];
+            alarmSelect.empty();
+            alarmSelect.append($("<option></option>").attr("value", "").text("-- select --"));
+            nodes.forEach((n) => {
+              const label = n.name ? `${n.name} (${n.id})` : n.id;
+              alarmSelect.append($("<option></option>").attr("value", n.id).text(label));
+            });
+            if (this.alarmId) alarmSelect.val(this.alarmId);
+          })
+          .fail(() => {});
+      } catch (err) {}
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="AlarmUltimateState">
+  <div class="form-row">
+    <label>&nbsp;</label>
+    <button type="button" class="red-ui-button" id="node-input-alarm-panel">
+      <i class="fa fa-keyboard-o"></i> Panel
+    </button>
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-alarmId"><i class="fa fa-link"></i> Alarm node</label>
+    <select id="node-input-alarmId" style="width: 70%"></select>
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-topic"><i class="fa fa-tag"></i> Topic</label>
+    <input type="text" id="node-input-topic" placeholder="(default: &lt;controlTopic&gt;/state)" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-outputInitialState"><i class="fa fa-bolt"></i> Emit on deploy</label>
+    <input type="checkbox" id="node-input-outputInitialState" style="width:auto; margin-top:7px;" />
+  </div>
+</script>
+
+<script type="text/markdown" data-help-name="AlarmUltimateState">
+Emits the alarm arming state from a selected **Alarm System Ultimate** node.
+
+- `msg.payload`: `armed` or `disarmed`
+- `msg.topic`: configurable (default: `controlTopic + "/state"`)
+- `msg.alarmId`, `msg.name`
+
+Notes:
+
+- Use the **Panel** button to open the Alarm Panel preselected on the chosen Alarm node.
+</script>

@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Alarm JSON Mapper (Node-RED)</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0b1020;
+        --panel: #111936;
+        --text: #e7eaf6;
+        --muted: #a9b0d2;
+        --border: #2a355f;
+        --accent: #6ea8fe;
+        --ok: #2fbf71;
+        --warn: #ffcc66;
+        --danger: #ff6b6b;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+          monospace;
+        --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+      }
+
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f6f8ff;
+          --panel: #ffffff;
+          --text: #111827;
+          --muted: #5b647a;
+          --border: #d8deef;
+          --accent: #2563eb;
+        }
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        line-height: 1.4;
+      }
+
+      header {
+        padding: 18px 16px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(180deg, rgba(110, 168, 254, 0.12), rgba(0, 0, 0, 0));
+      }
+
+      header h1 {
+        font-size: 18px;
+        margin: 0 0 6px 0;
+      }
+
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 16px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 12px;
+      }
+
+      @media (max-width: 980px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        border-radius: 10px;
+        padding: 12px;
+      }
+
+      .card h2 {
+        font-size: 14px;
+        margin: 0 0 10px 0;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 160px 1fr;
+        gap: 10px;
+        align-items: center;
+        margin: 8px 0;
+      }
+
+      .row label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      textarea,
+      select,
+      input[type="text"] {
+        width: 100%;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        border-radius: 8px;
+        padding: 8px 10px;
+        box-sizing: border-box;
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+
+      textarea {
+        min-height: 240px;
+        resize: vertical;
+      }
+
+      .buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      button {
+        border: 1px solid var(--border);
+        background: rgba(110, 168, 254, 0.12);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 8px 10px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      button.primary {
+        border-color: rgba(110, 168, 254, 0.5);
+        background: rgba(110, 168, 254, 0.22);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .hint {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 6px 0 0 0;
+      }
+
+      .status {
+        font-family: var(--mono);
+        font-size: 12px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        margin-top: 10px;
+      }
+
+      .status.ok {
+        border-color: rgba(47, 191, 113, 0.55);
+        color: var(--ok);
+      }
+
+      .status.warn {
+        border-color: rgba(255, 204, 102, 0.55);
+        color: var(--warn);
+      }
+
+      .status.err {
+        border-color: rgba(255, 107, 107, 0.55);
+        color: var(--danger);
+      }
+
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+
+      .mono {
+        font-family: var(--mono);
+      }
+
+      .two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      @media (max-width: 980px) {
+        .two {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Alarm JSON Mapper</h1>
+      <p>
+        Paste a sample incoming message (e.g. KNX Ultimate) and map its fields to what the Alarm node needs (topic/value).
+        This tool generates a zone JSON object you can paste into the Alarm node configuration.
+      </p>
+    </header>
+
+    <main>
+      <div class="grid">
+        <section class="card">
+          <h2>1) Input message</h2>
+          <textarea
+            id="input"
+            spellcheck="false"
+            placeholder='Paste JSON here (strict JSON).&#10;&#10;Tip: this tool also accepts JS-style objects with unquoted keys and // comments.'
+          ></textarea>
+          <div class="buttons">
+            <button class="primary" id="btn-parse">Parse</button>
+            <button id="btn-load-knx">Load KNX sample</button>
+            <button id="btn-clear">Clear</button>
+          </div>
+          <p class="hint">
+            If your input is not strict JSON (comments, unquoted keys), click Parse anyway: the tool will try to
+            normalize it.
+          </p>
+          <div id="parse-status" class="status warn" style="display: none"></div>
+        </section>
+
+        <section class="card">
+          <h2>2) Field mapping</h2>
+          <div class="row">
+            <label for="topicPath">Topic path</label>
+            <select id="topicPath"></select>
+          </div>
+          <div class="row">
+            <label for="valuePath">Value path</label>
+            <select id="valuePath"></select>
+          </div>
+          <div class="row">
+            <label for="namePath">Zone name path</label>
+            <select id="namePath"></select>
+          </div>
+          <p class="hint">
+            Alarm expects zone messages with <span class="mono">msg.topic</span> and a boolean value in the configured
+            “With Input” property (default <span class="mono">payload</span>).
+          </p>
+          <div class="buttons">
+            <button class="primary" id="btn-generate">Generate output</button>
+          </div>
+          <div id="gen-status" class="status warn" style="display: none"></div>
+        </section>
+      </div>
+
+      <section class="card">
+        <h2>3) Zone JSON template (for Alarm node)</h2>
+        <div class="buttons">
+          <button id="btn-copy-zone" disabled>Copy</button>
+        </div>
+        <textarea
+          id="zone-output"
+          spellcheck="false"
+          placeholder="Click “Generate output” to create a zone template, then edit it here if needed."
+        ></textarea>
+        <p class="hint">
+          This creates a single zone object using the mapped topic and optional name. Paste it into the Zones field
+          (legacy: one JSON object per line, or formatted: JSON array).
+        </p>
+      </section>
+    </main>
+
+    <script>
+      const els = {
+        input: document.getElementById("input"),
+        btnParse: document.getElementById("btn-parse"),
+        btnLoadKnx: document.getElementById("btn-load-knx"),
+        btnClear: document.getElementById("btn-clear"),
+        parseStatus: document.getElementById("parse-status"),
+        genStatus: document.getElementById("gen-status"),
+        topicPath: document.getElementById("topicPath"),
+        valuePath: document.getElementById("valuePath"),
+        namePath: document.getElementById("namePath"),
+        btnGenerate: document.getElementById("btn-generate"),
+        zoneOutput: document.getElementById("zone-output"),
+        btnCopyZone: document.getElementById("btn-copy-zone"),
+      };
+
+      const KNX_SAMPLE = `{
+  topic: "0/1/2",
+  payload: false,
+  previouspayload: true,
+  payloadmeasureunit: "%",
+  payloadsubtypevalue: "Start",
+  devicename: "Dinning table lamp",
+  gainfo: {
+    maingroupname: "Light actuators",
+    middlegroupname: "First flow lights",
+    ganame: "Table Light",
+    maingroupnumber: "1",
+    middlegroupnumber: "1",
+    ganumber: "0"
+  },
+  knx: {
+    event: "GroupValue_Write",
+    dpt: "1.001",
+    dptdesc: "Humidity",
+    source: "15.15.22",
+    destination: "0/1/2",
+    rawValue: {
+      0: "0x0"
+    }
+  }
+}`;
+
+      let parsedObject = null;
+      let lastGenerated = null;
+
+      function showStatus(el, kind, message) {
+        el.style.display = "";
+        el.className = `status ${kind}`;
+        el.textContent = message;
+      }
+
+      function hideStatus(el) {
+        el.style.display = "none";
+        el.textContent = "";
+      }
+
+      function normalizeLenientJson(input) {
+        let text = String(input || "");
+        text = text.replace(/\r\n/g, "\n");
+        text = text.replace(/\/\*[\s\S]*?\*\//g, "");
+        text = text.replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+        text = text.replace(/([{,]\s*)([A-Za-z_$][\w$]*)(\s*:)/g, '$1"$2"$3');
+        text = text.replace(/([{,]\s*)(\d+)(\s*:)/g, '$1"$2"$3');
+
+        text = text.replace(/:\s*0x([0-9a-fA-F]+)\b/g, ': "0x$1"');
+
+        return text;
+      }
+
+      function parseInput(text) {
+        const raw = String(text || "").trim();
+        if (!raw) return { ok: false, error: "Empty input." };
+
+        try {
+          return { ok: true, value: JSON.parse(raw), note: "Parsed as strict JSON." };
+        } catch (err1) {
+          try {
+            const normalized = normalizeLenientJson(raw);
+            const value = JSON.parse(normalized);
+            return { ok: true, value, note: "Parsed after normalizing (removed comments, quoted keys)." };
+          } catch (err2) {
+            return {
+              ok: false,
+              error:
+                "Unable to parse. Please paste strict JSON, or a JS-style object with only // comments and unquoted keys.",
+              details: String(err2 && err2.message ? err2.message : err2),
+            };
+          }
+        }
+      }
+
+      function isPlainObject(value) {
+        return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+      }
+
+      function enumeratePaths(value, basePath = "", out = []) {
+        if (value === null || value === undefined) {
+          out.push(basePath || "(root)");
+          return out;
+        }
+        if (typeof value !== "object") {
+          out.push(basePath || "(root)");
+          return out;
+        }
+
+        if (Array.isArray(value)) {
+          out.push(basePath || "(root)");
+          const limit = Math.min(20, value.length);
+          for (let i = 0; i < limit; i += 1) {
+            enumeratePaths(value[i], `${basePath}[${i}]`, out);
+          }
+          return out;
+        }
+
+        out.push(basePath || "(root)");
+        const keys = Object.keys(value).slice(0, 200);
+        for (const key of keys) {
+          const next = basePath ? `${basePath}.${key}` : key;
+          enumeratePaths(value[key], next, out);
+        }
+        return out;
+      }
+
+      function getByPath(obj, path) {
+        if (!path || path === "(root)") return obj;
+        const parts = [];
+        String(path)
+          .split(".")
+          .forEach((segment) => {
+            const m = segment.match(/^([^[\]]+)(\[(\d+)\])?$/);
+            if (!m) {
+              parts.push(segment);
+              return;
+            }
+            parts.push(m[1]);
+            if (m[2]) parts.push(Number(m[3]));
+          });
+
+        let cur = obj;
+        for (const part of parts) {
+          if (cur === null || cur === undefined) return undefined;
+          cur = cur[part];
+        }
+        return cur;
+      }
+
+      function toOneLine(value) {
+        if (value === undefined) return "undefined";
+        if (typeof value === "string") return value;
+        try {
+          return JSON.stringify(value);
+        } catch (err) {
+          return String(value);
+        }
+      }
+
+      function guessDefault(paths, candidates) {
+        for (const c of candidates) {
+          if (paths.includes(c)) return c;
+        }
+        return paths.includes("topic") ? "topic" : paths[0] || "(root)";
+      }
+
+      function setSelectOptions(select, paths, selected) {
+        select.innerHTML = "";
+        for (const p of paths) {
+          const opt = document.createElement("option");
+          opt.value = p;
+          opt.textContent = p;
+          select.appendChild(opt);
+        }
+        select.value = selected;
+      }
+
+      function buildZoneTemplate(normalizedMsg, zoneNameValue) {
+        const topic = normalizedMsg && normalizedMsg.topic ? String(normalizedMsg.topic) : "";
+        const name =
+          zoneNameValue !== undefined && zoneNameValue !== null && String(zoneNameValue).trim().length > 0
+            ? String(zoneNameValue).trim()
+            : topic || "Zone";
+        const id = topic ? topic.replace(/[^\w]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase() : "zone1";
+
+        return {
+          id,
+          name,
+          topic,
+          type: "perimeter",
+          entry: false,
+          bypassable: true,
+          chime: false,
+        };
+      }
+
+      async function copyToClipboard(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (err) {
+          return false;
+        }
+      }
+
+      function renderJson(el, obj) {
+        el.style.display = "";
+        el.className = "status ok";
+        el.innerHTML = "";
+        const pre = document.createElement("pre");
+        pre.textContent = JSON.stringify(obj, null, 2);
+        el.appendChild(pre);
+      }
+
+      function renderText(el, text) {
+        el.style.display = "";
+        el.className = "status ok";
+        el.innerHTML = "";
+        const pre = document.createElement("pre");
+        pre.textContent = String(text || "");
+        el.appendChild(pre);
+      }
+
+      function parseAndPopulate() {
+        hideStatus(els.parseStatus);
+        hideStatus(els.genStatus);
+        els.zoneOutput.value = "";
+        els.btnCopyZone.disabled = true;
+        lastGenerated = null;
+
+        const result = parseInput(els.input.value);
+        if (!result.ok) {
+          parsedObject = null;
+          showStatus(els.parseStatus, "err", `${result.error}${result.details ? "\n" + result.details : ""}`);
+          return;
+        }
+
+        if (!isPlainObject(result.value)) {
+          parsedObject = result.value;
+          showStatus(
+            els.parseStatus,
+            "warn",
+            `${result.note} Note: the root is not an object. Paths will be limited.`
+          );
+        } else {
+          parsedObject = result.value;
+          showStatus(els.parseStatus, "ok", result.note);
+        }
+
+        const paths = Array.from(new Set(enumeratePaths(parsedObject))).filter(Boolean);
+        paths.sort((a, b) => a.localeCompare(b));
+
+        const defaultTopic = guessDefault(paths, ["topic", "knx.destination", "destination"]);
+        const defaultValue = guessDefault(paths, ["payload", "payloadsubtypevalue", "value"]);
+        const defaultName = guessDefault(paths, ["devicename", "gainfo.ganame", "name", "topic"]);
+
+        setSelectOptions(els.topicPath, paths, defaultTopic);
+        setSelectOptions(els.valuePath, paths, defaultValue);
+        setSelectOptions(els.namePath, paths, defaultName);
+      }
+
+      function generate() {
+        hideStatus(els.genStatus);
+        if (!parsedObject) {
+          showStatus(els.genStatus, "err", "Parse a valid message first.");
+          return;
+        }
+
+        const topicPath = els.topicPath.value;
+        const valuePath = els.valuePath.value;
+        const namePath = els.namePath.value;
+
+        const topicValue = getByPath(parsedObject, topicPath);
+        const valueValue = getByPath(parsedObject, valuePath);
+        const nameValue = getByPath(parsedObject, namePath);
+
+        if (topicValue === undefined) {
+          showStatus(els.genStatus, "err", `Topic path "${topicPath}" is undefined in the input message.`);
+          return;
+        }
+
+        const normalized = { ...parsedObject, topic: String(topicValue), payload: valueValue };
+        const zone = buildZoneTemplate(normalized, nameValue);
+        els.zoneOutput.value = JSON.stringify(zone, null, 2);
+
+        els.btnCopyZone.disabled = false;
+
+        lastGenerated = { normalized, zone };
+        showStatus(els.genStatus, "ok", `Generated using topic="${toOneLine(topicValue)}" and value="${valuePath}".`);
+      }
+
+      els.btnParse.addEventListener("click", () => parseAndPopulate());
+      els.btnGenerate.addEventListener("click", () => generate());
+      els.btnClear.addEventListener("click", () => {
+        els.input.value = "";
+        parsedObject = null;
+        lastGenerated = null;
+        hideStatus(els.parseStatus);
+        hideStatus(els.genStatus);
+        els.zoneOutput.value = "";
+        els.btnCopyZone.disabled = true;
+        els.topicPath.innerHTML = "";
+        els.valuePath.innerHTML = "";
+        els.namePath.innerHTML = "";
+      });
+      els.btnLoadKnx.addEventListener("click", () => {
+        els.input.value = KNX_SAMPLE;
+        parseAndPopulate();
+      });
+
+      els.btnCopyZone.addEventListener("click", async () => {
+        const text = String(els.zoneOutput.value || "").trim();
+        if (!text) return;
+        const ok = await copyToClipboard(text);
+        showStatus(els.genStatus, ok ? "ok" : "warn", ok ? "Zone JSON copied." : "Copy failed.");
+      });
+    </script>
+  </body>
+</html>

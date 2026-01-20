@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Alarm Panel</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0b1020;
+        --panel: #111936;
+        --text: #e7eaf6;
+        --muted: #a9b0d2;
+        --border: #2a355f;
+        --accent: #6ea8fe;
+        --ok: #2fbf71;
+        --warn: #ffcc66;
+        --danger: #ff6b6b;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+          monospace;
+        --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+      }
+
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f6f8ff;
+          --panel: #ffffff;
+          --text: #111827;
+          --muted: #5b647a;
+          --border: #d8deef;
+          --accent: #2563eb;
+        }
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+      }
+
+      body.embed header {
+        display: none;
+      }
+
+      body.embed main {
+        max-width: none;
+        padding: 12px;
+      }
+
+      body.embed .grid {
+        grid-template-columns: 1fr;
+      }
+
+      header {
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      header h1 {
+        margin: 0 0 6px 0;
+        font-size: 18px;
+      }
+
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 16px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      @media (max-width: 980px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        border-radius: 10px;
+        padding: 12px;
+      }
+
+      .card h2 {
+        font-size: 14px;
+        margin: 0 0 10px 0;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        gap: 10px;
+        align-items: center;
+        margin: 8px 0;
+      }
+
+      .row label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      select,
+      input[type="password"],
+      input[type="text"] {
+        width: 100%;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        border-radius: 8px;
+        padding: 8px 10px;
+        box-sizing: border-box;
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+
+      .buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      button {
+        border: 1px solid var(--border);
+        background: rgba(110, 168, 254, 0.12);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 8px 10px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      button.primary {
+        border-color: rgba(110, 168, 254, 0.5);
+        background: rgba(110, 168, 254, 0.22);
+      }
+
+      button.danger {
+        border-color: rgba(255, 107, 107, 0.55);
+        background: rgba(255, 107, 107, 0.14);
+      }
+
+      .status {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .status .left {
+        display: grid;
+        gap: 2px;
+      }
+
+      .status .title {
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+
+      .status .meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .pill {
+        font-family: var(--mono);
+        font-size: 12px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+      }
+
+      .pill.ok {
+        border-color: rgba(47, 191, 113, 0.55);
+        color: var(--ok);
+      }
+      .pill.warn {
+        border-color: rgba(255, 204, 102, 0.55);
+        color: var(--warn);
+      }
+      .pill.danger {
+        border-color: rgba(255, 107, 107, 0.55);
+        color: var(--danger);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--border);
+        padding: 8px 6px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .zone-open {
+        color: var(--danger);
+      }
+      .zone-closed {
+        color: var(--ok);
+      }
+      .zone-bypassed {
+        color: var(--warn);
+      }
+
+      .kbd {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .kbd button {
+        padding: 10px;
+        font-family: var(--mono);
+        font-size: 14px;
+      }
+
+      .hint {
+        color: var(--muted);
+        font-size: 12px;
+        margin: 8px 0 0 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Alarm Panel</h1>
+      <p>View all zones and use the keypad to arm/disarm the Alarm System Ultimate node.</p>
+    </header>
+
+	    <main>
+	      <section class="card">
+	        <h2>Node</h2>
+	        <div class="row">
+	          <label for="nodeSelect">Alarm node</label>
+	          <select id="nodeSelect"></select>
+	        </div>
+	        <div class="hint" id="nodeHint"></div>
+	        <div id="nodeStatus" class="status" style="display: none">
+	          <div class="left">
+	            <div class="title" id="statusTitle"></div>
+	            <div class="meta" id="statusMeta"></div>
+	          </div>
+          <div class="pill" id="statusPill"></div>
+        </div>
+      </section>
+
+      <div class="grid">
+        <section class="card">
+          <h2>Keypad</h2>
+          <div class="row">
+            <label for="code">Code</label>
+            <input id="code" type="password" autocomplete="one-time-code" placeholder="(optional)" />
+          </div>
+          <div class="buttons">
+            <button class="primary" id="btnArm">Arm</button>
+            <button class="danger" id="btnDisarm">Disarm</button>
+          </div>
+          <div class="kbd" aria-label="Keypad">
+            <button data-k="1">1</button>
+            <button data-k="2">2</button>
+            <button data-k="3">3</button>
+            <button data-k="4">4</button>
+            <button data-k="5">5</button>
+            <button data-k="6">6</button>
+            <button data-k="7">7</button>
+            <button data-k="8">8</button>
+            <button data-k="9">9</button>
+            <button data-k="clear">Clear</button>
+            <button data-k="0">0</button>
+            <button data-k="back">Back</button>
+          </div>
+          <p class="hint">Commands are sent to the selected node using the Node-RED admin HTTP endpoint.</p>
+          <p class="hint" id="cmdStatus" style="display: none"></p>
+        </section>
+
+        <section class="card">
+          <h2>Zones</h2>
+          <div class="hint" id="zonesHint">Loading...</div>
+          <div style="overflow: auto; margin-top: 10px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Zone</th>
+                  <th>State</th>
+                  <th>Type</th>
+                  <th>Topic</th>
+                </tr>
+              </thead>
+              <tbody id="zonesBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+	      const els = {
+	        nodeSelect: document.getElementById("nodeSelect"),
+	        nodeHint: document.getElementById("nodeHint"),
+	        nodeStatus: document.getElementById("nodeStatus"),
+	        statusTitle: document.getElementById("statusTitle"),
+	        statusMeta: document.getElementById("statusMeta"),
+	        statusPill: document.getElementById("statusPill"),
+	        zonesBody: document.getElementById("zonesBody"),
+        zonesHint: document.getElementById("zonesHint"),
+        code: document.getElementById("code"),
+        cmdStatus: document.getElementById("cmdStatus"),
+        btnArm: document.getElementById("btnArm"),
+        btnDisarm: document.getElementById("btnDisarm"),
+      };
+
+      const params = new URLSearchParams(window.location.search);
+      const preselectId = params.get("id") || "";
+      const embedMode = params.get("embed") === "1" || params.get("embed") === "true";
+
+      if (embedMode) {
+        document.body.classList.add("embed");
+      }
+
+      let selectedId = "";
+      let pollTimer = null;
+
+      let audioCtx = null;
+      let armingBeepTimer = null;
+      let hasSeenState = false;
+      let lastMode = null;
+      let lastArmingActive = null;
+
+      function getAudioContext() {
+        if (audioCtx) return audioCtx;
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return null;
+        audioCtx = new Ctx();
+        return audioCtx;
+      }
+
+      async function ensureAudioReady() {
+        const ctx = getAudioContext();
+        if (!ctx) return null;
+        try {
+          if (ctx.state === "suspended") {
+            await ctx.resume();
+          }
+        } catch (err) {
+          return null;
+        }
+        return ctx;
+      }
+
+      async function playBeep(freq, durationMs, volume, type) {
+        const ctx = await ensureAudioReady();
+        if (!ctx) return;
+
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = type || "sine";
+        osc.frequency.setValueAtTime(Number(freq) || 800, now);
+
+        const v = Math.max(0.0001, Math.min(Number(volume) || 0.08, 0.2));
+        const dur = Math.max(0.01, (Number(durationMs) || 60) / 1000);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(v, now + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + dur);
+
+        osc.onended = () => {
+          try {
+            osc.disconnect();
+            gain.disconnect();
+          } catch (err) {}
+        };
+      }
+
+      function stopArmingBeeps() {
+        if (!armingBeepTimer) return;
+        clearInterval(armingBeepTimer);
+        armingBeepTimer = null;
+      }
+
+      function startArmingBeeps() {
+        if (armingBeepTimer) return;
+        playBeep(660, 50, 0.05, "sine");
+        armingBeepTimer = setInterval(() => {
+          playBeep(660, 50, 0.05, "sine");
+        }, 800);
+      }
+
+      function playModeBeep(mode) {
+        if (mode === "armed") {
+          playBeep(880, 70, 0.085, "sine");
+          setTimeout(() => playBeep(1175, 70, 0.085, "sine"), 110);
+          return;
+        }
+        if (mode === "disarmed") {
+          playBeep(587, 90, 0.085, "sine");
+          setTimeout(() => playBeep(440, 110, 0.085, "sine"), 140);
+        }
+      }
+
+      async function playKeyClick(kind) {
+        const ctx = await ensureAudioReady();
+        if (!ctx) return;
+
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        const freq =
+          kind === "back" ? 520 : kind === "clear" ? 340 : kind === "action" ? 860 : 740;
+
+        osc.type = "square";
+        osc.frequency.setValueAtTime(freq, now);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.08, now + 0.002);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.03);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.03);
+
+        osc.onended = () => {
+          try {
+            osc.disconnect();
+            gain.disconnect();
+          } catch (err) {}
+        };
+      }
+
+      function resetStateAudioTracking() {
+        stopArmingBeeps();
+        hasSeenState = false;
+        lastMode = null;
+        lastArmingActive = null;
+      }
+
+      function handleStateBeeps(state) {
+        if (!state) return;
+
+        const mode = typeof state.mode === "string" ? state.mode : null;
+        const armingActive = Boolean(state.arming && state.arming.active);
+
+        if (!hasSeenState) {
+          hasSeenState = true;
+          lastMode = mode;
+          lastArmingActive = armingActive;
+          if (armingActive) startArmingBeeps();
+          return;
+        }
+
+        if (armingActive && !lastArmingActive) startArmingBeeps();
+        if (!armingActive && lastArmingActive) stopArmingBeeps();
+
+        if (mode && mode !== lastMode) {
+          stopArmingBeeps();
+          playModeBeep(mode);
+        }
+
+        lastMode = mode;
+        lastArmingActive = armingActive;
+      }
+
+      function httpAdminRoot() {
+        const base = window.location.pathname;
+        const idx = base.indexOf("/alarm-ultimate/");
+        if (idx >= 0) return base.slice(0, idx + 1);
+        return "/";
+      }
+
+	      function apiUrl(path) {
+	        const root = httpAdminRoot();
+	        return root.endsWith("/") ? `${root}${path.replace(/^\//, "")}` : `${root}/${path.replace(/^\//, "")}`;
+	      }
+
+	      function setNodeHint(text) {
+	        if (!els.nodeHint) return;
+	        els.nodeHint.textContent = text || "";
+	      }
+
+	      function authHeaders() {
+	        try {
+	          const raw = localStorage.getItem("auth-tokens");
+	          if (!raw) return {};
+	          const tokens = JSON.parse(raw);
+	          if (!tokens || !tokens.access_token) return {};
+	          return { Authorization: `Bearer ${tokens.access_token}` };
+	        } catch (err) {
+	          return {};
+	        }
+	      }
+
+	      function showCmdStatus(text, kind) {
+	        els.cmdStatus.style.display = "";
+	        els.cmdStatus.style.color = kind === "err" ? "var(--danger)" : kind === "ok" ? "var(--ok)" : "var(--muted)";
+	        els.cmdStatus.textContent = text;
+        setTimeout(() => {
+          els.cmdStatus.style.display = "none";
+        }, 2500);
+      }
+
+      function statusFromState(state) {
+        if (!state) return { label: "Unknown", cls: "" };
+        if (state.alarmActive) return { label: "ALARM", cls: "danger" };
+        if (state.entry && state.entry.active) return { label: "ENTRY", cls: "warn" };
+        if (state.arming && state.arming.active) return { label: "ARMING", cls: "warn" };
+        if (state.mode === "armed") return { label: "ARMED", cls: "ok" };
+        return { label: "DISARMED", cls: "" };
+      }
+
+      function renderZones(zones) {
+        els.zonesBody.innerHTML = "";
+        const list = Array.isArray(zones) ? zones : [];
+        if (list.length === 0) {
+          els.zonesHint.textContent = "No zones configured.";
+          return;
+        }
+        els.zonesHint.textContent = `${list.length} zones`;
+
+        for (const z of list) {
+          const tr = document.createElement("tr");
+          const title = z.name ? `${z.name}` : z.id;
+          const stateText = z.bypassed ? "BYPASSED" : z.open ? "OPEN" : "CLOSED";
+          const stateClass = z.bypassed ? "zone-bypassed" : z.open ? "zone-open" : "zone-closed";
+          const topic = z.topic || z.topicPattern || "";
+
+          tr.innerHTML = `
+            <td>${escapeHtml(title)}<div style="color:var(--muted); font-size:11px">${escapeHtml(z.id || "")}</div></td>
+            <td class="${stateClass}">${escapeHtml(stateText)}</td>
+            <td>${escapeHtml(z.type || "")}</td>
+            <td>${escapeHtml(topic)}</td>
+          `;
+          els.zonesBody.appendChild(tr);
+        }
+      }
+
+      function escapeHtml(text) {
+        return String(text || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+	      async function loadNodes() {
+	        const res = await fetch(apiUrl("/alarm-ultimate/alarm/nodes"), {
+	          credentials: "same-origin",
+	          headers: { ...authHeaders() },
+	        });
+	        if (!res.ok) throw new Error(`Unable to load nodes (${res.status})`);
+	        const data = await res.json();
+	        const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+
+	        els.nodeSelect.innerHTML = "";
+	        els.nodeSelect.disabled = nodes.length === 0;
+	        for (const n of nodes) {
+	          const opt = document.createElement("option");
+	          opt.value = n.id;
+	          opt.textContent = n.name ? `${n.name} (${n.id})` : n.id;
+	          els.nodeSelect.appendChild(opt);
+	        }
+
+	        const preferred = nodes.find((n) => n.id === preselectId) ? preselectId : nodes[0] ? nodes[0].id : "";
+	        selectedId = preferred;
+	        els.nodeSelect.value = preferred;
+	        if (!preferred) {
+	          els.zonesHint.textContent = "No Alarm nodes found.";
+	          setNodeHint("No Alarm nodes found. Deploy your flow and refresh.");
+	        } else {
+	          setNodeHint("");
+	        }
+	      }
+
+	      async function loadState() {
+	        if (!selectedId) return;
+	        const res = await fetch(apiUrl(`/alarm-ultimate/alarm/${encodeURIComponent(selectedId)}/state`), {
+	          credentials: "same-origin",
+	          headers: { ...authHeaders() },
+	        });
+	        if (!res.ok) throw new Error(`Unable to load state (${res.status})`);
+	        const data = await res.json();
+	        const state = data.state;
+	        const st = statusFromState(state);
+
+        els.nodeStatus.style.display = "";
+        els.statusTitle.textContent = data.name ? data.name : selectedId;
+        const ct = data.controlTopic ? `controlTopic=${data.controlTopic}` : "";
+        const openCount = (Array.isArray(data.zones) ? data.zones.filter((z) => z.open && !z.bypassed).length : 0) || 0;
+        els.statusMeta.textContent = `${st.label}${ct ? " • " + ct : ""}${openCount ? " • open=" + openCount : ""}`;
+        els.statusPill.textContent = st.label;
+        els.statusPill.className = `pill ${st.cls}`;
+
+        renderZones(data.zones);
+        handleStateBeeps(state);
+      }
+
+      function startPolling() {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = setInterval(() => {
+          loadState().catch((err) => {
+            els.zonesHint.textContent = err.message;
+          });
+        }, 1000);
+      }
+
+	      async function sendCommand(payload) {
+	        if (!selectedId) return;
+	        const res = await fetch(apiUrl(`/alarm-ultimate/alarm/${encodeURIComponent(selectedId)}/command`), {
+	          method: "POST",
+	          headers: { "content-type": "application/json", ...authHeaders() },
+	          body: JSON.stringify(payload),
+	          credentials: "same-origin",
+	        });
+	        if (!res.ok) {
+	          const text = await res.text();
+          throw new Error(`Command failed (${res.status}): ${text}`);
+        }
+      }
+
+      function codeValue() {
+        const v = String(els.code.value || "").trim();
+        return v.length ? v : undefined;
+      }
+
+      els.nodeSelect.addEventListener("change", () => {
+        selectedId = els.nodeSelect.value;
+        resetStateAudioTracking();
+        loadState().catch(() => {});
+      });
+
+      els.btnArm.addEventListener("click", async () => {
+        playKeyClick("action");
+        try {
+          await sendCommand({ command: "arm", code: codeValue() });
+          showCmdStatus("Arm sent.", "ok");
+        } catch (err) {
+          showCmdStatus(err.message, "err");
+        }
+      });
+      els.btnDisarm.addEventListener("click", async () => {
+        playKeyClick("action");
+        try {
+          await sendCommand({ command: "disarm", code: codeValue() });
+          showCmdStatus("Disarm sent.", "ok");
+        } catch (err) {
+          showCmdStatus(err.message, "err");
+        }
+      });
+
+      document.querySelector(".kbd").addEventListener("click", (e) => {
+        const btn = e.target && e.target.closest("button");
+        if (!btn) return;
+        const k = btn.getAttribute("data-k");
+        if (!k) return;
+        if (k === "clear") {
+          playKeyClick("clear");
+          els.code.value = "";
+          return;
+        }
+        if (k === "back") {
+          playKeyClick("back");
+          els.code.value = String(els.code.value || "").slice(0, -1);
+          return;
+        }
+        playKeyClick("key");
+        els.code.value = `${els.code.value || ""}${k}`;
+      });
+
+      els.code.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace") playKeyClick("back");
+        else if (e.key === "Escape" || e.key === "Delete") playKeyClick("clear");
+        else if (/^\d$/.test(e.key)) playKeyClick("key");
+      });
+
+	      (async function init() {
+	        try {
+	          setNodeHint(`API root: ${httpAdminRoot()}`);
+	          await loadNodes();
+	          await loadState();
+	          startPolling();
+	        } catch (err) {
+	          setNodeHint(err.message);
+	          els.zonesHint.textContent = err.message;
+	        }
+	      })();
+	    </script>
+	  </body>
+	</html>
