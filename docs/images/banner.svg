@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-label="Alarm Ultimate for Node-RED banner">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#171a2a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff375f"/>
+      <stop offset="1" stop-color="#ff9f0a"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <style>
+      .title { font: 700 54px ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial; fill: #ffffff; }
+      .subtitle { font: 500 22px ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial; fill: rgba(255,255,255,0.78); }
+      .chip { font: 600 14px ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial; fill: rgba(255,255,255,0.92); letter-spacing: 0.2px; }
+      .mono { font: 600 14px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; fill: rgba(255,255,255,0.92); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="320" fill="url(#bg)"/>
+
+  <!-- Accent ribbon -->
+  <rect x="0" y="0" width="1200" height="10" fill="url(#accent)"/>
+
+  <!-- Decorative grid -->
+  <g opacity="0.16">
+    <path d="M80 0V320M160 0V320M240 0V320M320 0V320M400 0V320M480 0V320M560 0V320M640 0V320M720 0V320M800 0V320M880 0V320M960 0V320M1040 0V320M1120 0V320" stroke="#ffffff" stroke-width="1"/>
+    <path d="M0 60H1200M0 120H1200M0 180H1200M0 240H1200" stroke="#ffffff" stroke-width="1"/>
+  </g>
+
+  <!-- Card -->
+  <g filter="url(#shadow)">
+    <rect x="70" y="70" width="1060" height="180" rx="18" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.14)"/>
+  </g>
+
+  <!-- Icon -->
+  <g transform="translate(120,115)">
+    <rect x="0" y="0" width="86" height="86" rx="18" fill="rgba(255,55,95,0.15)" stroke="rgba(255,55,95,0.5)"/>
+    <path d="M43 16c-10.5 0-19 8.5-19 19v11.3l-5.7 11.4c-1.2 2.3 0.4 5.1 3 5.1H64c2.6 0 4.2-2.8 3-5.1l-5.7-11.4V35c0-10.5-8.5-19-19-19z" fill="#ff375f"/>
+    <path d="M32 68c0 6.1 4.9 11 11 11s11-4.9 11-11H32z" fill="#ff9f0a"/>
+  </g>
+
+  <!-- Text -->
+  <text class="title" x="240" y="150">Alarm Ultimate</text>
+  <text class="subtitle" x="240" y="186">Alarm nodes + web panel for Node-RED</text>
+
+  <!-- Chips -->
+  <g transform="translate(240,206)">
+    <rect x="0" y="0" width="132" height="30" rx="10" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.14)"/>
+    <text class="chip" x="16" y="20">Zones</text>
+
+    <rect x="148" y="0" width="170" height="30" rx="10" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.14)"/>
+    <text class="chip" x="164" y="20">Siren &amp; events</text>
+
+    <rect x="334" y="0" width="232" height="30" rx="10" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.14)"/>
+    <text class="chip" x="350" y="20">Dashboard embed</text>
+
+    <rect x="582" y="0" width="214" height="30" rx="10" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.14)"/>
+    <text class="mono" x="598" y="20">/alarm-ultimate</text>
+  </g>
+</svg>

@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-label="Alarm Panel mock screenshot">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#11162a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff375f"/>
+      <stop offset="1" stop-color="#ff9f0a"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000" flood-opacity="0.4"/>
+    </filter>
+    <style>
+      .h1 { font: 700 22px ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial; fill: #fff; }
+      .h2 { font: 600 14px ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial; fill: rgba(255,255,255,0.78); }
+      .label { font: 600 13px ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial; fill: rgba(255,255,255,0.86); }
+      .value { font: 700 18px ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial; fill: #fff; }
+      .tiny { font: 600 12px ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial; fill: rgba(255,255,255,0.68); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="700" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1200" height="10" fill="url(#accent)"/>
+
+  <!-- Window -->
+  <g filter="url(#shadow)">
+    <rect x="80" y="70" width="1040" height="560" rx="18" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.14)"/>
+  </g>
+
+  <!-- Top bar -->
+  <g>
+    <rect x="80" y="70" width="1040" height="64" rx="18" fill="rgba(255,255,255,0.07)"/>
+    <circle cx="118" cy="102" r="7" fill="#ff375f"/>
+    <circle cx="142" cy="102" r="7" fill="#ff9f0a"/>
+    <circle cx="166" cy="102" r="7" fill="#34c759"/>
+    <text class="h1" x="210" y="110">Alarm Panel</text>
+    <text class="h2" x="340" y="110">demo layout</text>
+  </g>
+
+  <!-- Status -->
+  <g transform="translate(120,160)">
+    <rect x="0" y="0" width="420" height="110" rx="16" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)"/>
+    <text class="label" x="22" y="32">Status</text>
+    <text class="value" x="22" y="70">DISARMED</text>
+    <rect x="280" y="30" width="120" height="56" rx="14" fill="rgba(52,199,89,0.18)" stroke="rgba(52,199,89,0.55)"/>
+    <text class="label" x="308" y="64">Ready</text>
+  </g>
+
+  <!-- Actions -->
+  <g transform="translate(560,160)">
+    <rect x="0" y="0" width="520" height="110" rx="16" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)"/>
+    <text class="label" x="22" y="32">Actions</text>
+    <g transform="translate(22,48)">
+      <rect x="0" y="0" width="140" height="44" rx="12" fill="rgba(255,55,95,0.18)" stroke="rgba(255,55,95,0.6)"/>
+      <text class="label" x="38" y="28">Arm</text>
+      <rect x="160" y="0" width="160" height="44" rx="12" fill="rgba(255,159,10,0.16)" stroke="rgba(255,159,10,0.55)"/>
+      <text class="label" x="202" y="28">Arm stay</text>
+      <rect x="340" y="0" width="158" height="44" rx="12" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.18)"/>
+      <text class="label" x="382" y="28">Disarm</text>
+    </g>
+  </g>
+
+  <!-- Zones list -->
+  <g transform="translate(120,300)">
+    <rect x="0" y="0" width="700" height="290" rx="16" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)"/>
+    <text class="label" x="22" y="34">Zones</text>
+
+    <!-- rows -->
+    <g transform="translate(22,56)">
+      <rect x="0" y="0" width="656" height="44" rx="12" fill="rgba(255,255,255,0.07)"/>
+      <text class="label" x="16" y="28">01 • Front door</text>
+      <rect x="540" y="10" width="100" height="24" rx="10" fill="rgba(52,199,89,0.18)" stroke="rgba(52,199,89,0.55)"/>
+      <text class="tiny" x="570" y="27">closed</text>
+
+      <rect x="0" y="58" width="656" height="44" rx="12" fill="rgba(255,255,255,0.07)"/>
+      <text class="label" x="16" y="86">02 • Living room PIR</text>
+      <rect x="540" y="68" width="100" height="24" rx="10" fill="rgba(52,199,89,0.18)" stroke="rgba(52,199,89,0.55)"/>
+      <text class="tiny" x="570" y="85">idle</text>
+
+      <rect x="0" y="116" width="656" height="44" rx="12" fill="rgba(255,255,255,0.07)"/>
+      <text class="label" x="16" y="144">03 • Garage</text>
+      <rect x="540" y="126" width="100" height="24" rx="10" fill="rgba(255,55,95,0.18)" stroke="rgba(255,55,95,0.6)"/>
+      <text class="tiny" x="572" y="143">open</text>
+
+      <rect x="0" y="174" width="656" height="44" rx="12" fill="rgba(255,255,255,0.07)"/>
+      <text class="label" x="16" y="202">04 • Smoke detector</text>
+      <rect x="540" y="184" width="100" height="24" rx="10" fill="rgba(255,159,10,0.16)" stroke="rgba(255,159,10,0.55)"/>
+      <text class="tiny" x="567" y="201">24h</text>
+    </g>
+  </g>
+
+  <!-- Side panel -->
+  <g transform="translate(840,300)">
+    <rect x="0" y="0" width="240" height="290" rx="16" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)"/>
+    <text class="label" x="20" y="34">Last events</text>
+    <g transform="translate(20,56)">
+      <rect x="0" y="0" width="200" height="54" rx="12" fill="rgba(255,255,255,0.07)"/>
+      <text class="tiny" x="14" y="22">10:24</text>
+      <text class="label" x="14" y="42">Zone 03 opened</text>
+
+      <rect x="0" y="66" width="200" height="54" rx="12" fill="rgba(255,255,255,0.07)"/>
+      <text class="tiny" x="14" y="88">10:26</text>
+      <text class="label" x="14" y="108">Disarmed</text>
+
+      <rect x="0" y="132" width="200" height="54" rx="12" fill="rgba(255,255,255,0.07)"/>
+      <text class="tiny" x="14" y="154">10:28</text>
+      <text class="label" x="14" y="174">Siren off</text>
+    </g>
+  </g>
+
+  <!-- Footnote -->
+  <text class="tiny" x="80" y="670">Illustration only (mock). The real panel is served at /alarm-ultimate/alarm-panel</text>
+</svg>
