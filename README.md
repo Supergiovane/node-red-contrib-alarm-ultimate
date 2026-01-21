@@ -92,6 +92,14 @@ The Alarm Panel supports:
 
 See `examples/README.md`.
 
+## Development
+
+Run tests:
+
+```bash
+npm test
+```
+
 ## Permissions and endpoints
 
 When Node-RED authentication is enabled, the admin endpoints use these permissions (if available):
@@ -107,21 +115,13 @@ HTTP admin endpoints:
 - `GET /alarm-ultimate/alarm-json-mapper`
 - `GET /alarm-ultimate/alarm-panel`
 
-## Development
-
-Run tests:
-
-```bash
-npm test
-```
-
 <!-- Badges (reference-style links) -->
+
 [repo-url]: https://github.com/Supergiovane/node-red-contrib-alarm-ultimate
 [npm-url]: https://www.npmjs.com/package/node-red-contrib-alarm-ultimate
 [flows-url]: https://flows.nodered.org/node/node-red-contrib-alarm-ultimate
 [license-url]: LICENSE
 [issues-url]: https://github.com/Supergiovane/node-red-contrib-alarm-ultimate/issues
-
 [npm-version-image]: https://img.shields.io/npm/v/node-red-contrib-alarm-ultimate.svg
 [npm-downloads-image]: https://img.shields.io/npm/dm/node-red-contrib-alarm-ultimate.svg
 [flows-image]: https://img.shields.io/badge/Node--RED%20Flows-library-8f0000?logo=nodered&logoColor=white
