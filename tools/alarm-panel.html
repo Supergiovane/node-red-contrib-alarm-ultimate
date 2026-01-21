@@ -53,6 +53,19 @@
         grid-template-columns: 1fr;
       }
 
+      body.view-keypad .grid,
+      body.view-zones .grid {
+        grid-template-columns: 1fr;
+      }
+
+      body.view-keypad #zonesCard {
+        display: none;
+      }
+
+      body.view-zones #keypadCard {
+        display: none;
+      }
+
       header {
         padding: 16px;
         border-bottom: 1px solid var(--border);
@@ -274,13 +287,13 @@
         </div>
       </section>
 
-      <div class="grid">
-        <section class="card">
-          <h2>Keypad</h2>
-          <div class="row">
-            <label for="code">Code</label>
-            <input id="code" type="password" autocomplete="one-time-code" placeholder="(optional)" />
-          </div>
+	      <div class="grid">
+	        <section class="card" id="keypadCard" data-section="keypad">
+	          <h2>Keypad</h2>
+	          <div class="row">
+	            <label for="code">Code</label>
+	            <input id="code" type="password" autocomplete="one-time-code" placeholder="(optional)" />
+	          </div>
           <div class="buttons">
             <button class="primary" id="btnArm">Arm</button>
             <button class="danger" id="btnDisarm">Disarm</button>
@@ -301,13 +314,13 @@
           </div>
           <p class="hint">Commands are sent to the selected node using the Node-RED admin HTTP endpoint.</p>
           <p class="hint" id="cmdStatus" style="display: none"></p>
-        </section>
+	        </section>
 
-        <section class="card">
-          <h2>Zones</h2>
-          <div class="hint" id="zonesHint">Loading...</div>
-          <div style="overflow: auto; margin-top: 10px">
-            <table>
+	        <section class="card" id="zonesCard" data-section="zones">
+	          <h2>Zones</h2>
+	          <div class="hint" id="zonesHint">Loading...</div>
+	          <div style="overflow: auto; margin-top: 10px">
+	            <table>
               <thead>
                 <tr>
                   <th>Zone</th>
@@ -342,9 +355,16 @@
       const params = new URLSearchParams(window.location.search);
       const preselectId = params.get("id") || "";
       const embedMode = params.get("embed") === "1" || params.get("embed") === "true";
+      const view = (params.get("view") || "").toLowerCase();
 
       if (embedMode) {
         document.body.classList.add("embed");
+      }
+
+      if (view === "zones") {
+        document.body.classList.add("view-zones");
+      } else if (view === "keypad") {
+        document.body.classList.add("view-keypad");
       }
 
       let selectedId = "";
