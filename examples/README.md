@@ -27,3 +27,11 @@ Import `examples/alarm-ultimate-dashboard-controls.json`.
 - Includes the panel (iframe) + Dashboard buttons for `arm`, `disarm`, `status`, `list_open_zones`, `siren_on/off`, `panic`.
 - Also includes a small “sensor simulator” (buttons that send `true/false` on `sensor/frontdoor` and `sensor/living_pir`).
 - The iframe uses a *relative* URL (`alarm-ultimate/...`) so it works even when Node-RED is served under a path prefix (e.g. Home Assistant Ingress).
+
+## Dashboard V2 (FlowFuse / @flowfuse/node-red-dashboard)
+
+Import `examples/alarm-ultimate-dashboard-v2.json`.
+
+- Requires `@flowfuse/node-red-dashboard` installed (`ui-*` nodes).
+- Embeds the Alarm Panel via a Dashboard 2.0 `ui-template` (Vue SFC) iframe.
+- Includes basic command buttons (`arm`, `disarm`, `status`), a small sensor simulator, and two status widgets (`AlarmUltimateState`, `AlarmUltimateSiren` → `ui-text`).

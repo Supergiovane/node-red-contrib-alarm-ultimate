@@ -93,7 +93,8 @@
     "fwdInMessages": false,
     "resendOnRefresh": true,
     "templateScope": "local",
-    "className": ""
+    "className": "",
+    "x": 520,
+    "y": 160
   }
 ]
-
