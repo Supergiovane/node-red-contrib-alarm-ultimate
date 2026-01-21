@@ -1,241 +1,309 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Alarm JSON Mapper (Node-RED)</title>
-    <style>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Alarm JSON Mapper (Node-RED)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0b1020;
+      --panel: #111936;
+      --text: #e7eaf6;
+      --muted: #a9b0d2;
+      --border: #2a355f;
+      --accent: #6ea8fe;
+      --ok: #2fbf71;
+      --warn: #ffcc66;
+      --danger: #ff6b6b;
+      --mono:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+      --sans:
+        system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+        "Apple Color Emoji", "Segoe UI Emoji";
+    }
+
+    @media (prefers-color-scheme: light) {
       :root {
-        color-scheme: light dark;
-        --bg: #0b1020;
-        --panel: #111936;
-        --text: #e7eaf6;
-        --muted: #a9b0d2;
-        --border: #2a355f;
-        --accent: #6ea8fe;
-        --ok: #2fbf71;
-        --warn: #ffcc66;
-        --danger: #ff6b6b;
-        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
-          monospace;
-        --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
-          "Segoe UI Emoji";
+        --bg: #f6f8ff;
+        --panel: #ffffff;
+        --text: #111827;
+        --muted: #5b647a;
+        --border: #d8deef;
+        --accent: #2563eb;
       }
+    }
 
-      @media (prefers-color-scheme: light) {
-        :root {
-          --bg: #f6f8ff;
-          --panel: #ffffff;
-          --text: #111827;
-          --muted: #5b647a;
-          --border: #d8deef;
-          --accent: #2563eb;
-        }
-      }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.4;
+    }
 
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font-family: var(--sans);
-        line-height: 1.4;
-      }
+    header {
+      padding: 18px 16px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg,
+          rgba(110, 168, 254, 0.12),
+          rgba(0, 0, 0, 0));
+    }
 
-      header {
-        padding: 18px 16px;
-        border-bottom: 1px solid var(--border);
-        background: linear-gradient(180deg, rgba(110, 168, 254, 0.12), rgba(0, 0, 0, 0));
-      }
+    header h1 {
+      font-size: 18px;
+      margin: 0 0 6px 0;
+    }
 
-      header h1 {
-        font-size: 18px;
-        margin: 0 0 6px 0;
-      }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
 
-      header p {
-        margin: 0;
-        color: var(--muted);
-        font-size: 13px;
-      }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
 
-      main {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 16px;
-        display: grid;
-        gap: 12px;
-      }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 12px;
+    }
 
+    @media (max-width: 980px) {
       .grid {
-        display: grid;
-        grid-template-columns: 1.2fr 0.8fr;
-        gap: 12px;
+        grid-template-columns: 1fr;
       }
+    }
 
-      @media (max-width: 980px) {
-        .grid {
-          grid-template-columns: 1fr;
-        }
-      }
+    .card {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 10px;
+      padding: 12px;
+    }
 
-      .card {
-        border: 1px solid var(--border);
-        background: var(--panel);
-        border-radius: 10px;
-        padding: 12px;
-      }
+    .card h2 {
+      font-size: 14px;
+      margin: 0 0 10px 0;
+    }
 
-      .card h2 {
-        font-size: 14px;
-        margin: 0 0 10px 0;
-      }
+    .row {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 10px;
+      align-items: center;
+      margin: 8px 0;
+    }
 
-      .row {
-        display: grid;
-        grid-template-columns: 160px 1fr;
-        gap: 10px;
-        align-items: center;
-        margin: 8px 0;
-      }
+    .row label {
+      font-size: 12px;
+      color: var(--muted);
+    }
 
-      .row label {
-        font-size: 12px;
-        color: var(--muted);
-      }
+    textarea,
+    select,
+    input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 10px;
+      box-sizing: border-box;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
 
-      textarea,
-      select,
-      input[type="text"] {
-        width: 100%;
-        border: 1px solid var(--border);
-        background: transparent;
-        color: var(--text);
-        border-radius: 8px;
-        padding: 8px 10px;
-        box-sizing: border-box;
-        font-family: var(--mono);
-        font-size: 12px;
-      }
+    textarea {
+      min-height: 240px;
+      resize: vertical;
+    }
 
-      textarea {
-        min-height: 240px;
-        resize: vertical;
-      }
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
 
-      .buttons {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 10px;
-      }
+    button {
+      border: 1px solid var(--border);
+      background: rgba(110, 168, 254, 0.12);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
 
-      button {
-        border: 1px solid var(--border);
-        background: rgba(110, 168, 254, 0.12);
-        color: var(--text);
-        border-radius: 8px;
-        padding: 8px 10px;
-        cursor: pointer;
-        font-size: 12px;
-      }
+    button.primary {
+      border-color: rgba(110, 168, 254, 0.5);
+      background: rgba(110, 168, 254, 0.22);
+    }
 
-      button.primary {
-        border-color: rgba(110, 168, 254, 0.5);
-        background: rgba(110, 168, 254, 0.22);
-      }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
 
-      button:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 6px 0 0 0;
+    }
 
-      .hint {
-        font-size: 12px;
-        color: var(--muted);
-        margin: 6px 0 0 0;
-      }
+    .status {
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-top: 10px;
+    }
 
-      .status {
-        font-family: var(--mono);
-        font-size: 12px;
-        padding: 8px 10px;
-        border-radius: 8px;
-        border: 1px solid var(--border);
-        margin-top: 10px;
-      }
+    .status.ok {
+      border-color: rgba(47, 191, 113, 0.55);
+      color: var(--ok);
+    }
 
-      .status.ok {
-        border-color: rgba(47, 191, 113, 0.55);
-        color: var(--ok);
-      }
+    .status.warn {
+      border-color: rgba(255, 204, 102, 0.55);
+      color: var(--warn);
+    }
 
-      .status.warn {
-        border-color: rgba(255, 204, 102, 0.55);
-        color: var(--warn);
-      }
+    .status.err {
+      border-color: rgba(255, 107, 107, 0.55);
+      color: var(--danger);
+    }
 
-      .status.err {
-        border-color: rgba(255, 107, 107, 0.55);
-        color: var(--danger);
-      }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
 
-      pre {
-        margin: 0;
-        white-space: pre-wrap;
-        word-break: break-word;
-        font-family: var(--mono);
-        font-size: 12px;
-      }
+    .mono {
+      font-family: var(--mono);
+    }
 
-      .mono {
-        font-family: var(--mono);
-      }
+    .two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
 
+    @media (max-width: 980px) {
       .two {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
+        grid-template-columns: 1fr;
       }
+    }
+  </style>
+</head>
 
-      @media (max-width: 980px) {
-        .two {
-          grid-template-columns: 1fr;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <h1>Alarm JSON Mapper</h1>
-      <p>
-        Paste a sample incoming message (e.g. KNX Ultimate) and map its fields to what the Alarm node needs (topic/value).
-        This tool generates a zone JSON object you can paste into the Alarm node configuration.
-      </p>
-    </header>
+<body>
+  <header>
+    <h1>Alarm JSON Mapper</h1>
+    <p>
+      Paste a sample incoming message (e.g. KNX Ultimate) and map its fields
+      to what the Alarm node needs (topic/value), or paste an ETS Group
+      Addresses export (TSV) to generate zones in batch.
+    </p>
+  </header>
 
-    <main>
-      <div class="grid">
-        <section class="card">
-          <h2>1) Input message</h2>
-          <textarea
-            id="input"
-            spellcheck="false"
-            placeholder='Paste JSON here (strict JSON).&#10;&#10;Tip: this tool also accepts JS-style objects with unquoted keys and // comments.'
-          ></textarea>
-          <div class="buttons">
-            <button class="primary" id="btn-parse">Parse</button>
-            <button id="btn-load-knx">Load KNX sample</button>
-            <button id="btn-clear">Clear</button>
+  <main>
+    <div class="grid">
+      <section class="card">
+        <h2>1) Input message</h2>
+        <textarea id="input" spellcheck="false"
+          placeholder="Paste JSON here (strict JSON).&#10;&#10;Tip: this tool also accepts JS-style objects with unquoted keys and // comments."></textarea>
+        <div class="buttons">
+          <button id="btn-load-knx">Load JSON sample</button>
+          <button id="btn-load-ets">Load ETS sample</button>
+          <button id="btn-load-ha">Load HA sample</button>
+          <button id="btn-load-ha-registry">Load HA registry sample</button>
+          <button id="btn-clear">Clear</button>
+          <button class="primary" id="btn-parse">Parse</button>
+        </div>
+        <p class="hint">
+          If your input is not strict JSON (comments, unquoted keys), click
+          Parse anyway: the tool will try to normalize it.
+        </p>
+        <div id="parse-status" class="status warn" style="display: none"></div>
+      </section>
+
+      <section class="card">
+        <h2>2) Field mapping</h2>
+        <div id="ets-hint" class="status ok" style="display: none"></div>
+        <div id="ha-hint" class="status ok" style="display: none"></div>
+        <div id="ets-mapping" style="display: none">
+          <div class="row">
+            <label for="etsAddressFilter">ETS address filter</label>
+            <input
+              type="text"
+              id="etsAddressFilter"
+              placeholder="Examples: 0/0/*  •  0/1/??  •  */7/*  (comma or newline separated)"
+            />
+          </div>
+          <div class="row">
+            <label for="etsNameFilter">ETS name filter</label>
+            <input
+              type="text"
+              id="etsNameFilter"
+              placeholder='Optional. Examples: Front door • *garage* (supports * and ?)'
+            />
           </div>
           <p class="hint">
-            If your input is not strict JSON (comments, unquoted keys), click Parse anyway: the tool will try to
-            normalize it.
+            Address patterns are matched against the ETS <span class="mono">Address</span> column (e.g.
+            <span class="mono">0/0/1</span>). Name filter is matched against <span class="mono">Description</span>,
+            fallback to <span class="mono">Group name</span>.
           </p>
-          <div id="parse-status" class="status warn" style="display: none"></div>
-        </section>
-
-        <section class="card">
-          <h2>2) Field mapping</h2>
+        </div>
+        <div id="ha-mapping" style="display: none">
+          <div class="row">
+            <label for="haEntityFilter">HA entity filter</label>
+            <input
+              type="text"
+              id="haEntityFilter"
+              placeholder="Examples: binary_sensor.*door*  •  *_pir  •  switch.*  (comma or newline separated)"
+            />
+          </div>
+          <div class="row">
+            <label for="haNameFilter">HA name filter</label>
+            <input
+              type="text"
+              id="haNameFilter"
+              placeholder='Optional. Examples: Front door • *garage* (supports * and ?)'
+            />
+          </div>
+          <div class="row">
+            <label for="haDomains">HA domains</label>
+            <input
+              type="text"
+              id="haDomains"
+              placeholder="Optional. Example: binary_sensor,input_boolean,switch (default: boolean-like domains)"
+            />
+          </div>
+          <div class="row">
+            <label for="haIncludeDisabled">Include disabled</label>
+            <input type="checkbox" id="haIncludeDisabled" style="width:auto; margin-top:7px;" />
+          </div>
+          <p class="hint">
+            Paste Home Assistant JSON (e.g. the array returned by <span class="mono">/api/states</span>). The zone topic
+            will be the <span class="mono">entity_id</span>. Names use <span class="mono">attributes.friendly_name</span>
+            if present.
+          </p>
+        </div>
+        <div id="json-mapping">
           <div class="row">
             <label for="topicPath">Topic path</label>
             <select id="topicPath"></select>
@@ -248,51 +316,66 @@
             <label for="namePath">Zone name path</label>
             <select id="namePath"></select>
           </div>
-          <p class="hint">
-            Alarm expects zone messages with <span class="mono">msg.topic</span> and a boolean value in the configured
-            “With Input” property (default <span class="mono">payload</span>).
-          </p>
-          <div class="buttons">
-            <button class="primary" id="btn-generate">Generate output</button>
-          </div>
-          <div id="gen-status" class="status warn" style="display: none"></div>
-        </section>
-      </div>
-
-      <section class="card">
-        <h2>3) Zone JSON template (for Alarm node)</h2>
-        <div class="buttons">
-          <button id="btn-copy-zone" disabled>Copy</button>
         </div>
-        <textarea
-          id="zone-output"
-          spellcheck="false"
-          placeholder="Click “Generate output” to create a zone template, then edit it here if needed."
-        ></textarea>
         <p class="hint">
-          This creates a single zone object using the mapped topic and optional name. Paste it into the Zones field
-          (legacy: one JSON object per line, or formatted: JSON array).
+          Alarm expects zone messages with
+          <span class="mono">msg.topic</span> and a boolean value in the
+          configured “With Input” property (default
+          <span class="mono">payload</span>).
         </p>
+        <div class="buttons">
+          <button class="primary" id="btn-generate">Generate output</button>
+        </div>
+        <div id="gen-status" class="status warn" style="display: none"></div>
       </section>
-    </main>
+    </div>
 
-    <script>
-      const els = {
-        input: document.getElementById("input"),
-        btnParse: document.getElementById("btn-parse"),
-        btnLoadKnx: document.getElementById("btn-load-knx"),
-        btnClear: document.getElementById("btn-clear"),
-        parseStatus: document.getElementById("parse-status"),
-        genStatus: document.getElementById("gen-status"),
-        topicPath: document.getElementById("topicPath"),
-        valuePath: document.getElementById("valuePath"),
-        namePath: document.getElementById("namePath"),
-        btnGenerate: document.getElementById("btn-generate"),
-        zoneOutput: document.getElementById("zone-output"),
-        btnCopyZone: document.getElementById("btn-copy-zone"),
-      };
+    <section class="card">
+      <h2>3) Zone JSON template (for Alarm node)</h2>
+      <div class="buttons">
+        <button id="btn-copy-zone" disabled>Copy</button>
+      </div>
+      <textarea id="zone-output" spellcheck="false"
+        placeholder="Click “Generate output” to create a zone template, then edit it here if needed."></textarea>
+      <p class="hint">
+        This creates a single zone object using the mapped topic and optional
+        name. Paste it into the Zones field (legacy: one JSON object per line,
+        or formatted: JSON array).
+      </p>
+    </section>
+  </main>
 
-      const KNX_SAMPLE = `{
+  <script>
+    const els = {
+      input: document.getElementById("input"),
+      btnParse: document.getElementById("btn-parse"),
+      btnLoadKnx: document.getElementById("btn-load-knx"),
+      btnLoadEts: document.getElementById("btn-load-ets"),
+      btnLoadHa: document.getElementById("btn-load-ha"),
+      btnLoadHaRegistry: document.getElementById("btn-load-ha-registry"),
+      btnClear: document.getElementById("btn-clear"),
+      parseStatus: document.getElementById("parse-status"),
+      genStatus: document.getElementById("gen-status"),
+      topicPath: document.getElementById("topicPath"),
+      valuePath: document.getElementById("valuePath"),
+      namePath: document.getElementById("namePath"),
+      etsHint: document.getElementById("ets-hint"),
+      haHint: document.getElementById("ha-hint"),
+      etsMapping: document.getElementById("ets-mapping"),
+      etsAddressFilter: document.getElementById("etsAddressFilter"),
+      etsNameFilter: document.getElementById("etsNameFilter"),
+      haMapping: document.getElementById("ha-mapping"),
+      haEntityFilter: document.getElementById("haEntityFilter"),
+      haNameFilter: document.getElementById("haNameFilter"),
+      haDomains: document.getElementById("haDomains"),
+      haIncludeDisabled: document.getElementById("haIncludeDisabled"),
+      jsonMapping: document.getElementById("json-mapping"),
+      btnGenerate: document.getElementById("btn-generate"),
+      zoneOutput: document.getElementById("zone-output"),
+      btnCopyZone: document.getElementById("btn-copy-zone"),
+    };
+
+    const KNX_SAMPLE = `{
   topic: "0/1/2",
   payload: false,
   previouspayload: true,
@@ -312,285 +395,855 @@
     dpt: "1.001",
     dptdesc: "Humidity",
     source: "15.15.22",
-    destination: "0/1/2",
-    rawValue: {
-      0: "0x0"
-    }
+        destination: "0/1/2",
+        rawValue: {
+          0: "0x0"
+        }
   }
 }`;
 
-      let parsedObject = null;
-      let lastGenerated = null;
+    const ETS_SAMPLE = `"Group name"\t"Address"\t"Central"\t"Unfiltered"\t"Description"\t"DatapointType"\t"Security"
+"Lights"\t"0/-/-"\t""\t""\t""\t""\t"Auto"
+"Living room"\t"0/0/-"\t""\t""\t""\t""\t"Auto"
+"Front door contact"\t"0/0/1"\t""\t""\t""\t"DPST-1-1"\t"Auto"
+"Motion sensor"\t"0/0/2"\t""\t""\t""\t"DPT-1"\t"Auto"
+"Dimming value"\t"0/0/3"\t""\t""\t""\t"DPST-5-1"\t"Auto"`;
 
-      function showStatus(el, kind, message) {
-        el.style.display = "";
-        el.className = `status ${kind}`;
-        el.textContent = message;
+    const HA_SAMPLE = `[
+  {
+    "entity_id": "binary_sensor.front_door",
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Front door"
+    }
+  },
+  {
+    "entity_id": "binary_sensor.living_pir",
+    "state": "on",
+    "attributes": {
+      "friendly_name": "Living PIR"
+    }
+  },
+  {
+    "entity_id": "switch.garden_lights",
+    "state": "off",
+    "attributes": {
+      "friendly_name": "Garden lights"
+    }
+  }
+]`;
+
+    const HA_REGISTRY_SAMPLE = `{
+  "data": {
+    "entities": [
+      {
+        "entity_id": "binary_sensor.front_door",
+        "name": "Front door",
+        "original_name": "Front door contact",
+        "disabled_by": null
+      },
+      {
+        "entity_id": "binary_sensor.living_pir",
+        "name": "Living PIR",
+        "original_name": "Living PIR",
+        "disabled_by": null
+      },
+      {
+        "entity_id": "switch.garden_lights",
+        "name": "Garden lights",
+        "original_name": "Garden lights",
+        "disabled_by": "user"
       }
+    ]
+  },
+  "key": "core.entity_registry",
+  "version": 1
+}`;
 
-      function hideStatus(el) {
-        el.style.display = "none";
-        el.textContent = "";
-      }
+    let parsedObject = null;
+    let lastGenerated = null;
 
-      function normalizeLenientJson(input) {
-        let text = String(input || "");
-        text = text.replace(/\r\n/g, "\n");
-        text = text.replace(/\/\*[\s\S]*?\*\//g, "");
-        text = text.replace(/(^|[^:])\/\/.*$/gm, "$1");
+    function showStatus(el, kind, message) {
+      el.style.display = "";
+      el.className = `status ${kind}`;
+      el.textContent = message;
+    }
 
-        text = text.replace(/([{,]\s*)([A-Za-z_$][\w$]*)(\s*:)/g, '$1"$2"$3');
-        text = text.replace(/([{,]\s*)(\d+)(\s*:)/g, '$1"$2"$3');
+    function hideStatus(el) {
+      el.style.display = "none";
+      el.textContent = "";
+    }
 
-        text = text.replace(/:\s*0x([0-9a-fA-F]+)\b/g, ': "0x$1"');
+    function normalizeLenientJson(input) {
+      let text = String(input || "");
+      text = text.replace(/\r\n/g, "\n");
+      text = text.replace(/\/\*[\s\S]*?\*\//g, "");
+      text = text.replace(/(^|[^:])\/\/.*$/gm, "$1");
 
-        return text;
-      }
+      text = text.replace(/([{,]\s*)([A-Za-z_$][\w$]*)(\s*:)/g, '$1"$2"$3');
+      text = text.replace(/([{,]\s*)(\d+)(\s*:)/g, '$1"$2"$3');
 
-      function parseInput(text) {
-        const raw = String(text || "").trim();
-        if (!raw) return { ok: false, error: "Empty input." };
+      text = text.replace(/:\s*0x([0-9a-fA-F]+)\b/g, ': "0x$1"');
 
+      return text;
+    }
+
+    function parseInput(text) {
+      const raw = String(text || "").trim();
+      if (!raw) return { ok: false, error: "Empty input." };
+
+      try {
+        return {
+          ok: true,
+          value: JSON.parse(raw),
+          note: "Parsed as strict JSON.",
+        };
+      } catch (err1) {
         try {
-          return { ok: true, value: JSON.parse(raw), note: "Parsed as strict JSON." };
-        } catch (err1) {
-          try {
-            const normalized = normalizeLenientJson(raw);
-            const value = JSON.parse(normalized);
-            return { ok: true, value, note: "Parsed after normalizing (removed comments, quoted keys)." };
-          } catch (err2) {
-            return {
-              ok: false,
-              error:
-                "Unable to parse. Please paste strict JSON, or a JS-style object with only // comments and unquoted keys.",
-              details: String(err2 && err2.message ? err2.message : err2),
-            };
+          const normalized = normalizeLenientJson(raw);
+          const value = JSON.parse(normalized);
+          return {
+            ok: true,
+            value,
+            note: "Parsed after normalizing (removed comments, quoted keys).",
+          };
+        } catch (err2) {
+          const ets = parseEtsExport(raw);
+          if (ets.ok) {
+            return { ok: true, value: { __ets: true, ets }, note: ets.note };
+          }
+          return {
+            ok: false,
+            error:
+              "Unable to parse. Please paste strict JSON, or a JS-style object with only // comments and unquoted keys.",
+            details: String(err2 && err2.message ? err2.message : err2),
+          };
+        }
+      }
+    }
+
+    function normalizeHeaderKey(value) {
+      return String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/^\ufeff/, "")
+        .replace(/[^a-z0-9]/g, "");
+    }
+
+    function parseDelimitedLine(line, delimiter) {
+      const out = [];
+      let cur = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i += 1) {
+        const ch = line[i];
+        if (inQuotes) {
+          if (ch === '"') {
+            const next = line[i + 1];
+            if (next === '"') {
+              cur += '"';
+              i += 1;
+            } else {
+              inQuotes = false;
+            }
+          } else {
+            cur += ch;
+          }
+        } else {
+          if (ch === '"') {
+            inQuotes = true;
+          } else if (ch === delimiter) {
+            out.push(cur.trim());
+            cur = "";
+          } else {
+            cur += ch;
           }
         }
       }
+      out.push(cur.trim());
+      return out;
+    }
 
-      function isPlainObject(value) {
-        return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+    function detectDelimiter(headerLine) {
+      const line = String(headerLine || "");
+      if (line.includes("\t")) return "\t";
+      if (line.includes(";")) return ";";
+      if (line.includes(",")) return ",";
+      return "\t";
+    }
+
+    function isBooleanDatapointType(value) {
+      const t = String(value || "")
+        .trim()
+        .toLowerCase();
+      if (!t) return false;
+      return (
+        t === "dpt-1" ||
+        t.startsWith("dpt-1-") ||
+        t.startsWith("dpst-1-") ||
+        /^1\.\d+/.test(t)
+      );
+    }
+
+    function parseEtsExport(text) {
+      const raw = String(text || "")
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .trim();
+
+      const lines = raw
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
+
+      if (lines.length < 2) return { ok: false };
+
+      const headerLine = lines[0];
+      const delimiter = detectDelimiter(headerLine);
+      const headers = parseDelimitedLine(headerLine, delimiter);
+      const keyByIndex = headers.map(normalizeHeaderKey);
+
+      const idxGroupName = keyByIndex.indexOf("groupname");
+      const idxAddress = keyByIndex.indexOf("address");
+      const idxDescription = keyByIndex.indexOf("description");
+      const idxDatapointType = keyByIndex.indexOf("datapointtype");
+
+      if (idxGroupName < 0 || idxAddress < 0) return { ok: false };
+
+      const rows = [];
+      for (let i = 1; i < lines.length; i += 1) {
+        const cols = parseDelimitedLine(lines[i], delimiter);
+        const groupName = cols[idxGroupName] || "";
+        const address = cols[idxAddress] || "";
+        const description =
+          idxDescription >= 0 ? cols[idxDescription] || "" : "";
+        const datapointType =
+          idxDatapointType >= 0 ? cols[idxDatapointType] || "" : "";
+
+        rows.push({ groupName, address, description, datapointType });
       }
 
-      function enumeratePaths(value, basePath = "", out = []) {
-        if (value === null || value === undefined) {
-          out.push(basePath || "(root)");
-          return out;
-        }
-        if (typeof value !== "object") {
-          out.push(basePath || "(root)");
-          return out;
-        }
+      return {
+        ok: true,
+        note: "Detected ETS Group Addresses export (TSV).",
+        rows,
+      };
+    }
 
-        if (Array.isArray(value)) {
-          out.push(basePath || "(root)");
-          const limit = Math.min(20, value.length);
-          for (let i = 0; i < limit; i += 1) {
-            enumeratePaths(value[i], `${basePath}[${i}]`, out);
-          }
-          return out;
-        }
+    function escapeRegExp(value) {
+      return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
 
+    function globToRegExp(glob) {
+      const raw = String(glob || "").trim();
+      if (!raw) return null;
+      let pattern = "";
+      for (let i = 0; i < raw.length; i += 1) {
+        const ch = raw[i];
+        if (ch === "*") pattern += ".*";
+        else if (ch === "?") pattern += ".";
+        else pattern += escapeRegExp(ch);
+      }
+      try {
+        return new RegExp(`^${pattern}$`, "i");
+      } catch (_err) {
+        return null;
+      }
+    }
+
+    function splitPatterns(text) {
+      return String(text || "")
+        .split(/[\n,]+/g)
+        .map((p) => p.trim())
+        .filter((p) => p.length > 0);
+    }
+
+    function matchesAnyGlob(value, patterns) {
+      if (!patterns || patterns.length === 0) return true;
+      const target = String(value || "").trim();
+      if (!target) return false;
+      for (const p of patterns) {
+        const re = globToRegExp(p);
+        if (re && re.test(target)) return true;
+      }
+      return false;
+    }
+
+    function matchesNameFilter(row, nameFilterRaw) {
+      const filter = String(nameFilterRaw || "").trim();
+      if (!filter) return true;
+      const name = String(row && (row.description || row.groupName) ? row.description || row.groupName : "")
+        .trim()
+        .toLowerCase();
+      if (!name) return false;
+      if (filter.includes("*") || filter.includes("?")) {
+        const re = globToRegExp(filter);
+        return Boolean(re && re.test(name));
+      }
+      return name.includes(filter.toLowerCase());
+    }
+
+    function extractHomeAssistantStates(value) {
+      if (Array.isArray(value)) return value;
+      if (value && typeof value === "object") {
+        if (Array.isArray(value.result)) return value.result;
+        if (Array.isArray(value.states)) return value.states;
+        if (Array.isArray(value.entities)) return value.entities;
+      }
+      return null;
+    }
+
+    function isHomeAssistantStatesExport(value) {
+      const states = extractHomeAssistantStates(value);
+      if (!states || states.length === 0) return false;
+      const sample = states.slice(0, 10);
+      return sample.some((s) => s && typeof s === "object" && typeof s.entity_id === "string");
+    }
+
+    function extractHomeAssistantEntityRegistry(value) {
+      if (!value || typeof value !== "object") return null;
+      if (Array.isArray(value.entities)) return value.entities;
+      if (value.data && Array.isArray(value.data.entities)) return value.data.entities;
+      if (value.result && value.result.data && Array.isArray(value.result.data.entities)) return value.result.data.entities;
+      return null;
+    }
+
+    function isHomeAssistantEntityRegistryExport(value) {
+      const entities = extractHomeAssistantEntityRegistry(value);
+      if (!entities || entities.length === 0) return false;
+      const sample = entities.slice(0, 10);
+      return sample.some((e) => e && typeof e === "object" && typeof e.entity_id === "string");
+    }
+
+    function getHaDomain(entityId) {
+      const id = String(entityId || "");
+      const idx = id.indexOf(".");
+      if (idx <= 0) return "";
+      return id.slice(0, idx).toLowerCase();
+    }
+
+    function parseDomainList(input) {
+      return String(input || "")
+        .split(/[\s,]+/g)
+        .map((d) => d.trim().toLowerCase())
+        .filter((d) => d.length > 0);
+    }
+
+    function isPlainObject(value) {
+      return (
+        Boolean(value) && typeof value === "object" && !Array.isArray(value)
+      );
+    }
+
+    function enumeratePaths(value, basePath = "", out = []) {
+      if (value === null || value === undefined) {
         out.push(basePath || "(root)");
-        const keys = Object.keys(value).slice(0, 200);
-        for (const key of keys) {
-          const next = basePath ? `${basePath}.${key}` : key;
-          enumeratePaths(value[key], next, out);
+        return out;
+      }
+      if (typeof value !== "object") {
+        out.push(basePath || "(root)");
+        return out;
+      }
+
+      if (Array.isArray(value)) {
+        out.push(basePath || "(root)");
+        const limit = Math.min(20, value.length);
+        for (let i = 0; i < limit; i += 1) {
+          enumeratePaths(value[i], `${basePath}[${i}]`, out);
         }
         return out;
       }
 
-      function getByPath(obj, path) {
-        if (!path || path === "(root)") return obj;
-        const parts = [];
-        String(path)
-          .split(".")
-          .forEach((segment) => {
-            const m = segment.match(/^([^[\]]+)(\[(\d+)\])?$/);
-            if (!m) {
-              parts.push(segment);
-              return;
-            }
-            parts.push(m[1]);
-            if (m[2]) parts.push(Number(m[3]));
-          });
-
-        let cur = obj;
-        for (const part of parts) {
-          if (cur === null || cur === undefined) return undefined;
-          cur = cur[part];
-        }
-        return cur;
+      out.push(basePath || "(root)");
+      const keys = Object.keys(value).slice(0, 200);
+      for (const key of keys) {
+        const next = basePath ? `${basePath}.${key}` : key;
+        enumeratePaths(value[key], next, out);
       }
+      return out;
+    }
 
-      function toOneLine(value) {
-        if (value === undefined) return "undefined";
-        if (typeof value === "string") return value;
-        try {
-          return JSON.stringify(value);
-        } catch (err) {
-          return String(value);
-        }
+    function getByPath(obj, path) {
+      if (!path || path === "(root)") return obj;
+      const parts = [];
+      String(path)
+        .split(".")
+        .forEach((segment) => {
+          const m = segment.match(/^([^[\]]+)(\[(\d+)\])?$/);
+          if (!m) {
+            parts.push(segment);
+            return;
+          }
+          parts.push(m[1]);
+          if (m[2]) parts.push(Number(m[3]));
+        });
+
+      let cur = obj;
+      for (const part of parts) {
+        if (cur === null || cur === undefined) return undefined;
+        cur = cur[part];
       }
+      return cur;
+    }
 
-      function guessDefault(paths, candidates) {
-        for (const c of candidates) {
-          if (paths.includes(c)) return c;
-        }
-        return paths.includes("topic") ? "topic" : paths[0] || "(root)";
+    function toOneLine(value) {
+      if (value === undefined) return "undefined";
+      if (typeof value === "string") return value;
+      try {
+        return JSON.stringify(value);
+      } catch (err) {
+        return String(value);
       }
+    }
 
-      function setSelectOptions(select, paths, selected) {
-        select.innerHTML = "";
-        for (const p of paths) {
-          const opt = document.createElement("option");
-          opt.value = p;
-          opt.textContent = p;
-          select.appendChild(opt);
-        }
-        select.value = selected;
+    function guessDefault(paths, candidates) {
+      for (const c of candidates) {
+        if (paths.includes(c)) return c;
       }
+      return paths.includes("topic") ? "topic" : paths[0] || "(root)";
+    }
 
-      function buildZoneTemplate(normalizedMsg, zoneNameValue) {
-        const topic = normalizedMsg && normalizedMsg.topic ? String(normalizedMsg.topic) : "";
-        const name =
-          zoneNameValue !== undefined && zoneNameValue !== null && String(zoneNameValue).trim().length > 0
-            ? String(zoneNameValue).trim()
-            : topic || "Zone";
-        const id = topic ? topic.replace(/[^\w]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase() : "zone1";
-
-        return {
-          id,
-          name,
-          topic,
-          type: "perimeter",
-          entry: false,
-          bypassable: true,
-          chime: false,
-        };
+    function setSelectOptions(select, paths, selected) {
+      select.innerHTML = "";
+      for (const p of paths) {
+        const opt = document.createElement("option");
+        opt.value = p;
+        opt.textContent = p;
+        select.appendChild(opt);
       }
+      select.value = selected;
+    }
 
-      async function copyToClipboard(text) {
-        try {
-          await navigator.clipboard.writeText(text);
-          return true;
-        } catch (err) {
-          return false;
-        }
+    function buildZoneTemplate(normalizedMsg, zoneNameValue) {
+      const topic =
+        normalizedMsg && normalizedMsg.topic
+          ? String(normalizedMsg.topic)
+          : "";
+      const name =
+        zoneNameValue !== undefined &&
+          zoneNameValue !== null &&
+          String(zoneNameValue).trim().length > 0
+          ? String(zoneNameValue).trim()
+          : topic || "Zone";
+      const id = topic
+        ? topic
+          .replace(/[^\w]+/g, "_")
+          .replace(/^_+|_+$/g, "")
+          .toLowerCase()
+        : "zone1";
+
+      return {
+        id,
+        name,
+        topic,
+        type: "perimeter",
+        entry: false,
+        bypassable: true,
+        chime: false,
+      };
+    }
+
+    async function copyToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (err) {
+        return false;
       }
+    }
 
-      function renderJson(el, obj) {
-        el.style.display = "";
-        el.className = "status ok";
-        el.innerHTML = "";
-        const pre = document.createElement("pre");
-        pre.textContent = JSON.stringify(obj, null, 2);
-        el.appendChild(pre);
-      }
+    function renderJson(el, obj) {
+      el.style.display = "";
+      el.className = "status ok";
+      el.innerHTML = "";
+      const pre = document.createElement("pre");
+      pre.textContent = JSON.stringify(obj, null, 2);
+      el.appendChild(pre);
+    }
 
-      function renderText(el, text) {
-        el.style.display = "";
-        el.className = "status ok";
-        el.innerHTML = "";
-        const pre = document.createElement("pre");
-        pre.textContent = String(text || "");
-        el.appendChild(pre);
-      }
+    function renderText(el, text) {
+      el.style.display = "";
+      el.className = "status ok";
+      el.innerHTML = "";
+      const pre = document.createElement("pre");
+      pre.textContent = String(text || "");
+      el.appendChild(pre);
+    }
 
-      function parseAndPopulate() {
-        hideStatus(els.parseStatus);
-        hideStatus(els.genStatus);
-        els.zoneOutput.value = "";
-        els.btnCopyZone.disabled = true;
-        lastGenerated = null;
+    function parseAndPopulate() {
+      hideStatus(els.parseStatus);
+      hideStatus(els.genStatus);
+      hideStatus(els.etsHint);
+      hideStatus(els.haHint);
+      els.jsonMapping.style.display = "";
+      els.etsMapping.style.display = "none";
+      els.haMapping.style.display = "none";
+      els.zoneOutput.value = "";
+      els.btnCopyZone.disabled = true;
+      lastGenerated = null;
 
-        const result = parseInput(els.input.value);
-        if (!result.ok) {
-          parsedObject = null;
-          showStatus(els.parseStatus, "err", `${result.error}${result.details ? "\n" + result.details : ""}`);
-          return;
-        }
-
-        if (!isPlainObject(result.value)) {
-          parsedObject = result.value;
-          showStatus(
-            els.parseStatus,
-            "warn",
-            `${result.note} Note: the root is not an object. Paths will be limited.`
-          );
-        } else {
-          parsedObject = result.value;
-          showStatus(els.parseStatus, "ok", result.note);
-        }
-
-        const paths = Array.from(new Set(enumeratePaths(parsedObject))).filter(Boolean);
-        paths.sort((a, b) => a.localeCompare(b));
-
-        const defaultTopic = guessDefault(paths, ["topic", "knx.destination", "destination"]);
-        const defaultValue = guessDefault(paths, ["payload", "payloadsubtypevalue", "value"]);
-        const defaultName = guessDefault(paths, ["devicename", "gainfo.ganame", "name", "topic"]);
-
-        setSelectOptions(els.topicPath, paths, defaultTopic);
-        setSelectOptions(els.valuePath, paths, defaultValue);
-        setSelectOptions(els.namePath, paths, defaultName);
-      }
-
-      function generate() {
-        hideStatus(els.genStatus);
-        if (!parsedObject) {
-          showStatus(els.genStatus, "err", "Parse a valid message first.");
-          return;
-        }
-
-        const topicPath = els.topicPath.value;
-        const valuePath = els.valuePath.value;
-        const namePath = els.namePath.value;
-
-        const topicValue = getByPath(parsedObject, topicPath);
-        const valueValue = getByPath(parsedObject, valuePath);
-        const nameValue = getByPath(parsedObject, namePath);
-
-        if (topicValue === undefined) {
-          showStatus(els.genStatus, "err", `Topic path "${topicPath}" is undefined in the input message.`);
-          return;
-        }
-
-        const normalized = { ...parsedObject, topic: String(topicValue), payload: valueValue };
-        const zone = buildZoneTemplate(normalized, nameValue);
-        els.zoneOutput.value = JSON.stringify(zone, null, 2);
-
-        els.btnCopyZone.disabled = false;
-
-        lastGenerated = { normalized, zone };
-        showStatus(els.genStatus, "ok", `Generated using topic="${toOneLine(topicValue)}" and value="${valuePath}".`);
-      }
-
-      els.btnParse.addEventListener("click", () => parseAndPopulate());
-      els.btnGenerate.addEventListener("click", () => generate());
-      els.btnClear.addEventListener("click", () => {
-        els.input.value = "";
+      const result = parseInput(els.input.value);
+      if (!result.ok) {
         parsedObject = null;
-        lastGenerated = null;
-        hideStatus(els.parseStatus);
-        hideStatus(els.genStatus);
-        els.zoneOutput.value = "";
-        els.btnCopyZone.disabled = true;
-        els.topicPath.innerHTML = "";
-        els.valuePath.innerHTML = "";
-        els.namePath.innerHTML = "";
-      });
-      els.btnLoadKnx.addEventListener("click", () => {
-        els.input.value = KNX_SAMPLE;
-        parseAndPopulate();
-      });
+        showStatus(
+          els.parseStatus,
+          "err",
+          `${result.error}${result.details ? "\n" + result.details : ""}`,
+        );
+        return;
+      }
 
-      els.btnCopyZone.addEventListener("click", async () => {
-        const text = String(els.zoneOutput.value || "").trim();
-        if (!text) return;
-        const ok = await copyToClipboard(text);
-        showStatus(els.genStatus, ok ? "ok" : "warn", ok ? "Zone JSON copied." : "Copy failed.");
-      });
-    </script>
-  </body>
+      if (
+        result.value &&
+        result.value.__ets &&
+        result.value.ets &&
+        Array.isArray(result.value.ets.rows)
+      ) {
+        parsedObject = result.value;
+        showStatus(els.parseStatus, "ok", result.note);
+        els.jsonMapping.style.display = "none";
+        els.etsMapping.style.display = "";
+        els.haMapping.style.display = "none";
+        showStatus(
+          els.etsHint,
+          "ok",
+          "ETS import mode: mapping is fixed.\n- Topic: Address (e.g. 0/0/1)\n- Name: Description, fallback to Group name\nClick “Generate output” to create a zones JSON array.",
+        );
+        return;
+      }
+
+      if (isHomeAssistantStatesExport(result.value)) {
+        parsedObject = { __ha: true, ha: { kind: "states", states: extractHomeAssistantStates(result.value) } };
+        showStatus(els.parseStatus, "ok", "Detected Home Assistant states export (JSON).");
+        els.jsonMapping.style.display = "none";
+        els.etsMapping.style.display = "none";
+        els.haMapping.style.display = "";
+        showStatus(
+          els.haHint,
+          "ok",
+          "Home Assistant import mode.\n- Topic: entity_id\n- Name: attributes.friendly_name (fallback entity_id)\nUse the filters below, then click “Generate output”.",
+        );
+        return;
+      }
+
+      if (isHomeAssistantEntityRegistryExport(result.value)) {
+        parsedObject = { __ha: true, ha: { kind: "entity_registry", entities: extractHomeAssistantEntityRegistry(result.value) } };
+        showStatus(els.parseStatus, "ok", "Detected Home Assistant entity registry export (core.entity_registry).");
+        els.jsonMapping.style.display = "none";
+        els.etsMapping.style.display = "none";
+        els.haMapping.style.display = "";
+        showStatus(
+          els.haHint,
+          "ok",
+          "Home Assistant import mode (entity registry).\n- Topic: entity_id\n- Name: name/original_name (fallback entity_id)\nUse the filters below, then click “Generate output”.",
+        );
+        return;
+      }
+
+      els.topicPath.disabled = false;
+      els.valuePath.disabled = false;
+      els.namePath.disabled = false;
+
+      if (!isPlainObject(result.value)) {
+        parsedObject = result.value;
+        showStatus(
+          els.parseStatus,
+          "warn",
+          `${result.note} Note: the root is not an object. Paths will be limited.`,
+        );
+      } else {
+        parsedObject = result.value;
+        showStatus(els.parseStatus, "ok", result.note);
+      }
+
+      const paths = Array.from(new Set(enumeratePaths(parsedObject))).filter(
+        Boolean,
+      );
+      paths.sort((a, b) => a.localeCompare(b));
+
+      const defaultTopic = guessDefault(paths, [
+        "topic",
+        "knx.destination",
+        "destination",
+      ]);
+      const defaultValue = guessDefault(paths, [
+        "payload",
+        "payloadsubtypevalue",
+        "value",
+      ]);
+      const defaultName = guessDefault(paths, [
+        "devicename",
+        "gainfo.ganame",
+        "name",
+        "topic",
+      ]);
+
+      setSelectOptions(els.topicPath, paths, defaultTopic);
+      setSelectOptions(els.valuePath, paths, defaultValue);
+      setSelectOptions(els.namePath, paths, defaultName);
+    }
+
+    function generate() {
+      hideStatus(els.genStatus);
+      if (!parsedObject) {
+        showStatus(els.genStatus, "err", "Parse a valid message first.");
+        return;
+      }
+
+      if (
+        parsedObject &&
+        parsedObject.__ets &&
+        parsedObject.ets &&
+        Array.isArray(parsedObject.ets.rows)
+      ) {
+        const allRows = parsedObject.ets.rows;
+        const addressPatterns = splitPatterns(
+          els.etsAddressFilter ? els.etsAddressFilter.value : "",
+        );
+        const nameFilter = els.etsNameFilter ? els.etsNameFilter.value : "";
+
+        const leafRows = allRows.filter((r) => {
+          const addr = String(r && r.address ? r.address : "").trim();
+          if (!addr) return false;
+          if (addr.includes("-")) return false;
+          return /^\d+\/\d+\/\d+$/.test(addr);
+        });
+
+        const booleanRows = leafRows.filter((r) =>
+          isBooleanDatapointType(r.datapointType),
+        );
+        const filteredRows = booleanRows.filter((r) => {
+          const addr = String(r && r.address ? r.address : "").trim();
+          if (!matchesAnyGlob(addr, addressPatterns)) return false;
+          if (!matchesNameFilter(r, nameFilter)) return false;
+          return true;
+        });
+
+        const zones = filteredRows.map((row) => {
+          const address = String(row.address).trim();
+          const topic = address;
+          const nameCandidate =
+            String(row.description || "").trim() ||
+            String(row.groupName || "").trim();
+          const name = nameCandidate || address;
+          const idSafe = address
+            .replace(/[^\w]+/g, "_")
+            .replace(/^_+|_+$/g, "")
+            .toLowerCase();
+          const id = `ga_${idSafe || "unknown"}`;
+          return {
+            id,
+            name,
+            topic,
+            type: "perimeter",
+            entry: false,
+            bypassable: true,
+            chime: false,
+          };
+        });
+
+        els.zoneOutput.value = JSON.stringify(zones, null, 2);
+        els.btnCopyZone.disabled = zones.length === 0;
+        const skippedGroups = allRows.length - leafRows.length;
+        const skippedNonBoolean = leafRows.length - booleanRows.length;
+        const skippedByFilters = booleanRows.length - filteredRows.length;
+        showStatus(
+          els.genStatus,
+          zones.length ? "ok" : "warn",
+          `Generated ${zones.length} zones from ETS (skipped ${skippedGroups} group rows, ${skippedNonBoolean} non-boolean datapoints, ${skippedByFilters} filtered out).`,
+        );
+        return;
+      }
+
+      if (parsedObject && parsedObject.__ha && parsedObject.ha && parsedObject.ha.kind === "states" && Array.isArray(parsedObject.ha.states)) {
+        const states = parsedObject.ha.states;
+        const entityPatterns = splitPatterns(els.haEntityFilter ? els.haEntityFilter.value : "");
+        const nameFilter = els.haNameFilter ? els.haNameFilter.value : "";
+        const domains = parseDomainList(els.haDomains ? els.haDomains.value : "");
+        const defaultBooleanDomains = ["binary_sensor", "input_boolean", "switch"];
+        const allowedDomains = domains.length ? domains : defaultBooleanDomains;
+
+        const eligible = states.filter((s) => s && typeof s === "object" && typeof s.entity_id === "string");
+        const domainFiltered = eligible.filter((s) => allowedDomains.includes(getHaDomain(s.entity_id)));
+        const filtered = domainFiltered.filter((s) => {
+          const entityId = String(s.entity_id || "").trim();
+          if (!matchesAnyGlob(entityId, entityPatterns)) return false;
+          const row = { description: s.attributes && s.attributes.friendly_name ? s.attributes.friendly_name : "" , groupName: entityId };
+          if (!matchesNameFilter(row, nameFilter)) return false;
+          return true;
+        });
+
+        const zones = filtered.map((s) => {
+          const entityId = String(s.entity_id).trim();
+          const friendly = s.attributes && s.attributes.friendly_name ? String(s.attributes.friendly_name).trim() : "";
+          const name = friendly || entityId;
+          const idSafe = entityId.replace(/[^\w]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase();
+          const id = `ha_${idSafe || "unknown"}`;
+          return {
+            id,
+            name,
+            topic: entityId,
+            type: "perimeter",
+            entry: false,
+            bypassable: true,
+            chime: false,
+          };
+        });
+
+        els.zoneOutput.value = JSON.stringify(zones, null, 2);
+        els.btnCopyZone.disabled = zones.length === 0;
+        const skippedNonEntity = states.length - eligible.length;
+        const skippedDomain = eligible.length - domainFiltered.length;
+        const skippedByFilters = domainFiltered.length - filtered.length;
+        showStatus(
+          els.genStatus,
+          zones.length ? "ok" : "warn",
+          `Generated ${zones.length} zones from HA (skipped ${skippedNonEntity} invalid rows, ${skippedDomain} domain filtered, ${skippedByFilters} filtered out).`,
+        );
+        return;
+      }
+
+      if (parsedObject && parsedObject.__ha && parsedObject.ha && parsedObject.ha.kind === "entity_registry" && Array.isArray(parsedObject.ha.entities)) {
+        const entities = parsedObject.ha.entities;
+        const includeDisabled = Boolean(els.haIncludeDisabled && els.haIncludeDisabled.checked);
+        const entityPatterns = splitPatterns(els.haEntityFilter ? els.haEntityFilter.value : "");
+        const nameFilter = els.haNameFilter ? els.haNameFilter.value : "";
+        const domains = parseDomainList(els.haDomains ? els.haDomains.value : "");
+        const defaultBooleanDomains = ["binary_sensor", "input_boolean", "switch"];
+        const allowedDomains = domains.length ? domains : defaultBooleanDomains;
+
+        const eligible = entities.filter((e) => e && typeof e === "object" && typeof e.entity_id === "string");
+        const enabledOnly = eligible.filter((e) => includeDisabled || !e.disabled_by);
+        const domainFiltered = enabledOnly.filter((e) => allowedDomains.includes(getHaDomain(e.entity_id)));
+        const filtered = domainFiltered.filter((e) => {
+          const entityId = String(e.entity_id || "").trim();
+          if (!matchesAnyGlob(entityId, entityPatterns)) return false;
+          const displayName = String(e.name || "").trim() || String(e.original_name || "").trim() || entityId;
+          const row = { description: displayName, groupName: entityId };
+          if (!matchesNameFilter(row, nameFilter)) return false;
+          return true;
+        });
+
+        const zones = filtered.map((e) => {
+          const entityId = String(e.entity_id).trim();
+          const displayName = String(e.name || "").trim() || String(e.original_name || "").trim() || entityId;
+          const idSafe = entityId.replace(/[^\w]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase();
+          const id = `ha_${idSafe || "unknown"}`;
+          return {
+            id,
+            name: displayName,
+            topic: entityId,
+            type: "perimeter",
+            entry: false,
+            bypassable: true,
+            chime: false,
+          };
+        });
+
+        els.zoneOutput.value = JSON.stringify(zones, null, 2);
+        els.btnCopyZone.disabled = zones.length === 0;
+        const skippedNonEntity = entities.length - eligible.length;
+        const skippedDisabled = eligible.length - enabledOnly.length;
+        const skippedDomain = enabledOnly.length - domainFiltered.length;
+        const skippedByFilters = domainFiltered.length - filtered.length;
+        showStatus(
+          els.genStatus,
+          zones.length ? "ok" : "warn",
+          `Generated ${zones.length} zones from HA registry (skipped ${skippedNonEntity} invalid rows, ${skippedDisabled} disabled, ${skippedDomain} domain filtered, ${skippedByFilters} filtered out).`,
+        );
+        return;
+      }
+
+      const topicPath = els.topicPath.value;
+      const valuePath = els.valuePath.value;
+      const namePath = els.namePath.value;
+
+      const topicValue = getByPath(parsedObject, topicPath);
+      const valueValue = getByPath(parsedObject, valuePath);
+      const nameValue = getByPath(parsedObject, namePath);
+
+      if (topicValue === undefined) {
+        showStatus(
+          els.genStatus,
+          "err",
+          `Topic path "${topicPath}" is undefined in the input message.`,
+        );
+        return;
+      }
+
+      const normalized = {
+        ...parsedObject,
+        topic: String(topicValue),
+        payload: valueValue,
+      };
+      const zone = buildZoneTemplate(normalized, nameValue);
+      els.zoneOutput.value = JSON.stringify(zone, null, 2);
+
+      els.btnCopyZone.disabled = false;
+
+      lastGenerated = { normalized, zone };
+      showStatus(
+        els.genStatus,
+        "ok",
+        `Generated using topic="${toOneLine(topicValue)}" and value="${valuePath}".`,
+      );
+    }
+
+    els.btnParse.addEventListener("click", () => parseAndPopulate());
+    els.btnGenerate.addEventListener("click", () => generate());
+    els.btnClear.addEventListener("click", () => {
+      els.input.value = "";
+      parsedObject = null;
+      lastGenerated = null;
+      hideStatus(els.parseStatus);
+      hideStatus(els.genStatus);
+      hideStatus(els.etsHint);
+      hideStatus(els.haHint);
+      els.jsonMapping.style.display = "";
+      els.etsMapping.style.display = "none";
+      if (els.etsAddressFilter) els.etsAddressFilter.value = "";
+      if (els.etsNameFilter) els.etsNameFilter.value = "";
+      els.haMapping.style.display = "none";
+      if (els.haEntityFilter) els.haEntityFilter.value = "";
+      if (els.haNameFilter) els.haNameFilter.value = "";
+      if (els.haDomains) els.haDomains.value = "";
+      if (els.haIncludeDisabled) els.haIncludeDisabled.checked = false;
+      els.zoneOutput.value = "";
+      els.btnCopyZone.disabled = true;
+      els.topicPath.innerHTML = "";
+      els.valuePath.innerHTML = "";
+      els.namePath.innerHTML = "";
+      els.topicPath.disabled = false;
+      els.valuePath.disabled = false;
+      els.namePath.disabled = false;
+    });
+    els.btnLoadKnx.addEventListener("click", () => {
+      els.input.value = KNX_SAMPLE;
+      parseAndPopulate();
+    });
+    els.btnLoadEts.addEventListener("click", () => {
+      els.input.value = ETS_SAMPLE;
+      parseAndPopulate();
+    });
+    els.btnLoadHa.addEventListener("click", () => {
+      els.input.value = HA_SAMPLE;
+      parseAndPopulate();
+    });
+    els.btnLoadHaRegistry.addEventListener("click", () => {
+      els.input.value = HA_REGISTRY_SAMPLE;
+      parseAndPopulate();
+    });
+
+    els.btnCopyZone.addEventListener("click", async () => {
+      const text = String(els.zoneOutput.value || "").trim();
+      if (!text) return;
+      const ok = await copyToClipboard(text);
+      showStatus(
+        els.genStatus,
+        ok ? "ok" : "warn",
+        ok ? "Zone JSON copied." : "Copy failed.",
+      );
+    });
+  </script>
+</body>
+
 </html>

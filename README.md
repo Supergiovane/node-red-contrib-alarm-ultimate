@@ -13,17 +13,17 @@
 
 Alarm System Ultimate nodes + web panel for Node-RED.
 
-Include:
+Includes:
 
 - `AlarmSystemUltimate` (BETA): full alarm control panel node (zones, entry/exit delays, bypass, chime, 24h/fire/tamper, siren, event log).
 - Output-only helper nodes: `AlarmUltimateState`, `AlarmUltimateZone`, `AlarmUltimateSiren`.
 - Web tools: Zones JSON mapper + web Alarm Panel (embeddable in Node-RED Dashboard).
 
-Nota: al momento `AlarmSystemUltimate` è in **BETA**.
+Note: `AlarmSystemUltimate` is currently **BETA**.
 
 ## Table of contents
 
-- [Installazione / Install](#installazione--install)
+- [Install](#install)
 - [Screenshots](#screenshots)
 - [Nodes](#nodes)
 - [Web tools](#web-tools)
@@ -31,9 +31,9 @@ Nota: al momento `AlarmSystemUltimate` è in **BETA**.
 - [Permissions and endpoints](#permissions-and-endpoints)
 - [Development](#development)
 
-## Installazione / Install
+## Install
 
-- Palette Manager: Menu → **Manage palette** → **Install** → cerca `alarm ultimate`
+- Palette Manager: Menu → **Manage palette** → **Install** → search `alarm ultimate`
 - NPM:
 
 ```bash
@@ -85,10 +85,16 @@ The Alarm Panel supports:
 - Preselect node: `/alarm-ultimate/alarm-panel?id=<alarmNodeId>`
 - Embed mode (for Dashboard iframes): `/alarm-ultimate/alarm-panel?embed=1&id=<alarmNodeId>`
 
+The Zones JSON Mapper supports:
+
+- Sample message mapping (e.g. KNX Ultimate): map `topic`/`payload` fields and generate a zone template.
+- ETS Group Addresses export (TSV): paste the exported table and generate zones in batch (boolean datapoints only).
+
 ## Examples
 
 - `examples/alarm-ultimate-basic.json`: ready-to-import flow with `AlarmSystemUltimate`, injects and debug nodes.
 - `examples/alarm-ultimate-dashboard.json`: Node-RED Dashboard example embedding the Alarm Panel in a `ui_template` iframe.
+- `examples/alarm-ultimate-dashboard-controls.json`: Node-RED Dashboard example with the embedded panel plus command buttons (and a small sensor simulator).
 
 See `examples/README.md`.
 

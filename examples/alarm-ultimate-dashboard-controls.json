@@ -1,0 +1,574 @@
+[
+  {
+    "id": "b81f9a4b2f9c1a10",
+    "type": "tab",
+    "label": "Alarm Ultimate - Dashboard (Panel + Controls)",
+    "disabled": false,
+    "info": ""
+  },
+  {
+    "id": "2f9d4c2b8a1c9b70",
+    "type": "comment",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Requires node-red-dashboard",
+    "info": "Install `node-red-dashboard`, then import this flow.\n\nThe iframe uses a *relative* URL so it works even if Node-RED is hosted under a path prefix (eg Home Assistant Ingress).\nIf you changed `httpAdminRoot` / `httpRoot`, adjust the iframe URL accordingly.\n\nTip: Open the panel directly at `alarm-ultimate/alarm-panel?id=<alarmNodeId>` to test outside Dashboard.",
+    "x": 250,
+    "y": 60,
+    "wires": []
+  },
+  {
+    "id": "d9078c5d2b1a4f30",
+    "type": "ui_tab",
+    "name": "Alarm Ultimate",
+    "icon": "dashboard",
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "a1a3c4e5f6078890",
+    "type": "ui_group",
+    "name": "Panel",
+    "tab": "d9078c5d2b1a4f30",
+    "order": 1,
+    "disp": true,
+    "width": "12",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "b2b3c4e5f6078891",
+    "type": "ui_group",
+    "name": "Controls",
+    "tab": "d9078c5d2b1a4f30",
+    "order": 2,
+    "disp": true,
+    "width": "12",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "c3c3c4e5f6078892",
+    "type": "ui_group",
+    "name": "Sensor simulator",
+    "tab": "d9078c5d2b1a4f30",
+    "order": 3,
+    "disp": true,
+    "width": "12",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "d0c1b2a3f4e50617",
+    "type": "AlarmSystemUltimate",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Home Alarm",
+    "controlTopic": "alarm",
+    "payloadPropName": "payload",
+    "translatorConfig": "",
+    "persistState": true,
+    "requireCodeForArm": false,
+    "requireCodeForDisarm": false,
+    "armCode": "",
+    "duressCode": "",
+    "blockArmOnViolations": true,
+    "exitDelaySeconds": 10,
+    "entryDelaySeconds": 30,
+    "emitOpenZonesDuringArming": false,
+    "openZonesArmingIntervalSeconds": 1,
+    "openZonesRequestTopic": "alarm/listOpenZones",
+    "openZonesRequestIntervalSeconds": 0,
+    "sirenDurationSeconds": 180,
+    "sirenLatchUntilDisarm": false,
+    "sirenTopic": "alarm/siren",
+    "sirenOnPayload": true,
+    "sirenOnPayloadType": "bool",
+    "sirenOffPayload": false,
+    "sirenOffPayloadType": "bool",
+    "emitRestoreEvents": false,
+    "maxLogEntries": 50,
+    "zones": "[\n  {\n    \"id\": \"front_door\",\n    \"name\": \"Front door\",\n    \"topic\": \"sensor/frontdoor\",\n    \"type\": \"perimeter\",\n    \"entry\": true,\n    \"bypassable\": true,\n    \"chime\": true\n  },\n  {\n    \"id\": \"living_pir\",\n    \"name\": \"Living PIR\",\n    \"topic\": \"sensor/living_pir\",\n    \"type\": \"motion\",\n    \"entry\": false,\n    \"bypassable\": true,\n    \"cooldownSeconds\": 10\n  }\n]",
+    "x": 220,
+    "y": 180,
+    "wires": [
+      [
+        "f50b6a7c1c8b3d10"
+      ],
+      [
+        "f50b6a7c1c8b3d11"
+      ],
+      [],
+      [],
+      [],
+      [
+        "f50b6a7c1c8b3d12"
+      ],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "id": "e1f2a3b4c5d60718",
+    "type": "ui_template",
+    "z": "b81f9a4b2f9c1a10",
+    "group": "a1a3c4e5f6078890",
+    "name": "Alarm Panel (embed)",
+    "order": 1,
+    "width": "12",
+    "height": "18",
+    "format": "<iframe src=\"alarm-ultimate/alarm-panel?embed=1&id=d0c1b2a3f4e50617\" style=\"width:100%; height:720px; border:0; border-radius:10px;\"></iframe>",
+    "storeOutMessages": false,
+    "fwdInMessages": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": ""
+  },
+  {
+    "id": "c44ac2b6af1a1e20",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Arm",
+    "group": "b2b3c4e5f6078891",
+    "order": 1,
+    "width": "3",
+    "height": "1",
+    "passthru": false,
+    "label": "Arm",
+    "tooltip": "",
+    "color": "white",
+    "bgcolor": "#ff375f",
+    "icon": "fa-lock",
+    "payload": "arm",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 320,
+    "wires": [
+      [
+        "c44ac2b6af1a1e2a"
+      ]
+    ]
+  },
+  {
+    "id": "c44ac2b6af1a1e21",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Disarm",
+    "group": "b2b3c4e5f6078891",
+    "order": 2,
+    "width": "3",
+    "height": "1",
+    "passthru": false,
+    "label": "Disarm",
+    "tooltip": "",
+    "color": "white",
+    "bgcolor": "#1f6feb",
+    "icon": "fa-unlock",
+    "payload": "disarm",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 360,
+    "wires": [
+      [
+        "c44ac2b6af1a1e2a"
+      ]
+    ]
+  },
+  {
+    "id": "c44ac2b6af1a1e22",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Status",
+    "group": "b2b3c4e5f6078891",
+    "order": 3,
+    "width": "3",
+    "height": "1",
+    "passthru": false,
+    "label": "Status",
+    "tooltip": "Emits a full snapshot on output 1",
+    "color": "white",
+    "bgcolor": "#6e7681",
+    "icon": "fa-info-circle",
+    "payload": "status",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 400,
+    "wires": [
+      [
+        "c44ac2b6af1a1e2a"
+      ]
+    ]
+  },
+  {
+    "id": "c44ac2b6af1a1e23",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "List open zones",
+    "group": "b2b3c4e5f6078891",
+    "order": 4,
+    "width": "6",
+    "height": "1",
+    "passthru": false,
+    "label": "List open zones",
+    "tooltip": "Emits one message per open zone on output 9",
+    "color": "white",
+    "bgcolor": "#6e7681",
+    "icon": "fa-list",
+    "payload": "list_open_zones",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 170,
+    "y": 440,
+    "wires": [
+      [
+        "c44ac2b6af1a1e2a"
+      ]
+    ]
+  },
+  {
+    "id": "c44ac2b6af1a1e24",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Siren on",
+    "group": "b2b3c4e5f6078891",
+    "order": 5,
+    "width": "3",
+    "height": "1",
+    "passthru": false,
+    "label": "Siren ON",
+    "tooltip": "",
+    "color": "white",
+    "bgcolor": "#ff9f0a",
+    "icon": "fa-bullhorn",
+    "payload": "siren_on",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 480,
+    "wires": [
+      [
+        "c44ac2b6af1a1e2a"
+      ]
+    ]
+  },
+  {
+    "id": "c44ac2b6af1a1e25",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Siren off",
+    "group": "b2b3c4e5f6078891",
+    "order": 6,
+    "width": "3",
+    "height": "1",
+    "passthru": false,
+    "label": "Siren OFF",
+    "tooltip": "",
+    "color": "white",
+    "bgcolor": "#6e7681",
+    "icon": "fa-bullhorn",
+    "payload": "siren_off",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 160,
+    "y": 520,
+    "wires": [
+      [
+        "c44ac2b6af1a1e2a"
+      ]
+    ]
+  },
+  {
+    "id": "c44ac2b6af1a1e26",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Panic",
+    "group": "b2b3c4e5f6078891",
+    "order": 7,
+    "width": "3",
+    "height": "1",
+    "passthru": false,
+    "label": "Panic",
+    "tooltip": "",
+    "color": "white",
+    "bgcolor": "#d1242f",
+    "icon": "fa-exclamation-triangle",
+    "payload": "panic",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 150,
+    "y": 560,
+    "wires": [
+      [
+        "c44ac2b6af1a1e2a"
+      ]
+    ]
+  },
+  {
+    "id": "c44ac2b6af1a1e27",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Silent panic",
+    "group": "b2b3c4e5f6078891",
+    "order": 8,
+    "width": "3",
+    "height": "1",
+    "passthru": false,
+    "label": "Silent panic",
+    "tooltip": "",
+    "color": "white",
+    "bgcolor": "#6e7681",
+    "icon": "fa-eye-slash",
+    "payload": "panic_silent",
+    "payloadType": "str",
+    "topic": "",
+    "topicType": "str",
+    "x": 170,
+    "y": 600,
+    "wires": [
+      [
+        "c44ac2b6af1a1e2a"
+      ]
+    ]
+  },
+  {
+    "id": "c44ac2b6af1a1e28",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Bypass front door",
+    "group": "b2b3c4e5f6078891",
+    "order": 9,
+    "width": "6",
+    "height": "1",
+    "passthru": false,
+    "label": "Bypass: front_door",
+    "tooltip": "",
+    "color": "white",
+    "bgcolor": "#6e7681",
+    "icon": "fa-ban",
+    "payload": "{\"command\":\"bypass\",\"zone\":\"front_door\"}",
+    "payloadType": "json",
+    "topic": "",
+    "topicType": "str",
+    "x": 180,
+    "y": 640,
+    "wires": [
+      [
+        "c44ac2b6af1a1e2a"
+      ]
+    ]
+  },
+  {
+    "id": "c44ac2b6af1a1e29",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Unbypass front door",
+    "group": "b2b3c4e5f6078891",
+    "order": 10,
+    "width": "6",
+    "height": "1",
+    "passthru": false,
+    "label": "Unbypass: front_door",
+    "tooltip": "",
+    "color": "white",
+    "bgcolor": "#6e7681",
+    "icon": "fa-check",
+    "payload": "{\"command\":\"unbypass\",\"zone\":\"front_door\"}",
+    "payloadType": "json",
+    "topic": "",
+    "topicType": "str",
+    "x": 190,
+    "y": 680,
+    "wires": [
+      [
+        "c44ac2b6af1a1e2a"
+      ]
+    ]
+  },
+  {
+    "id": "c44ac2b6af1a1e2a",
+    "type": "function",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Build control msg",
+    "func": "const payload = msg.payload;\n\nmsg.topic = \"alarm\";\n\nif (payload && typeof payload === \"object\") {\n  if (typeof payload.command === \"string\") msg.command = payload.command;\n  if (payload.zone != null) msg.zone = payload.zone;\n  if (payload.code != null) msg.code = payload.code;\n} else if (typeof payload === \"string\") {\n  msg.command = payload;\n}\n\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 450,
+    "y": 460,
+    "wires": [
+      [
+        "d0c1b2a3f4e50617"
+      ]
+    ]
+  },
+  {
+    "id": "d2e3f4a5b6c7d801",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Front door OPEN",
+    "group": "c3c3c4e5f6078892",
+    "order": 1,
+    "width": "6",
+    "height": "1",
+    "passthru": false,
+    "label": "Front door: OPEN",
+    "tooltip": "Sends topic sensor/frontdoor payload true",
+    "color": "white",
+    "bgcolor": "#d1242f",
+    "icon": "fa-door-open",
+    "payload": "true",
+    "payloadType": "bool",
+    "topic": "sensor/frontdoor",
+    "topicType": "str",
+    "x": 190,
+    "y": 760,
+    "wires": [
+      [
+        "d0c1b2a3f4e50617"
+      ]
+    ]
+  },
+  {
+    "id": "d2e3f4a5b6c7d802",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Front door CLOSED",
+    "group": "c3c3c4e5f6078892",
+    "order": 2,
+    "width": "6",
+    "height": "1",
+    "passthru": false,
+    "label": "Front door: CLOSED",
+    "tooltip": "Sends topic sensor/frontdoor payload false",
+    "color": "white",
+    "bgcolor": "#2ea043",
+    "icon": "fa-door-closed",
+    "payload": "false",
+    "payloadType": "bool",
+    "topic": "sensor/frontdoor",
+    "topicType": "str",
+    "x": 200,
+    "y": 800,
+    "wires": [
+      [
+        "d0c1b2a3f4e50617"
+      ]
+    ]
+  },
+  {
+    "id": "d2e3f4a5b6c7d803",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Living PIR MOTION",
+    "group": "c3c3c4e5f6078892",
+    "order": 3,
+    "width": "6",
+    "height": "1",
+    "passthru": false,
+    "label": "Living PIR: MOTION",
+    "tooltip": "Sends topic sensor/living_pir payload true",
+    "color": "white",
+    "bgcolor": "#ff9f0a",
+    "icon": "fa-walking",
+    "payload": "true",
+    "payloadType": "bool",
+    "topic": "sensor/living_pir",
+    "topicType": "str",
+    "x": 200,
+    "y": 840,
+    "wires": [
+      [
+        "d0c1b2a3f4e50617"
+      ]
+    ]
+  },
+  {
+    "id": "d2e3f4a5b6c7d804",
+    "type": "ui_button",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Living PIR CLEAR",
+    "group": "c3c3c4e5f6078892",
+    "order": 4,
+    "width": "6",
+    "height": "1",
+    "passthru": false,
+    "label": "Living PIR: CLEAR",
+    "tooltip": "Sends topic sensor/living_pir payload false",
+    "color": "white",
+    "bgcolor": "#6e7681",
+    "icon": "fa-pause",
+    "payload": "false",
+    "payloadType": "bool",
+    "topic": "sensor/living_pir",
+    "topicType": "str",
+    "x": 190,
+    "y": 880,
+    "wires": [
+      [
+        "d0c1b2a3f4e50617"
+      ]
+    ]
+  },
+  {
+    "id": "f50b6a7c1c8b3d10",
+    "type": "debug",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "All events",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 520,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "id": "f50b6a7c1c8b3d11",
+    "type": "debug",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Siren output",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 530,
+    "y": 200,
+    "wires": []
+  },
+  {
+    "id": "f50b6a7c1c8b3d12",
+    "type": "debug",
+    "z": "b81f9a4b2f9c1a10",
+    "name": "Errors / denied",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 550,
+    "y": 240,
+    "wires": []
+  }
+]

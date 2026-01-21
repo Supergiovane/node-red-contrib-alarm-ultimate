@@ -1,7 +1,7 @@
 <script type="text/javascript">
   RED.nodes.registerType("AlarmUltimateZone", {
     category: "Alarm Ultimate",
-    color: "#ffb3b3",
+    color: "#CFEFF0",
     defaults: {
       name: { value: "" },
       alarmId: { value: "", required: true },
@@ -11,7 +11,7 @@
     },
     inputs: 0,
     outputs: 1,
-    icon: "font-awesome/fa-bullseye",
+    icon: "alarm-ultimate-zone.svg",
     label: function () {
       return this.name || "Alarm Zone";
     },
@@ -65,7 +65,12 @@
             zoneSelect.empty();
             zoneSelect.append($("<option></option>").attr("value", "").text("-- select --"));
             zones.forEach((z) => {
-              const label = z.name ? `${z.name} (${z.id})` : z.id;
+              const topic = z.topic || z.topicPattern || "";
+              const label = z.name
+                ? topic
+                  ? `${z.name} (${topic})`
+                  : z.name
+                : topic || z.id;
               zoneSelect.append($("<option></option>").attr("value", z.id).text(label));
             });
             if (this.zoneId) zoneSelect.val(this.zoneId);
@@ -84,7 +89,7 @@
 
 <script type="text/html" data-template-name="AlarmUltimateZone">
   <div class="form-row">
-    <label>&nbsp;</label>
+    <label>WEB PAGE</label>
     <button type="button" class="red-ui-button" id="node-input-alarm-panel">
       <i class="fa fa-keyboard-o"></i> Panel
     </button>

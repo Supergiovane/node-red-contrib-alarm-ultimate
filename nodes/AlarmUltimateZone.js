@@ -30,6 +30,16 @@ module.exports = function (RED) {
       if (lastOpen === open && reason !== 'init') return;
       lastOpen = open;
 
+      const zoneTopic =
+        evt && evt.zone ? evt.zone.topic || evt.zone.topicPattern || null : null;
+      const statusLabel = zoneTopic || zoneId || 'zone';
+
+      setNodeStatus({
+        fill: open ? 'red' : 'green',
+        shape: 'dot',
+        text: `${statusLabel}: ${open ? 'open' : 'closed'}`,
+      });
+
       const msg = {
         topic: buildTopic(evt && evt.controlTopic),
         payload: open,
@@ -59,8 +69,17 @@ module.exports = function (RED) {
         setNodeStatus({ fill: 'red', shape: 'ring', text: `Unknown zone (${zoneId})` });
         return;
       }
-      setNodeStatus({ fill: 'green', shape: 'dot', text: `Connected (${zoneId}: ${selected.open ? 'open' : 'closed'})` });
-      emitZone(Boolean(selected.open), { alarmId, controlTopic: ui.controlTopic, zone: { id: selected.id, name: selected.name, type: selected.type } }, reason);
+      emitZone(Boolean(selected.open), {
+        alarmId,
+        controlTopic: ui.controlTopic,
+        zone: {
+          id: selected.id,
+          name: selected.name,
+          type: selected.type,
+          topic: selected.topic || null,
+          topicPattern: selected.topicPattern || null,
+        },
+      }, reason);
     }
 
     function onZoneState(evt) {
@@ -88,4 +107,3 @@ module.exports = function (RED) {
 
   RED.nodes.registerType('AlarmUltimateZone', AlarmUltimateZone);
 };
-

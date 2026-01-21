@@ -1,7 +1,7 @@
 <script type="text/javascript">
   RED.nodes.registerType("AlarmUltimateState", {
     category: "Alarm Ultimate",
-    color: "#ffb3b3",
+    color: "#CFEFF0",
     defaults: {
       name: { value: "" },
       alarmId: { value: "", required: true },
@@ -10,7 +10,7 @@
     },
     inputs: 0,
     outputs: 1,
-    icon: "font-awesome/fa-shield",
+    icon: "alarm-ultimate-state.svg",
     label: function () {
       return this.name || "Alarm State";
     },
@@ -55,7 +55,7 @@
 
 <script type="text/html" data-template-name="AlarmUltimateState">
   <div class="form-row">
-    <label>&nbsp;</label>
+    <label>WEB PAGE</label>
     <button type="button" class="red-ui-button" id="node-input-alarm-panel">
       <i class="fa fa-keyboard-o"></i> Panel
     </button>

@@ -1,7 +1,7 @@
 <script type="text/javascript">
   RED.nodes.registerType("AlarmSystemUltimate", {
     category: "Alarm Ultimate",
-    color: "#ff8080",
+    color: "#A8DADC",
     defaults: {
       name: { value: "" },
       controlTopic: { value: "alarm" },
@@ -49,7 +49,7 @@
       "Open Zones (Arming)",
       "Open Zones (On Request)",
     ],
-    icon: "alert.png",
+    icon: "alarm-ultimate.svg",
     label: function () {
       return this.name || "Alarm System (BETA)";
     },
@@ -189,7 +189,7 @@
   </div>
 
   <div class="form-row">
-    <label>&nbsp;</label>
+    <label>WEB PAGE</label>
     <button type="button" class="red-ui-button" id="node-input-zones-panel">
       <i class="fa fa-keyboard-o"></i> Panel
     </button>

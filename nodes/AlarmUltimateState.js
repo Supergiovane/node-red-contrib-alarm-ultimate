@@ -32,6 +32,12 @@ module.exports = function (RED) {
       }
       lastMode = mode;
 
+      setNodeStatus({
+        fill: mode === 'disarmed' ? 'green' : 'red',
+        shape: 'dot',
+        text: mode === 'disarmed' ? 'Disarmed' : 'Armed',
+      });
+
       const msg = {
         topic: buildTopic(api && api.controlTopic),
         payload: mode,
@@ -54,7 +60,6 @@ module.exports = function (RED) {
       }
       const state = api.getState && typeof api.getState === 'function' ? api.getState() : null;
       const mode = state && state.state ? state.state.mode : null;
-      setNodeStatus({ fill: 'green', shape: 'dot', text: `Connected (${mode || 'unknown'})` });
       emitMode(mode, api, reason);
     }
 
@@ -84,4 +89,3 @@ module.exports = function (RED) {
 
   RED.nodes.registerType('AlarmUltimateState', AlarmUltimateState);
 };
-

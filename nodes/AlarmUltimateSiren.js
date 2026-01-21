@@ -28,6 +28,12 @@ module.exports = function (RED) {
       if (lastActive === active && reason !== 'init') return;
       lastActive = active;
 
+      setNodeStatus({
+        fill: active ? 'red' : 'green',
+        shape: 'dot',
+        text: active ? 'Siren on' : 'Siren off',
+      });
+
       const msg = {
         topic: buildTopic(evt && evt.controlTopic),
         payload: active,
@@ -52,7 +58,6 @@ module.exports = function (RED) {
       const ui = api.getState && typeof api.getState === 'function' ? api.getState() : null;
       const state = ui && ui.state ? ui.state : null;
       const active = state ? Boolean(state.sirenActive) : null;
-      setNodeStatus({ fill: 'green', shape: 'dot', text: `Connected (${active ? 'on' : 'off'})` });
       emitSiren(active, { alarmId, controlTopic: ui.controlTopic, name: ui.name }, reason);
     }
 
@@ -80,4 +85,3 @@ module.exports = function (RED) {
 
   RED.nodes.registerType('AlarmUltimateSiren', AlarmUltimateSiren);
 };
-
