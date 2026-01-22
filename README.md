@@ -16,6 +16,7 @@ Alarm System Ultimate nodes + web panel for Node-RED.
 Includes:
 
 - `AlarmSystemUltimate` (BETA): full alarm control panel node (zones, entry/exit delays, bypass, chime, 24h/fire/tamper, siren, event log).
+- `AlarmUltimateInputAdapter`: translates incoming messages into zone messages for `AlarmSystemUltimate` using built-in or user-defined presets.
 - Output-only helper nodes: `AlarmUltimateState`, `AlarmUltimateZone`, `AlarmUltimateSiren`.
 - Web tools: Zones JSON mapper + web Alarm Panel (embeddable in Node-RED Dashboard).
 
@@ -73,6 +74,13 @@ These nodes have no input and emit the current Alarm state (and changes) for one
 - `Alarm Zone` (`AlarmUltimateZone`): `msg.payload = true|false` for a selected zone
 - `Alarm Siren` (`AlarmUltimateSiren`): `msg.payload = true|false` when the siren is on/off
 
+### Input Adapter
+
+`AlarmUltimateInputAdapter` translates incoming messages (from arbitrary sources) into the format expected by the Alarm zones.
+
+- Built-in presets are shipped with the package.
+- A single user preset (custom JavaScript) can be created/edited inside the node and is stored in the node configuration.
+
 ## Web tools
 
 These pages are served via the Node-RED admin HTTP endpoint:
@@ -113,11 +121,13 @@ When Node-RED authentication is enabled, the admin endpoints use these permissio
 
 - `AlarmSystemUltimate.read`
 - `AlarmSystemUltimate.write`
+- `AlarmUltimateInputAdapter.read`
 
 HTTP admin endpoints:
 
 - `GET /alarm-ultimate/alarm/nodes`
 - `GET /alarm-ultimate/alarm/:id/state`
+- `GET /alarm-ultimate/input-adapter/presets`
 - `POST /alarm-ultimate/alarm/:id/command`
 - `GET /alarm-ultimate/alarm-json-mapper`
 - `GET /alarm-ultimate/alarm-panel`

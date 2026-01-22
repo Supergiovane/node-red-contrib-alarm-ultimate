@@ -156,16 +156,74 @@
         padding: 8px 10px;
         cursor: pointer;
         font-size: 12px;
+        transition: background-color 120ms ease, border-color 120ms ease, transform 80ms ease;
       }
 
       button.primary {
-        border-color: rgba(110, 168, 254, 0.5);
-        background: rgba(110, 168, 254, 0.22);
+        border-color: rgba(110, 168, 254, 0.85);
+        background: var(--accent);
+        color: #fff;
       }
 
       button.danger {
         border-color: rgba(255, 107, 107, 0.55);
         background: rgba(255, 107, 107, 0.14);
+      }
+
+      button:hover {
+        background: rgba(110, 168, 254, 0.18);
+        border-color: rgba(110, 168, 254, 0.35);
+      }
+
+      button.primary:hover {
+        filter: brightness(1.05);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      button.selected {
+        border-color: rgba(110, 168, 254, 0.9);
+        background: rgba(110, 168, 254, 0.28);
+      }
+
+      button.selected.ok {
+        border-color: rgba(47, 191, 113, 0.65);
+        background: rgba(47, 191, 113, 0.16);
+      }
+
+      button.selected.warn {
+        border-color: rgba(255, 204, 102, 0.65);
+        background: rgba(255, 204, 102, 0.14);
+      }
+
+      button.selected.danger {
+        border-color: rgba(255, 107, 107, 0.65);
+        background: rgba(255, 107, 107, 0.14);
+      }
+
+      button.node {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      button.node .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--border);
+      }
+
+      button.node.ok .dot {
+        background: var(--ok);
+      }
+      button.node.warn .dot {
+        background: var(--warn);
+      }
+      button.node.danger .dot {
+        background: var(--danger);
       }
 
       .status {
@@ -193,6 +251,35 @@
         font-size: 12px;
       }
 
+      .status .meta .lines {
+        display: grid;
+        gap: 6px;
+      }
+
+      .status .meta .line {
+        display: grid;
+        grid-template-columns: 180px auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .status .meta .line .name {
+        font-family: var(--mono);
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .status .meta .line .details {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
       .pill {
         font-family: var(--mono);
         font-size: 12px;
@@ -212,6 +299,11 @@
       .pill.danger {
         border-color: rgba(255, 107, 107, 0.55);
         color: var(--danger);
+      }
+
+      .pill.small {
+        padding: 4px 8px;
+        font-size: 11px;
       }
 
       table {
@@ -271,18 +363,24 @@
     </header>
 
 	    <main>
-	      <section class="card">
-	        <h2>Node</h2>
-	        <div class="row">
-	          <label for="nodeSelect">Alarm node</label>
-	          <select id="nodeSelect"></select>
-	        </div>
-	        <div class="hint" id="nodeHint"></div>
-	        <div id="nodeStatus" class="status" style="display: none">
-	          <div class="left">
-	            <div class="title" id="statusTitle"></div>
-	            <div class="meta" id="statusMeta"></div>
-	          </div>
+      <section class="card">
+        <h2>Node</h2>
+        <div class="row">
+          <label>Alarm nodes</label>
+          <div>
+            <div class="buttons" id="nodeButtons"></div>
+            <div class="hint" id="nodeHint"></div>
+            <div class="hint" id="selectionHint"></div>
+            <div class="buttons" style="margin-top:8px;">
+              <button id="btnSelectAll" type="button">Select all</button>
+            </div>
+          </div>
+        </div>
+        <div id="nodeStatus" class="status" style="display: none">
+          <div class="left">
+            <div class="title" id="statusTitle"></div>
+            <div class="meta" id="statusMeta"></div>
+          </div>
           <div class="pill" id="statusPill"></div>
         </div>
       </section>
@@ -323,6 +421,7 @@
 	            <table>
               <thead>
                 <tr>
+                  <th>Alarm</th>
                   <th>Zone</th>
                   <th>State</th>
                   <th>Type</th>
@@ -338,8 +437,10 @@
 
     <script>
 	      const els = {
-	        nodeSelect: document.getElementById("nodeSelect"),
+	        nodeButtons: document.getElementById("nodeButtons"),
 	        nodeHint: document.getElementById("nodeHint"),
+          selectionHint: document.getElementById("selectionHint"),
+          btnSelectAll: document.getElementById("btnSelectAll"),
 	        nodeStatus: document.getElementById("nodeStatus"),
 	        statusTitle: document.getElementById("statusTitle"),
 	        statusMeta: document.getElementById("statusMeta"),
@@ -367,8 +468,11 @@
         document.body.classList.add("view-keypad");
       }
 
-      let selectedId = "";
+      let nodesList = [];
+      let selectedIds = new Set();
       let pollTimer = null;
+      let nodeStateTimer = null;
+      let nodeStateById = new Map();
 
       let audioCtx = null;
       let armingBeepTimer = null;
@@ -567,6 +671,53 @@
         return { label: "DISARMED", cls: "" };
       }
 
+      function lastEventSummary(state) {
+        const log = state && Array.isArray(state.log) ? state.log : [];
+        const last = log.length ? log[log.length - 1] : null;
+        if (!last || typeof last !== "object") return "";
+        const e = typeof last.event === "string" ? last.event : "";
+        if (!e) return "";
+        if (e === "arm_blocked") {
+          const violations = Array.isArray(last.violations) ? last.violations : [];
+          const names = violations
+            .map((v) => (v && typeof v.name === "string" && v.name.trim() ? v.name.trim() : v && v.id ? String(v.id) : ""))
+            .filter(Boolean);
+          const shown = names.slice(0, 3).join(", ");
+          const suffix = names.length > 3 ? "…" : "";
+          return `arm_blocked${names.length ? ` (${shown}${suffix})` : ""}`;
+        }
+        if (e === "denied") {
+          const a = last.action ? String(last.action) : "";
+          return `denied${a ? ` (${a})` : ""}`;
+        }
+        if (e === "arming") {
+          const s = Number.isFinite(Number(last.seconds)) ? Number(last.seconds) : null;
+          return `arming${s !== null ? ` (${s}s)` : ""}`;
+        }
+        if (e === "entry_delay") {
+          const s = Number.isFinite(Number(last.seconds)) ? Number(last.seconds) : null;
+          return `entry_delay${s !== null ? ` (${s}s)` : ""}`;
+        }
+        if (e === "alarm") {
+          const k = last.kind ? String(last.kind) : "";
+          return `alarm${k ? ` (${k})` : ""}`;
+        }
+        return e;
+      }
+
+      function armingErrorPill(state) {
+        const log = state && Array.isArray(state.log) ? state.log : [];
+        const last = log.length ? log[log.length - 1] : null;
+        const e = last && typeof last.event === "string" ? last.event : "";
+        if (e === "arm_blocked") {
+          return { cls: "warn", label: "ARM BLOCKED", details: lastEventSummary(state) };
+        }
+        if (e === "denied" && last && String(last.action || "") === "arm") {
+          return { cls: "danger", label: "ARM DENIED", details: lastEventSummary(state) };
+        }
+        return null;
+      }
+
       function renderZones(zones) {
         els.zonesBody.innerHTML = "";
         const list = Array.isArray(zones) ? zones : [];
@@ -582,9 +733,11 @@
           const stateText = z.bypassed ? "BYPASSED" : z.open ? "OPEN" : "CLOSED";
           const stateClass = z.bypassed ? "zone-bypassed" : z.open ? "zone-open" : "zone-closed";
           const topic = z.topic || z.topicPattern || "";
+          const alarmLabel = z.__alarmName || z.__alarmId || "";
 
           tr.innerHTML = `
-            <td>${escapeHtml(title)}<div style="color:var(--muted); font-size:11px">${escapeHtml(z.id || "")}</div></td>
+            <td>${escapeHtml(alarmLabel)}</td>
+            <td>${escapeHtml(title)}</td>
             <td class="${stateClass}">${escapeHtml(stateText)}</td>
             <td>${escapeHtml(z.type || "")}</td>
             <td>${escapeHtml(topic)}</td>
@@ -602,57 +755,264 @@
           .replace(/'/g, "&#039;");
       }
 
-	      async function loadNodes() {
-	        const res = await fetch(apiUrl("/alarm-ultimate/alarm/nodes"), {
-	          credentials: "same-origin",
-	          headers: { ...authHeaders() },
-	        });
-	        if (!res.ok) throw new Error(`Unable to load nodes (${res.status})`);
-	        const data = await res.json();
-	        const nodes = Array.isArray(data.nodes) ? data.nodes : [];
+        function normalizePreselectIds(raw) {
+          const v = String(raw || "").trim();
+          if (!v) return [];
+          if (v.includes(",")) {
+            return v
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
+          }
+          return [v];
+        }
 
-	        els.nodeSelect.innerHTML = "";
-	        els.nodeSelect.disabled = nodes.length === 0;
-	        for (const n of nodes) {
-	          const opt = document.createElement("option");
-	          opt.value = n.id;
-	          opt.textContent = n.name ? `${n.name} (${n.id})` : n.id;
-	          els.nodeSelect.appendChild(opt);
+        function persistSelectedIds() {
+          try {
+            localStorage.setItem("alarm-ultimate-panel:selectedIds", JSON.stringify(Array.from(selectedIds)));
+          } catch (_err) {}
+        }
+
+	        function restoreSelectedIds() {
+	          const idsFromUrl = normalizePreselectIds(preselectId);
+	          if (idsFromUrl.length) return idsFromUrl;
+	          try {
+	            const raw = localStorage.getItem("alarm-ultimate-panel:selectedIds");
+	            const parsed = JSON.parse(raw);
+	            if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+	          } catch (_err) {}
+	          return [];
 	        }
 
-	        const preferred = nodes.find((n) => n.id === preselectId) ? preselectId : nodes[0] ? nodes[0].id : "";
-	        selectedId = preferred;
-	        els.nodeSelect.value = preferred;
-	        if (!preferred) {
-	          els.zonesHint.textContent = "No Alarm nodes found.";
-	          setNodeHint("No Alarm nodes found. Deploy your flow and refresh.");
-	        } else {
+	        function updateSelectAllVisibility() {
+	          if (!els.btnSelectAll) return;
+	          const container = els.btnSelectAll.closest(".buttons") || els.btnSelectAll;
+	          container.style.display = nodesList.length > 1 ? "" : "none";
+	        }
+
+	        function statusFromStateSafe(state) {
+	          const st = statusFromState(state);
+	          return st && typeof st === "object" ? st : { label: "Unknown", cls: "" };
+	        }
+
+        function updateSelectionHint() {
+          const count = selectedIds.size;
+          if (!els.selectionHint) return;
+          if (count === 0) {
+            els.selectionHint.textContent = "Select at least one Alarm node.";
+            return;
+          }
+          els.selectionHint.innerHTML = `Selected: <span class="pill small">${count}</span> (click buttons to add/remove)`;
+        }
+
+        function setSelectedIds(next) {
+          const ids = Array.isArray(next) ? next.map(String).filter(Boolean) : [];
+          selectedIds = new Set(ids);
+          // enforce non-empty selection when possible
+          if (selectedIds.size === 0 && nodesList[0]) {
+            selectedIds.add(nodesList[0].id);
+          }
+          persistSelectedIds();
+          resetStateAudioTracking();
+          updateSelectionHint();
+          renderNodeButtons();
+          loadState().catch(() => {});
+        }
+
+        function selectAll() {
+          if (!nodesList.length) return;
+          setSelectedIds(nodesList.map((n) => n.id));
+        }
+
+        function toggleSelectedId(id) {
+          const key = String(id || "").trim();
+          if (!key) return;
+          const next = new Set(selectedIds);
+          if (next.has(key)) {
+            if (next.size === 1) return; // never allow empty
+            next.delete(key);
+          } else {
+            next.add(key);
+          }
+          setSelectedIds(Array.from(next));
+        }
+
+	        function renderNodeButtons() {
+	          if (!els.nodeButtons) return;
+	          updateSelectAllVisibility();
+	          els.nodeButtons.innerHTML = "";
+	          if (!nodesList.length) return;
+
+	          nodesList.forEach((n) => {
+	            const state = nodeStateById.get(n.id);
+            const st = statusFromStateSafe(state);
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = `node ${st.cls || ""} ${selectedIds.has(n.id) ? `selected ${st.cls || ""}` : ""}`.trim();
+            btn.dataset.id = n.id;
+            const name = n.name ? n.name : n.id;
+            btn.innerHTML = `<span class="dot"></span><span>${escapeHtml(name)}</span>`;
+            btn.addEventListener("click", () => toggleSelectedId(n.id));
+            els.nodeButtons.appendChild(btn);
+          });
+        }
+
+		      async function loadNodes() {
+		        const res = await fetch(apiUrl("/alarm-ultimate/alarm/nodes"), {
+		          credentials: "same-origin",
+		          headers: { ...authHeaders() },
+		        });
+		        if (!res.ok) throw new Error(`Unable to load nodes (${res.status})`);
+		        const data = await res.json();
+		        nodesList = Array.isArray(data.nodes) ? data.nodes : [];
+	          updateSelectAllVisibility();
+	          if (!nodesList.length) {
+		          els.zonesHint.textContent = "No Alarm nodes found.";
+		          setNodeHint("No Alarm nodes found. Deploy your flow and refresh.");
+	            renderNodeButtons();
+	            updateSelectionHint();
+          } else {
 	          setNodeHint("");
+            const restored = restoreSelectedIds().filter((id) => nodesList.some((n) => n.id === id));
+            setSelectedIds(restored.length ? restored : [nodesList[0].id]);
 	        }
 	      }
 
-	      async function loadState() {
-	        if (!selectedId) return;
-	        const res = await fetch(apiUrl(`/alarm-ultimate/alarm/${encodeURIComponent(selectedId)}/state`), {
-	          credentials: "same-origin",
-	          headers: { ...authHeaders() },
-	        });
-	        if (!res.ok) throw new Error(`Unable to load state (${res.status})`);
-	        const data = await res.json();
-	        const state = data.state;
-	        const st = statusFromState(state);
+        async function fetchStateForNode(nodeId) {
+          const res = await fetch(apiUrl(`/alarm-ultimate/alarm/${encodeURIComponent(nodeId)}/state`), {
+            credentials: "same-origin",
+            headers: { ...authHeaders() },
+          });
+          if (!res.ok) throw new Error(`Unable to load state (${res.status})`);
+          return res.json();
+        }
 
-        els.nodeStatus.style.display = "";
-        els.statusTitle.textContent = data.name ? data.name : selectedId;
-        const ct = data.controlTopic ? `controlTopic=${data.controlTopic}` : "";
-        const openCount = (Array.isArray(data.zones) ? data.zones.filter((z) => z.open && !z.bypassed).length : 0) || 0;
-        els.statusMeta.textContent = `${st.label}${ct ? " • " + ct : ""}${openCount ? " • open=" + openCount : ""}`;
-        els.statusPill.textContent = st.label;
-        els.statusPill.className = `pill ${st.cls}`;
+        async function loadNodeStatesForButtons() {
+          if (!nodesList.length) return;
+          const ids = nodesList.map((n) => n.id);
+          const results = await Promise.allSettled(ids.map((id) => fetchStateForNode(id)));
+          for (let i = 0; i < results.length; i += 1) {
+            const id = ids[i];
+            const r = results[i];
+            if (r.status === "fulfilled") {
+              nodeStateById.set(id, r.value && r.value.state ? r.value.state : null);
+            }
+          }
+          renderNodeButtons();
+        }
 
-        renderZones(data.zones);
-        handleStateBeeps(state);
-      }
+        async function loadState() {
+          const ids = Array.from(selectedIds);
+          if (!ids.length) return;
+
+          const results = await Promise.allSettled(ids.map((id) => fetchStateForNode(id)));
+          const okStates = [];
+          for (let i = 0; i < results.length; i += 1) {
+            const id = ids[i];
+            const r = results[i];
+            if (r.status === "fulfilled") {
+              okStates.push({ id, data: r.value });
+              nodeStateById.set(id, r.value && r.value.state ? r.value.state : null);
+            }
+          }
+
+          renderNodeButtons();
+          updateSelectionHint();
+
+          if (okStates.length === 0) {
+            els.nodeStatus.style.display = "none";
+            els.zonesHint.textContent = "Unable to load selected alarm state.";
+            return;
+          }
+
+          // Combine status and zones.
+          const zones = [];
+          okStates.forEach(({ id, data }) => {
+            const alarmName = data && data.name ? data.name : id;
+            const list = Array.isArray(data && data.zones) ? data.zones : [];
+            list.forEach((z) => zones.push({ ...z, __alarmId: id, __alarmName: alarmName }));
+          });
+
+          zones.sort((a, b) => {
+            const an = String(a.__alarmName || "").localeCompare(String(b.__alarmName || ""));
+            if (an !== 0) return an;
+            return String(a.name || a.id || "").localeCompare(String(b.name || b.id || ""));
+          });
+
+          const multiple = okStates.length > 1;
+          if (multiple) {
+            stopArmingBeeps();
+          }
+
+          els.nodeStatus.style.display = "";
+          els.statusTitle.textContent = multiple
+            ? `Selected alarms (${okStates.length})`
+            : okStates[0].data && okStates[0].data.name
+              ? okStates[0].data.name
+              : okStates[0].id;
+
+          if (multiple) {
+            const lines = okStates
+              .map(({ id, data }) => {
+                const state = data && data.state ? data.state : null;
+                const st = statusFromStateSafe(state);
+                const name = data && data.name ? data.name : id;
+                const openCount = Array.isArray(data && data.zones)
+                  ? data.zones.filter((z) => z && z.open && !z.bypassed).length
+                  : 0;
+                const lastEvt = lastEventSummary(state);
+                const armErr = armingErrorPill(state);
+                const details = [
+                  `state=${st.label}`,
+                  openCount ? `open=${openCount}` : "",
+                  lastEvt ? `last=${lastEvt}` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" • ");
+
+                return `
+                  <div class="line">
+                    <div class="name">${escapeHtml(name)}</div>
+                    <div class="details">
+                      <span class="pill small ${st.cls || ""}">${escapeHtml(st.label)}</span>
+                      ${
+                        armErr
+                          ? ` <span class="pill small ${armErr.cls}">${escapeHtml(armErr.label)}</span>`
+                          : ""
+                      }
+                      ${details ? `&nbsp;${escapeHtml(details)}` : ""}
+                    </div>
+                  </div>
+                `;
+              })
+              .join("");
+
+            els.statusMeta.innerHTML = `<div class="lines">${lines}</div>`;
+            els.statusPill.textContent = "MULTI";
+            els.statusPill.className = "pill warn";
+          } else {
+            const state = okStates[0].data && okStates[0].data.state ? okStates[0].data.state : null;
+            const st = statusFromStateSafe(state);
+            const openCount = zones.filter((z) => z.open && !z.bypassed).length;
+            const lastEvt = lastEventSummary(state);
+            const armErr = armingErrorPill(state);
+            const meta = [`${st.label}`, openCount ? `open=${openCount}` : "", lastEvt ? `last=${lastEvt}` : ""]
+              .filter(Boolean)
+              .join(" • ");
+            els.statusMeta.textContent = meta;
+            els.statusPill.textContent = st.label;
+            els.statusPill.className = `pill ${st.cls}`;
+            if (armErr && els.statusPill) {
+              els.statusPill.textContent = armErr.label;
+              els.statusPill.className = `pill ${armErr.cls}`;
+            }
+          }
+
+          renderZones(zones);
+          if (!multiple) {
+            handleStateBeeps(okStates[0].data && okStates[0].data.state);
+          }
+        }
 
       function startPolling() {
         if (pollTimer) clearInterval(pollTimer);
@@ -663,18 +1023,85 @@
         }, 1000);
       }
 
-	      async function sendCommand(payload) {
-	        if (!selectedId) return;
-	        const res = await fetch(apiUrl(`/alarm-ultimate/alarm/${encodeURIComponent(selectedId)}/command`), {
-	          method: "POST",
-	          headers: { "content-type": "application/json", ...authHeaders() },
-	          body: JSON.stringify(payload),
-	          credentials: "same-origin",
-	        });
-	        if (!res.ok) {
-	          const text = await res.text();
-          throw new Error(`Command failed (${res.status}): ${text}`);
+      function startNodeButtonPolling() {
+        if (nodeStateTimer) clearInterval(nodeStateTimer);
+        nodeStateTimer = setInterval(() => {
+          loadNodeStatesForButtons().catch(() => {});
+        }, 2500);
+      }
+
+        function extractResultState(json) {
+          const root = json && typeof json === "object" ? json : null;
+          const result = root && root.result && typeof root.result === "object" ? root.result : null;
+          return result && result.state ? result.state : null;
         }
+
+        function extractResultName(json, fallbackId) {
+          const root = json && typeof json === "object" ? json : null;
+          const result = root && root.result && typeof root.result === "object" ? root.result : null;
+          return (result && result.name) || fallbackId || "";
+        }
+
+        function isArmSuccess(state) {
+          if (!state) return false;
+          if (state.mode === "armed") return true;
+          return Boolean(state.arming && state.arming.active);
+        }
+
+        function isDisarmSuccess(state) {
+          if (!state) return false;
+          return state.mode === "disarmed";
+        }
+
+	      async function sendCommand(payload) {
+	        const ids = Array.from(selectedIds);
+	        if (!ids.length) return;
+          const results = await Promise.allSettled(
+            ids.map(async (id) => {
+              const res = await fetch(apiUrl(`/alarm-ultimate/alarm/${encodeURIComponent(id)}/command`), {
+                method: "POST",
+                headers: { "content-type": "application/json", ...authHeaders() },
+                body: JSON.stringify(payload),
+                credentials: "same-origin",
+              });
+              if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`(${id}) ${res.status}: ${text}`);
+              }
+              const json = await res.json().catch(() => null);
+              const state = extractResultState(json);
+              if (state) {
+                nodeStateById.set(id, state);
+              }
+              return {
+                id,
+                name: extractResultName(json, id),
+                state,
+              };
+            }),
+          );
+          const ok = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
+          const err = results
+            .filter((r) => r.status === "rejected")
+            .map((r) => (r.reason && r.reason.message ? r.reason.message : String(r.reason)));
+
+          // Heuristic feedback: HTTP 200 doesn't mean the Alarm accepted the command.
+          const cmd = payload && typeof payload.command === "string" ? payload.command : "";
+          const check = cmd === "disarm" ? isDisarmSuccess : cmd === "arm" ? isArmSuccess : null;
+          const okApplied = check ? ok.filter((r) => check(r && r.state)).map((r) => r.name || r.id) : [];
+          const maybeRejected = check ? ok.filter((r) => !check(r && r.state)).map((r) => r.name || r.id) : [];
+
+          renderNodeButtons();
+
+          if (err.length) {
+            throw new Error(`Sent to ${ok.length}/${ids.length}. ${err[0]}`);
+          }
+          if (check && maybeRejected.length) {
+            showCmdStatus(
+              `${cmd} sent to ${ids.length}. Applied: ${okApplied.length}/${ids.length}. Not applied: ${maybeRejected.slice(0, 3).join(", ")}${maybeRejected.length > 3 ? "…" : ""}`,
+              "warn",
+            );
+          }
       }
 
       function codeValue() {
@@ -682,17 +1109,18 @@
         return v.length ? v : undefined;
       }
 
-      els.nodeSelect.addEventListener("change", () => {
-        selectedId = els.nodeSelect.value;
-        resetStateAudioTracking();
-        loadState().catch(() => {});
-      });
+      // No select: buttons manage selection.
+      if (els.btnSelectAll) {
+        els.btnSelectAll.addEventListener("click", () => selectAll());
+      }
 
       els.btnArm.addEventListener("click", async () => {
         playKeyClick("action");
         try {
           await sendCommand({ command: "arm", code: codeValue() });
-          showCmdStatus("Arm sent.", "ok");
+          if (els.cmdStatus.style.display === "none") {
+            showCmdStatus(`Arm sent to ${selectedIds.size} node(s).`, "ok");
+          }
         } catch (err) {
           showCmdStatus(err.message, "err");
         }
@@ -701,7 +1129,9 @@
         playKeyClick("action");
         try {
           await sendCommand({ command: "disarm", code: codeValue() });
-          showCmdStatus("Disarm sent.", "ok");
+          if (els.cmdStatus.style.display === "none") {
+            showCmdStatus(`Disarm sent to ${selectedIds.size} node(s).`, "ok");
+          }
         } catch (err) {
           showCmdStatus(err.message, "err");
         }
@@ -736,8 +1166,10 @@
 	        try {
 	          setNodeHint(`API root: ${httpAdminRoot()}`);
 	          await loadNodes();
+            await loadNodeStatesForButtons().catch(() => {});
 	          await loadState();
 	          startPolling();
+            startNodeButtonPolling();
 	        } catch (err) {
 	          setNodeHint(err.message);
 	          els.zonesHint.textContent = err.message;

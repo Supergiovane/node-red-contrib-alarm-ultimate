@@ -16,6 +16,7 @@
   "node-red": {
     "nodes": {
       "AlarmSystemUltimate": "nodes/AlarmSystemUltimate.js",
+      "AlarmUltimateInputAdapter": "nodes/AlarmUltimateInputAdapter.js",
       "AlarmUltimateState": "nodes/AlarmUltimateState.js",
       "AlarmUltimateZone": "nodes/AlarmUltimateZone.js",
       "AlarmUltimateSiren": "nodes/AlarmUltimateSiren.js"

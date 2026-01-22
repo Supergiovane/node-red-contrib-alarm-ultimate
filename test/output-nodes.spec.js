@@ -1,5 +1,6 @@
 'use strict';
 
+const { expect } = require('chai');
 const { helper } = require('./helpers');
 
 const alarmNode = require('../nodes/AlarmSystemUltimate.js');
@@ -119,9 +120,11 @@ describe('Alarm Ultimate output-only nodes', function () {
           try {
             if (String(msg.reason || '').startsWith('init') && msg.payload === false) {
               seen.initialZoneClosed = true;
+              expect(msg.topic).to.equal('alarm/zone/sensor/frontdoor');
             }
             if (msg.payload === true && msg.zone && msg.zone.id === 'front') {
               seen.zoneOpen = true;
+              expect(msg.topic).to.equal('alarm/zone/sensor/frontdoor');
             }
             maybeDone();
           } catch (err) {

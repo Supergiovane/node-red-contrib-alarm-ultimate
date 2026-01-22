@@ -467,4 +467,55 @@ describe('AlarmSystemUltimate node', function () {
       })
       .catch(done);
   });
+
+  it('emits zone open/close events while disarmed', function (done) {
+    const flowId = 'alarm-zone-events';
+    const flow = [
+      { id: flowId, type: 'tab', label: 'alarm-zone-events' },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm',
+        requireCodeForDisarm: false,
+        zones: '{"id":"front","name":"Front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
+        wires: [[], [], [], [], ['zoneEvents']],
+      },
+      { id: 'zoneEvents', type: 'helper', z: flowId },
+    ];
+
+    loadAlarm(flow)
+      .then(() => {
+        const alarm = helper.getNode('alarm');
+        const zoneEvents = helper.getNode('zoneEvents');
+
+        const seen = [];
+        zoneEvents.on('input', (msg) => {
+          seen.push(msg);
+        });
+
+        // Default mode is disarmed. We should still see zone_open/zone_close.
+        alarm.receive({ topic: 'sensor/frontdoor', payload: true });
+        setTimeout(() => {
+          alarm.receive({ topic: 'sensor/frontdoor', payload: false });
+        }, 30);
+
+        setTimeout(() => {
+          try {
+            const events = seen.map((m) => m.event).filter(Boolean);
+            expect(events).to.include('zone_open');
+            expect(events).to.include('zone_close');
+            const openEvt = seen.find((m) => m && m.event === 'zone_open');
+            expect(openEvt).to.be.an('object');
+            expect(openEvt.payload).to.be.an('object');
+            expect(openEvt.payload.zone).to.be.an('object');
+            expect(openEvt.payload.zone.topic).to.equal('sensor/frontdoor');
+            done();
+          } catch (err) {
+            done(err);
+          }
+        }, 120);
+      })
+      .catch(done);
+  });
 });

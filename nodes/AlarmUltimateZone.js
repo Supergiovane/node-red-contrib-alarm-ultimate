@@ -18,10 +18,13 @@ module.exports = function (RED) {
 
     let lastOpen = null;
 
-    function buildTopic(controlTopic) {
+    function buildTopic(controlTopic, zoneTopic) {
       if (configuredTopic) return configuredTopic;
       const base = typeof controlTopic === 'string' && controlTopic.trim().length > 0 ? controlTopic.trim() : 'alarm';
-      const z = zoneId || 'zone';
+      const z =
+        typeof zoneTopic === 'string' && zoneTopic.trim().length > 0
+          ? zoneTopic.trim()
+          : zoneId || 'zone';
       return `${base}/zone/${z}`;
     }
 
@@ -41,7 +44,7 @@ module.exports = function (RED) {
       });
 
       const msg = {
-        topic: buildTopic(evt && evt.controlTopic),
+        topic: buildTopic(evt && evt.controlTopic, zoneTopic),
         payload: open,
         alarmId: evt ? evt.alarmId : alarmId,
         zone: evt && evt.zone ? evt.zone : { id: zoneId || null },

@@ -112,7 +112,7 @@
 
   <div class="form-row">
     <label for="node-input-topic"><i class="fa fa-tag"></i> Topic</label>
-    <input type="text" id="node-input-topic" placeholder="(default: &lt;controlTopic&gt;/zone/&lt;zoneId&gt;)" />
+    <input type="text" id="node-input-topic" placeholder="(default: &lt;controlTopic&gt;/zone/&lt;zoneTopic&gt;)" />
   </div>
 
   <div class="form-row">
@@ -125,7 +125,7 @@
 Emits the state of a single configured zone from a selected **Alarm System Ultimate** node.
 
 - `msg.payload`: `true` when the zone is open/active, otherwise `false`
-- `msg.zone`: `{ id, name?, type? }`
+- `msg.zone`: `{ id, name?, type?, topic? }`
 - `msg.bypassed`: `true|false`
 
 Notes:

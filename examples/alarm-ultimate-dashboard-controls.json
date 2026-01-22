@@ -64,7 +64,6 @@
     "name": "Home Alarm",
     "controlTopic": "alarm",
     "payloadPropName": "payload",
-    "translatorConfig": "",
     "persistState": true,
     "requireCodeForArm": false,
     "requireCodeForDisarm": false,

@@ -12,6 +12,11 @@ This flow includes:
 - Inject nodes for arm/disarm, bypass, sensor open/close
 - Output-only nodes (`Alarm State`, `Alarm Zone`, `Alarm Siren`) connected to debug
 
+Notes:
+
+- The old Alarm “Translator” option has been removed. If you need to translate incoming device messages, use the `AlarmUltimateInputAdapter` node.
+- Zones can be edited from the Alarm node editor via the “Manage zones” button (opens the `alarm-json-mapper` tool).
+
 ## Dashboard (node-red-dashboard)
 
 Import `examples/alarm-ultimate-dashboard.json`.

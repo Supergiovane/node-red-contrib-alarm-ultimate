@@ -142,11 +142,26 @@
       padding: 8px 10px;
       cursor: pointer;
       font-size: 12px;
+      transition: background-color 120ms ease, border-color 120ms ease, transform 80ms ease;
     }
 
     button.primary {
-      border-color: rgba(110, 168, 254, 0.5);
-      background: rgba(110, 168, 254, 0.22);
+      border-color: rgba(110, 168, 254, 0.85);
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    button:hover {
+      background: rgba(110, 168, 254, 0.18);
+      border-color: rgba(110, 168, 254, 0.35);
+    }
+
+    button.primary:hover {
+      filter: brightness(1.05);
+    }
+
+    button:active {
+      transform: translateY(1px);
     }
 
     button:disabled {
@@ -207,6 +222,77 @@
         grid-template-columns: 1fr;
       }
     }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0.2px;
+    }
+
+    td input[type="text"],
+    td select {
+      width: 100%;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+
+    .btn-danger {
+      border-color: rgba(255, 107, 107, 0.6);
+      background: rgba(255, 107, 107, 0.12);
+      color: var(--text);
+    }
+
+    .btn-danger:hover {
+      background: rgba(255, 107, 107, 0.18);
+      border-color: rgba(255, 107, 107, 0.7);
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    .pill.ok {
+      border-color: rgba(47, 191, 113, 0.55);
+      color: var(--ok);
+    }
+
+    .pill.warn {
+      border-color: rgba(255, 204, 102, 0.55);
+      color: var(--warn);
+    }
+
+    .pill.err {
+      border-color: rgba(255, 107, 107, 0.55);
+      color: var(--danger);
+    }
+
+    .disabled {
+      opacity: 0.55;
+      pointer-events: none;
+      filter: grayscale(0.15);
+    }
   </style>
 </head>
 
@@ -221,139 +307,160 @@
   </header>
 
   <main>
-    <div class="grid">
-      <section class="card">
-        <h2>1) Input message</h2>
-        <textarea id="input" spellcheck="false"
-          placeholder="Paste JSON here (strict JSON).&#10;&#10;Tip: this tool also accepts JS-style objects with unquoted keys and // comments."></textarea>
-        <div class="buttons">
-          <button id="btn-load-knx">Load JSON sample</button>
-          <button id="btn-load-ets">Load ETS sample</button>
-          <button id="btn-load-ha">Load HA sample</button>
-          <button id="btn-load-ha-registry">Load HA registry sample</button>
-          <button id="btn-clear">Clear</button>
-          <button class="primary" id="btn-parse">Parse</button>
-        </div>
-        <p class="hint">
-          If your input is not strict JSON (comments, unquoted keys), click
-          Parse anyway: the tool will try to normalize it.
-        </p>
-        <div id="parse-status" class="status warn" style="display: none"></div>
-      </section>
-
-      <section class="card">
-        <h2>2) Field mapping</h2>
-        <div id="ets-hint" class="status ok" style="display: none"></div>
-        <div id="ha-hint" class="status ok" style="display: none"></div>
-        <div id="ets-mapping" style="display: none">
-          <div class="row">
-            <label for="etsAddressFilter">ETS address filter</label>
-            <input
-              type="text"
-              id="etsAddressFilter"
-              placeholder="Examples: 0/0/*  •  0/1/??  •  */7/*  (comma or newline separated)"
-            />
-          </div>
-          <div class="row">
-            <label for="etsNameFilter">ETS name filter</label>
-            <input
-              type="text"
-              id="etsNameFilter"
-              placeholder='Optional. Examples: Front door • *garage* (supports * and ?)'
-            />
-          </div>
-          <p class="hint">
-            Address patterns are matched against the ETS <span class="mono">Address</span> column (e.g.
-            <span class="mono">0/0/1</span>). Name filter is matched against <span class="mono">Description</span>,
-            fallback to <span class="mono">Group name</span>.
-          </p>
-        </div>
-        <div id="ha-mapping" style="display: none">
-          <div class="row">
-            <label for="haEntityFilter">HA entity filter</label>
-            <input
-              type="text"
-              id="haEntityFilter"
-              placeholder="Examples: binary_sensor.*door*  •  *_pir  •  switch.*  (comma or newline separated)"
-            />
-          </div>
-          <div class="row">
-            <label for="haNameFilter">HA name filter</label>
-            <input
-              type="text"
-              id="haNameFilter"
-              placeholder='Optional. Examples: Front door • *garage* (supports * and ?)'
-            />
-          </div>
-          <div class="row">
-            <label for="haDomains">HA domains</label>
-            <input
-              type="text"
-              id="haDomains"
-              placeholder="Optional. Example: binary_sensor,input_boolean,switch (default: boolean-like domains)"
-            />
-          </div>
-          <div class="row">
-            <label for="haIncludeDisabled">Include disabled</label>
-            <input type="checkbox" id="haIncludeDisabled" style="width:auto; margin-top:7px;" />
-          </div>
-          <p class="hint">
-            Paste Home Assistant JSON (e.g. the array returned by <span class="mono">/api/states</span>). The zone topic
-            will be the <span class="mono">entity_id</span>. Names use <span class="mono">attributes.friendly_name</span>
-            if present.
-          </p>
-        </div>
-        <div id="json-mapping">
-          <div class="row">
-            <label for="topicPath">Topic path</label>
-            <select id="topicPath"></select>
-          </div>
-          <div class="row">
-            <label for="valuePath">Value path</label>
-            <select id="valuePath"></select>
-          </div>
-          <div class="row">
-            <label for="namePath">Zone name path</label>
-            <select id="namePath"></select>
-          </div>
-        </div>
-        <p class="hint">
-          Alarm expects zone messages with
-          <span class="mono">msg.topic</span> and a boolean value in the
-          configured “With Input” property (default
-          <span class="mono">payload</span>).
-        </p>
-        <div class="buttons">
-          <button class="primary" id="btn-generate">Generate output</button>
-        </div>
-        <div id="gen-status" class="status warn" style="display: none"></div>
-      </section>
-    </div>
-
     <section class="card">
-      <h2>3) Zone JSON template (for Alarm node)</h2>
+      <h2>Zones</h2>
       <div class="buttons">
-        <button id="btn-copy-zone" disabled>Copy</button>
+        <button id="btn-zone-add">Add zone</button>
+        <button class="primary" id="btn-wizard-toggle">Import zones wizard</button>
       </div>
-      <textarea id="zone-output" spellcheck="false"
-        placeholder="Click “Generate output” to create a zone template, then edit it here if needed."></textarea>
-      <p class="hint">
-        This creates a single zone object using the mapped topic and optional
-        name. Paste it into the Zones field (legacy: one JSON object per line,
-        or formatted: JSON array).
+      <p id="zone-context" class="hint"></p>
+      <p class="hint" style="margin-top:4px;">
+        Connection: <span id="zone-connection" class="pill">Not connected</span>
       </p>
+      <p id="zone-autosave" class="hint" style="display:none;"></p>
+      <div style="overflow:auto; border:1px solid var(--border); border-radius:10px;">
+	        <table>
+	          <thead>
+	            <tr>
+	              <th>Topic / Pattern</th>
+	              <th style="width: 140px;">Match</th>
+	              <th style="width: 220px;">Name</th>
+	              <th style="width: 140px;">Kind</th>
+	              <th style="width: 90px;">Actions</th>
+	            </tr>
+	          </thead>
+          <tbody id="zone-table-body"></tbody>
+        </table>
+      </div>
+      <div id="zone-list-status" class="status warn" style="display:none; margin-top:10px;"></div>
     </section>
+
+    <div id="wizard" style="display:none;">
+      <div class="grid">
+        <section class="card" id="wizard-step1">
+          <h2>Step 1 — Paste data</h2>
+          <textarea id="input" spellcheck="false"
+            placeholder="Paste JSON here (message/HA export) or TSV (ETS export).&#10;&#10;Tip: this tool also accepts JS-style objects with unquoted keys and // comments."></textarea>
+          <div class="buttons">
+            <select id="sampleKind" style="max-width: 260px;">
+              <option value="">(optional) load a sample…</option>
+              <option value="knx">JSON message (KNX)</option>
+              <option value="ets">ETS export (TSV)</option>
+              <option value="ha">Home Assistant states (JSON)</option>
+              <option value="ha_registry">Home Assistant entity registry (JSON)</option>
+            </select>
+            <button id="btn-load-sample">Load sample</button>
+            <button id="btn-clear">Clear</button>
+            <button class="primary" id="btn-parse">Parse / detect</button>
+          </div>
+          <p class="hint">
+            Parse detects the format and unlocks the next step.
+          </p>
+          <div id="parse-status" class="status warn" style="display: none"></div>
+        </section>
+
+        <section class="card disabled" id="wizard-step2">
+          <h2>Step 2 — Map & generate</h2>
+          <div id="ets-hint" class="status ok" style="display: none"></div>
+          <div id="ha-hint" class="status ok" style="display: none"></div>
+          <div id="ets-mapping" style="display: none">
+            <div class="row">
+              <label for="etsAddressFilter">ETS address filter</label>
+              <input
+                type="text"
+                id="etsAddressFilter"
+                placeholder="Examples: 0/0/*  •  0/1/??  •  */7/*  (comma or newline separated)"
+              />
+            </div>
+            <div class="row">
+              <label for="etsNameFilter">ETS name filter</label>
+              <input
+                type="text"
+                id="etsNameFilter"
+                placeholder='Optional. Examples: Front door • *garage* (supports * and ?)'
+              />
+            </div>
+            <p class="hint">
+              Address patterns are matched against the ETS <span class="mono">Address</span> column (e.g.
+              <span class="mono">0/0/1</span>). Name filter is matched against <span class="mono">Description</span>,
+              fallback to <span class="mono">Group name</span>.
+            </p>
+          </div>
+          <div id="ha-mapping" style="display: none">
+            <div class="row">
+              <label for="haEntityFilter">HA entity filter</label>
+              <input
+                type="text"
+                id="haEntityFilter"
+                placeholder="Examples: binary_sensor.*door*  •  *_pir  •  switch.*  (comma or newline separated)"
+              />
+            </div>
+            <div class="row">
+              <label for="haNameFilter">HA name filter</label>
+              <input
+                type="text"
+                id="haNameFilter"
+                placeholder='Optional. Examples: Front door • *garage* (supports * and ?)'
+              />
+            </div>
+            <div class="row">
+              <label for="haDomains">HA domains</label>
+              <input
+                type="text"
+                id="haDomains"
+                placeholder="Optional. Example: binary_sensor,input_boolean,switch (default: boolean-like domains)"
+              />
+            </div>
+            <div class="row">
+              <label for="haIncludeDisabled">Include disabled</label>
+              <input type="checkbox" id="haIncludeDisabled" style="width:auto; margin-top:7px;" />
+            </div>
+            <p class="hint">
+              Paste Home Assistant JSON (e.g. the array returned by <span class="mono">/api/states</span>). The zone topic
+              will be the <span class="mono">entity_id</span>. Names use <span class="mono">attributes.friendly_name</span>
+              if present.
+            </p>
+          </div>
+          <div id="json-mapping">
+            <div class="row">
+              <label for="topicPath">Topic path</label>
+              <select id="topicPath"></select>
+            </div>
+            <div class="row">
+              <label for="valuePath">Value path</label>
+              <select id="valuePath"></select>
+            </div>
+            <div class="row">
+              <label for="namePath">Zone name path</label>
+              <select id="namePath"></select>
+            </div>
+          </div>
+          <p class="hint">
+            Alarm expects zone messages with
+            <span class="mono">msg.topic</span> and a boolean value in the
+            configured “With Input” property (default
+            <span class="mono">payload</span>).
+          </p>
+          <div class="buttons">
+            <label class="mono" style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" id="appendZones" checked />
+              Append to zone list
+            </label>
+            <button class="primary" id="btn-generate">Generate zones</button>
+          </div>
+          <div id="gen-status" class="status warn" style="display: none"></div>
+        </section>
+      </div>
+    </div>
   </main>
 
   <script>
-    const els = {
-      input: document.getElementById("input"),
-      btnParse: document.getElementById("btn-parse"),
-      btnLoadKnx: document.getElementById("btn-load-knx"),
-      btnLoadEts: document.getElementById("btn-load-ets"),
-      btnLoadHa: document.getElementById("btn-load-ha"),
-      btnLoadHaRegistry: document.getElementById("btn-load-ha-registry"),
-      btnClear: document.getElementById("btn-clear"),
+	    const els = {
+	      input: document.getElementById("input"),
+	      btnParse: document.getElementById("btn-parse"),
+	      sampleKind: document.getElementById("sampleKind"),
+	      btnLoadSample: document.getElementById("btn-load-sample"),
+	      btnClear: document.getElementById("btn-clear"),
       parseStatus: document.getElementById("parse-status"),
       genStatus: document.getElementById("gen-status"),
       topicPath: document.getElementById("topicPath"),
@@ -369,11 +476,19 @@
       haNameFilter: document.getElementById("haNameFilter"),
       haDomains: document.getElementById("haDomains"),
       haIncludeDisabled: document.getElementById("haIncludeDisabled"),
-      jsonMapping: document.getElementById("json-mapping"),
-      btnGenerate: document.getElementById("btn-generate"),
-      zoneOutput: document.getElementById("zone-output"),
-      btnCopyZone: document.getElementById("btn-copy-zone"),
-    };
+	      jsonMapping: document.getElementById("json-mapping"),
+	      appendZones: document.getElementById("appendZones"),
+	      btnGenerate: document.getElementById("btn-generate"),
+	      btnZoneAdd: document.getElementById("btn-zone-add"),
+	      btnWizardToggle: document.getElementById("btn-wizard-toggle"),
+	      zoneContext: document.getElementById("zone-context"),
+	      zoneAutosave: document.getElementById("zone-autosave"),
+	      zoneConnection: document.getElementById("zone-connection"),
+	      zoneTableBody: document.getElementById("zone-table-body"),
+	      zoneListStatus: document.getElementById("zone-list-status"),
+	      wizardStep2: document.getElementById("wizard-step2"),
+	      wizard: document.getElementById("wizard"),
+	    };
 
     const KNX_SAMPLE = `{
   topic: "0/1/2",
@@ -460,8 +575,448 @@
   "version": 1
 }`;
 
-    let parsedObject = null;
-    let lastGenerated = null;
+    const page = {
+      origin: window.location.origin,
+      params: new URLSearchParams(window.location.search),
+      get alarmNodeId() {
+        return String(this.params.get("id") || "").trim();
+      },
+      get alarmNodeName() {
+        return String(this.params.get("name") || "").trim();
+      },
+      get hasOpener() {
+        try {
+          return Boolean(window.opener && !window.opener.closed);
+        } catch (_err) {
+          return false;
+        }
+      },
+    };
+
+    const bc =
+      typeof BroadcastChannel === "function"
+        ? new BroadcastChannel("alarm-ultimate-zones")
+        : null;
+
+	    let parsedObject = null;
+	    let lastGenerated = null;
+	    let zonesModel = [];
+	    let autoSaveTimer = null;
+	    let lastAutoSavedJson = null;
+	    let zonesJsonText = "[]";
+	    let editorConnected = false;
+	    let isEditingZoneTable = false;
+
+    function setAutosaveHint(message) {
+      if (!els.zoneAutosave) return;
+      if (!message) {
+        els.zoneAutosave.style.display = "none";
+        els.zoneAutosave.textContent = "";
+        return;
+      }
+      els.zoneAutosave.style.display = "";
+      els.zoneAutosave.textContent = message;
+    }
+
+    function setConnectionState(state) {
+      if (!els.zoneConnection) return;
+      const s = String(state || "").trim();
+      if (s === "connected") {
+        els.zoneConnection.textContent = "Connected";
+        els.zoneConnection.className = "pill ok";
+        return;
+      }
+      if (s === "connecting") {
+        els.zoneConnection.textContent = "Connecting…";
+        els.zoneConnection.className = "pill warn";
+        return;
+      }
+      els.zoneConnection.textContent = "Not connected";
+      els.zoneConnection.className = "pill err";
+    }
+
+    function canTalkToEditor() {
+      return Boolean(page.alarmNodeId) && (page.hasOpener || Boolean(bc));
+    }
+
+    function isConnectedToEditor() {
+      return Boolean(page.alarmNodeId) && editorConnected === true;
+    }
+
+    function normalizeZonesJson(text) {
+      const raw = String(text || "").trim();
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.filter((z) => z && typeof z === "object");
+      if (parsed && typeof parsed === "object") return [parsed];
+      return [];
+    }
+
+    function sanitizeId(value) {
+      const id = String(value || "")
+        .trim()
+        .replace(/[^\w]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .toLowerCase();
+      return id || "";
+    }
+
+    function buildDefaultZone(index) {
+      return {
+        id: `zone_${index + 1}`,
+        name: `Zone ${index + 1}`,
+        topic: "",
+        type: "perimeter",
+        entry: false,
+        bypassable: true,
+        chime: false,
+      };
+    }
+
+    function zoneKind(zone) {
+      if (zone && zone.entry === true) return "entry";
+      const type = zone && typeof zone.type === "string" ? zone.type : "perimeter";
+      if (["fire", "tamper", "24h"].includes(type)) return type;
+      return "perimeter";
+    }
+
+    function applyZoneKind(zone, kind) {
+      const k = String(kind || "").trim().toLowerCase();
+      if (k === "entry") {
+        zone.type = "perimeter";
+        zone.entry = true;
+        return;
+      }
+      zone.type = ["fire", "tamper", "24h"].includes(k) ? k : "perimeter";
+      zone.entry = false;
+    }
+
+	    function cleanZoneForJson(zone, index) {
+	      const z = zone && typeof zone === "object" ? { ...zone } : {};
+      const name = String(z.name || "").trim();
+
+      // Preserve explicit ids coming from existing Alarm config.
+      const explicitId = typeof z.id === "string" ? z.id.trim() : "";
+
+      if (typeof z.topic === "string") z.topic = z.topic.trim();
+      if (typeof z.topicPattern === "string") z.topicPattern = z.topicPattern.trim();
+
+      if (z.topicPattern && !z.topicPattern.trim()) delete z.topicPattern;
+      if (z.topic && !z.topic.trim()) delete z.topic;
+
+      if (!z.topic && !z.topicPattern) {
+        z.topic = "";
+      }
+
+      if (explicitId) {
+        z.id = explicitId;
+      } else {
+        const seed = sanitizeId(z.topic || z.topicPattern || name || `zone_${index + 1}`);
+        z.id = seed || `zone_${index + 1}`;
+      }
+
+      z.name = name || z.id;
+
+      const type = typeof z.type === "string" ? z.type.trim().toLowerCase() : "perimeter";
+      z.type = type || "perimeter";
+
+      z.entry = z.entry === true;
+      z.bypassable = z.bypassable !== false;
+      z.chime = z.chime === true;
+
+	      // Drop UI-only fields if any.
+	      delete z.__errors;
+	      delete z.__idExplicit;
+	      delete z.__idSource;
+	      return z;
+	    }
+
+	    function syncJsonFromModel() {
+	      const payload = zonesModel
+	        .map((z, idx) => {
+	          const hadId = Boolean(z && typeof z === "object" && z.__idExplicit === true);
+	          const cleaned = cleanZoneForJson(z, idx);
+	          cleaned.__idSource = hadId ? "explicit" : "generated";
+	          return cleaned;
+	        })
+	        .filter((z) => z && typeof z === "object");
+
+      // Ensure generated ids are unique (keep explicit duplicates as validation errors).
+      const used = new Set();
+      for (const z of payload) {
+        const base = String(z.id || "").trim();
+        const key = base.toLowerCase();
+        if (!base) continue;
+        if (!used.has(key)) {
+          used.add(key);
+          continue;
+        }
+        if (z.__idSource === "explicit") {
+          continue;
+        }
+        let suffix = 2;
+        while (used.has(`${key}_${suffix}`)) suffix += 1;
+        z.id = `${base}_${suffix}`;
+        used.add(`${key}_${suffix}`);
+      }
+
+	      payload.forEach((z) => {
+	        delete z.__idSource;
+	      });
+
+	      zonesJsonText = payload.length === 1 ? JSON.stringify(payload[0], null, 2) : JSON.stringify(payload, null, 2);
+	      return payload;
+	    }
+
+    function scheduleAutosave(errors) {
+      if (isEditingZoneTable) {
+        if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
+        autoSaveTimer = null;
+        setAutosaveHint("Autosave paused while editing zones.");
+        return;
+      }
+      if (!page.alarmNodeId) {
+        setAutosaveHint("");
+        setConnectionState("disconnected");
+        return;
+      }
+      if (!canTalkToEditor()) {
+        setAutosaveHint("Autosave unavailable: open this page from the Alarm node editor.");
+        setConnectionState("disconnected");
+        return;
+      }
+      if (!isConnectedToEditor()) {
+        setConnectionState("connecting");
+      }
+      if (errors && errors.length > 0) {
+        setAutosaveHint("Autosave paused: fix zone errors to save.");
+        return;
+      }
+      if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
+      autoSaveTimer = window.setTimeout(() => {
+        autoSaveTimer = null;
+        sendZonesToEditor(true);
+      }, 250);
+    }
+
+	    function validateModel() {
+	      const errors = [];
+	      zonesModel.forEach((zone, idx) => {
+	        zone.__errors = [];
+        const topic = String(zone.topic || "").trim();
+        const topicPattern = String(zone.topicPattern || "").trim();
+
+        if (!topic && !topicPattern) zone.__errors.push("Missing topic/pattern.");
+        if (topic && topicPattern) zone.__errors.push("Choose topic OR pattern (not both).");
+      });
+
+	      // Detect duplicates for explicit ids only.
+	      const seenExplicit = new Map();
+	      zonesModel.forEach((z, idx) => {
+	        if (!(z && typeof z === "object" && z.__idExplicit === true)) return;
+	        const id = typeof z.id === "string" ? z.id.trim() : "";
+	        if (!id) return;
+	        const key = id.toLowerCase();
+	        if (!seenExplicit.has(key)) seenExplicit.set(key, []);
+	        seenExplicit.get(key).push(idx);
+	      });
+      for (const [key, indexes] of seenExplicit.entries()) {
+        if (indexes.length <= 1) continue;
+        indexes.forEach((idx) => {
+          zonesModel[idx].__errors.push(`Duplicate id (from JSON): ${key}`);
+        });
+      }
+
+      zonesModel.forEach((z) => {
+        if (z.__errors && z.__errors.length) errors.push(...z.__errors);
+      });
+      return errors;
+    }
+
+    function refreshZonesMeta() {
+      const errors = validateModel();
+      syncJsonFromModel();
+      if (errors.length === 0) {
+        hideStatus(els.zoneListStatus);
+      } else {
+        showStatus(
+          els.zoneListStatus,
+          "warn",
+          `Zones: ${errors[0]}${errors.length > 1 ? ` (+${errors.length - 1} more)` : ""}`,
+        );
+      }
+      scheduleAutosave(errors);
+    }
+
+	    function renderZones() {
+	      els.zoneTableBody.innerHTML = "";
+
+	      zonesModel.forEach((zone, index) => {
+	        const tr = document.createElement("tr");
+	        tr.dataset.index = String(index);
+
+	        const tdValue = document.createElement("td");
+	        const valueInput = document.createElement("input");
+	        valueInput.type = "text";
+	        valueInput.value = String(zone.topicPattern || zone.topic || "");
+	        valueInput.placeholder = "sensor/frontdoor  or  ^sensor/.*_door$";
+	        valueInput.dataset.field = "topicValue";
+	        tdValue.appendChild(valueInput);
+
+	        const tdMatch = document.createElement("td");
+	        const matchSelect = document.createElement("select");
+	        matchSelect.dataset.field = "match";
+	        const optTopic = document.createElement("option");
+        optTopic.value = "topic";
+        optTopic.textContent = "Topic";
+        const optPattern = document.createElement("option");
+        optPattern.value = "topicPattern";
+        optPattern.textContent = "Regex";
+	        matchSelect.appendChild(optTopic);
+	        matchSelect.appendChild(optPattern);
+	        matchSelect.value = zone.topicPattern ? "topicPattern" : "topic";
+	        tdMatch.appendChild(matchSelect);
+
+	        const tdName = document.createElement("td");
+	        const nameInput = document.createElement("input");
+	        nameInput.type = "text";
+        nameInput.value = String(zone.name || "");
+        nameInput.placeholder = "Front door";
+        nameInput.dataset.field = "name";
+        tdName.appendChild(nameInput);
+
+        const tdKind = document.createElement("td");
+        const kindSelect = document.createElement("select");
+        kindSelect.dataset.field = "kind";
+        [
+          ["perimeter", "Perimeter"],
+          ["entry", "Entry"],
+          ["24h", "24h"],
+          ["tamper", "Tamper"],
+          ["fire", "Fire"],
+        ].forEach(([value, label]) => {
+          const opt = document.createElement("option");
+          opt.value = value;
+          opt.textContent = label;
+          kindSelect.appendChild(opt);
+        });
+        kindSelect.value = zoneKind(zone);
+        tdKind.appendChild(kindSelect);
+
+        const tdActions = document.createElement("td");
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.textContent = "Delete";
+        delBtn.className = "btn-danger";
+	        delBtn.dataset.action = "delete";
+	        tdActions.appendChild(delBtn);
+
+	        tr.appendChild(tdValue);
+	        tr.appendChild(tdMatch);
+	        tr.appendChild(tdName);
+	        tr.appendChild(tdKind);
+	        tr.appendChild(tdActions);
+
+	        els.zoneTableBody.appendChild(tr);
+	      });
+
+      refreshZonesMeta();
+    }
+
+	    function setZonesFromJson(text) {
+	      const zones = normalizeZonesJson(text);
+	      zonesModel = zones.map((z, idx) => {
+	        const hasExplicitId = Boolean(z && typeof z === "object" && typeof z.id === "string" && z.id.trim().length > 0);
+	        const cleaned = cleanZoneForJson(z, idx);
+	        cleaned.__idExplicit = hasExplicitId;
+	        return cleaned;
+	      });
+	      renderZones();
+	    }
+
+	    function addZone(zone) {
+	      const next = zone && typeof zone === "object" ? cleanZoneForJson(zone, zonesModel.length) : buildDefaultZone(zonesModel.length);
+	      // Let the id be generated automatically (or preserved if present).
+	      if (next && typeof next === "object" && typeof next.id === "string") {
+	        if (next.id.startsWith("zone_")) next.id = "";
+	      }
+	      if (next && typeof next === "object") next.__idExplicit = false;
+	      zonesModel.push(next);
+	      renderZones();
+	      // Focus new row topic field.
+      try {
+        const rows = els.zoneTableBody.querySelectorAll("tr");
+        const last = rows[rows.length - 1];
+        const input = last ? last.querySelector('input[data-field="topicValue"]') : null;
+        if (input) input.focus();
+      } catch (_err) {}
+    }
+
+	    function sendZonesToEditor(quiet) {
+      if (!page.alarmNodeId) return;
+      if (!canTalkToEditor()) {
+        setAutosaveHint("Autosave unavailable: open this page from the Alarm node editor.");
+        setConnectionState("disconnected");
+        return;
+      }
+      if (!isConnectedToEditor()) {
+        setConnectionState("connecting");
+      }
+
+	      const payload = syncJsonFromModel();
+	      const json = zonesJsonText;
+	      if (lastAutoSavedJson === json) {
+	        setAutosaveHint(`Autosave: saved ${payload.length} zones.`);
+	        return;
+	      }
+      try {
+        if (page.hasOpener) {
+          window.opener.postMessage(
+            { type: "alarm-ultimate-zones", nodeId: page.alarmNodeId, zonesJson: json, zones: payload },
+            page.origin,
+          );
+        }
+      } catch (_err) {
+        // ignore
+      }
+      try {
+        if (bc) {
+          bc.postMessage({ type: "alarm-ultimate-zones", nodeId: page.alarmNodeId, zonesJson: json, zones: payload });
+        }
+      } catch (_err) {
+        // ignore
+      }
+      lastAutoSavedJson = json;
+      setAutosaveHint(`Autosave: saved ${payload.length} zones.`);
+      if (!quiet) {
+        showStatus(els.genStatus, "ok", `Saved ${payload.length} zones to Alarm editor.`);
+      }
+    }
+
+    function requestZonesFromEditor() {
+      if (!page.alarmNodeId) return;
+      if (!canTalkToEditor()) {
+        setAutosaveHint("Autosave unavailable: open this page from the Alarm node editor.");
+        setConnectionState("disconnected");
+        return;
+      }
+      setConnectionState("connecting");
+      try {
+        if (page.hasOpener) {
+          window.opener.postMessage({ type: "alarm-ultimate-request-zones", nodeId: page.alarmNodeId }, page.origin);
+        }
+      } catch (_err) {
+        // ignore
+      }
+      try {
+        if (bc) {
+          bc.postMessage({ type: "alarm-ultimate-request-zones", nodeId: page.alarmNodeId });
+        }
+      } catch (_err) {
+        // ignore
+      }
+      setAutosaveHint("Autosave: loading zones from Alarm...");
+    }
 
     function showStatus(el, kind, message) {
       el.style.display = "";
@@ -874,11 +1429,10 @@
       hideStatus(els.genStatus);
       hideStatus(els.etsHint);
       hideStatus(els.haHint);
+      if (els.wizardStep2) els.wizardStep2.classList.add("disabled");
       els.jsonMapping.style.display = "";
       els.etsMapping.style.display = "none";
       els.haMapping.style.display = "none";
-      els.zoneOutput.value = "";
-      els.btnCopyZone.disabled = true;
       lastGenerated = null;
 
       const result = parseInput(els.input.value);
@@ -891,6 +1445,8 @@
         );
         return;
       }
+
+      if (els.wizardStep2) els.wizardStep2.classList.remove("disabled");
 
       if (
         result.value &&
@@ -988,6 +1544,7 @@
         showStatus(els.genStatus, "err", "Parse a valid message first.");
         return;
       }
+      const append = els.appendZones ? els.appendZones.checked === true : true;
 
       if (
         parsedObject &&
@@ -1041,15 +1598,31 @@
           };
         });
 
-        els.zoneOutput.value = JSON.stringify(zones, null, 2);
-        els.btnCopyZone.disabled = zones.length === 0;
+	        if (append) {
+	          const start = zonesModel.length;
+	          zonesModel = zonesModel.concat(
+	            zones.map((z, idx) => {
+	              const cleaned = cleanZoneForJson(z, start + idx);
+	              cleaned.__idExplicit = false;
+	              return cleaned;
+	            }),
+	          );
+	          renderZones();
+	        } else {
+	          zonesModel = zones.map((z, idx) => {
+	            const cleaned = cleanZoneForJson(z, idx);
+	            cleaned.__idExplicit = false;
+	            return cleaned;
+	          });
+	          renderZones();
+	        }
         const skippedGroups = allRows.length - leafRows.length;
         const skippedNonBoolean = leafRows.length - booleanRows.length;
         const skippedByFilters = booleanRows.length - filteredRows.length;
         showStatus(
           els.genStatus,
           zones.length ? "ok" : "warn",
-          `Generated ${zones.length} zones from ETS (skipped ${skippedGroups} group rows, ${skippedNonBoolean} non-boolean datapoints, ${skippedByFilters} filtered out).`,
+          `${append ? "Appended" : "Replaced with"} ${zones.length} zones from ETS (skipped ${skippedGroups} group rows, ${skippedNonBoolean} non-boolean datapoints, ${skippedByFilters} filtered out).`,
         );
         return;
       }
@@ -1089,8 +1662,24 @@
           };
         });
 
-        els.zoneOutput.value = JSON.stringify(zones, null, 2);
-        els.btnCopyZone.disabled = zones.length === 0;
+	        if (append) {
+	          const start = zonesModel.length;
+	          zonesModel = zonesModel.concat(
+	            zones.map((z, idx) => {
+	              const cleaned = cleanZoneForJson(z, start + idx);
+	              cleaned.__idExplicit = false;
+	              return cleaned;
+	            }),
+	          );
+	          renderZones();
+	        } else {
+	          zonesModel = zones.map((z, idx) => {
+	            const cleaned = cleanZoneForJson(z, idx);
+	            cleaned.__idExplicit = false;
+	            return cleaned;
+	          });
+	          renderZones();
+	        }
         const skippedNonEntity = states.length - eligible.length;
         const skippedDomain = eligible.length - domainFiltered.length;
         const skippedByFilters = domainFiltered.length - filtered.length;
@@ -1139,8 +1728,24 @@
           };
         });
 
-        els.zoneOutput.value = JSON.stringify(zones, null, 2);
-        els.btnCopyZone.disabled = zones.length === 0;
+	        if (append) {
+	          const start = zonesModel.length;
+	          zonesModel = zonesModel.concat(
+	            zones.map((z, idx) => {
+	              const cleaned = cleanZoneForJson(z, start + idx);
+	              cleaned.__idExplicit = false;
+	              return cleaned;
+	            }),
+	          );
+	          renderZones();
+	        } else {
+	          zonesModel = zones.map((z, idx) => {
+	            const cleaned = cleanZoneForJson(z, idx);
+	            cleaned.__idExplicit = false;
+	            return cleaned;
+	          });
+	          renderZones();
+	        }
         const skippedNonEntity = entities.length - eligible.length;
         const skippedDisabled = eligible.length - enabledOnly.length;
         const skippedDomain = enabledOnly.length - domainFiltered.length;
@@ -1175,16 +1780,21 @@
         topic: String(topicValue),
         payload: valueValue,
       };
-      const zone = buildZoneTemplate(normalized, nameValue);
-      els.zoneOutput.value = JSON.stringify(zone, null, 2);
-
-      els.btnCopyZone.disabled = false;
+	      const zone = buildZoneTemplate(normalized, nameValue);
+	      if (append) {
+	        addZone(zone);
+	      } else {
+	        const cleaned = cleanZoneForJson(zone, 0);
+	        cleaned.__idExplicit = false;
+	        zonesModel = [cleaned];
+	        renderZones();
+	      }
 
       lastGenerated = { normalized, zone };
       showStatus(
         els.genStatus,
         "ok",
-        `Generated using topic="${toOneLine(topicValue)}" and value="${valuePath}".`,
+        `${append ? "Appended" : "Replaced with"} 1 zone using topic="${toOneLine(topicValue)}" and value="${valuePath}".`,
       );
     }
 
@@ -1198,6 +1808,7 @@
       hideStatus(els.genStatus);
       hideStatus(els.etsHint);
       hideStatus(els.haHint);
+      if (els.wizardStep2) els.wizardStep2.classList.add("disabled");
       els.jsonMapping.style.display = "";
       els.etsMapping.style.display = "none";
       if (els.etsAddressFilter) els.etsAddressFilter.value = "";
@@ -1207,8 +1818,6 @@
       if (els.haNameFilter) els.haNameFilter.value = "";
       if (els.haDomains) els.haDomains.value = "";
       if (els.haIncludeDisabled) els.haIncludeDisabled.checked = false;
-      els.zoneOutput.value = "";
-      els.btnCopyZone.disabled = true;
       els.topicPath.innerHTML = "";
       els.valuePath.innerHTML = "";
       els.namePath.innerHTML = "";
@@ -1216,33 +1825,193 @@
       els.valuePath.disabled = false;
       els.namePath.disabled = false;
     });
-    els.btnLoadKnx.addEventListener("click", () => {
-      els.input.value = KNX_SAMPLE;
+
+    function loadSample(kind) {
+      const k = String(kind || "").trim();
+      if (k === "knx") els.input.value = KNX_SAMPLE;
+      else if (k === "ets") els.input.value = ETS_SAMPLE;
+      else if (k === "ha") els.input.value = HA_SAMPLE;
+      else if (k === "ha_registry") els.input.value = HA_REGISTRY_SAMPLE;
+      else return;
       parseAndPopulate();
-    });
-    els.btnLoadEts.addEventListener("click", () => {
-      els.input.value = ETS_SAMPLE;
-      parseAndPopulate();
-    });
-    els.btnLoadHa.addEventListener("click", () => {
-      els.input.value = HA_SAMPLE;
-      parseAndPopulate();
-    });
-    els.btnLoadHaRegistry.addEventListener("click", () => {
-      els.input.value = HA_REGISTRY_SAMPLE;
-      parseAndPopulate();
+    }
+
+    els.btnLoadSample.addEventListener("click", () => loadSample(els.sampleKind ? els.sampleKind.value : ""));
+
+	    els.btnZoneAdd.addEventListener("click", () => addZone(null));
+
+    function toggleWizard(forceOpen) {
+      if (!els.wizard) return;
+      const isOpen = els.wizard.style.display !== "none";
+      const nextOpen = forceOpen === true ? true : forceOpen === false ? false : !isOpen;
+      els.wizard.style.display = nextOpen ? "" : "none";
+      if (els.btnWizardToggle) {
+        els.btnWizardToggle.textContent = nextOpen ? "Hide import wizard" : "Import zones wizard";
+      }
+      if (nextOpen) {
+        setTimeout(() => {
+          try {
+            els.wizard.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (els.input) els.input.focus();
+          } catch (_err) {
+            // ignore
+          }
+        }, 0);
+      }
+    }
+
+    if (els.btnWizardToggle) {
+      els.btnWizardToggle.addEventListener("click", () => toggleWizard());
+    }
+
+	    // Use input for text fields, change for selects.
+	    els.zoneTableBody.addEventListener("input", (evt) => {
+      const target = evt.target;
+      if (!target) return;
+      const tr = target.closest("tr");
+      if (!tr) return;
+      const index = Number(tr.dataset.index);
+      if (!Number.isInteger(index) || index < 0 || index >= zonesModel.length) return;
+      const zone = zonesModel[index];
+
+      const field = target.dataset.field;
+      if (field === "name") {
+        zone.name = String(target.value || "");
+      } else if (field === "topicValue") {
+        const modeEl = tr.querySelector('select[data-field="match"]');
+        const mode = modeEl ? String(modeEl.value || "topic") : "topic";
+        if (mode === "topicPattern") {
+          zone.topicPattern = String(target.value || "");
+          delete zone.topic;
+        } else {
+          zone.topic = String(target.value || "");
+          delete zone.topicPattern;
+        }
+      } else if (field === "kind") {
+        applyZoneKind(zone, target.value);
+      }
+
+      refreshZonesMeta();
     });
 
-    els.btnCopyZone.addEventListener("click", async () => {
-      const text = String(els.zoneOutput.value || "").trim();
-      if (!text) return;
-      const ok = await copyToClipboard(text);
-      showStatus(
-        els.genStatus,
-        ok ? "ok" : "warn",
-        ok ? "Zone JSON copied." : "Copy failed.",
-      );
+    els.zoneTableBody.addEventListener("change", (evt) => {
+      const target = evt.target;
+      if (!target) return;
+      const tr = target.closest("tr");
+      if (!tr) return;
+      const index = Number(tr.dataset.index);
+      if (!Number.isInteger(index) || index < 0 || index >= zonesModel.length) return;
+      const zone = zonesModel[index];
+      const field = target.dataset.field;
+
+      if (field === "match") {
+        const mode = String(target.value || "topic");
+        const valueEl = tr.querySelector('input[data-field="topicValue"]');
+        const rawValue = valueEl ? String(valueEl.value || "") : "";
+        if (mode === "topicPattern") {
+          zone.topicPattern = rawValue;
+          delete zone.topic;
+        } else {
+          zone.topic = rawValue;
+          delete zone.topicPattern;
+        }
+        refreshZonesMeta();
+      }
+
+      if (field === "kind") {
+        applyZoneKind(zone, target.value);
+        refreshZonesMeta();
+      }
     });
+
+    // Track editing state to avoid autosave while typing.
+    els.zoneTableBody.addEventListener("focusin", () => {
+      isEditingZoneTable = true;
+      if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
+      autoSaveTimer = null;
+      setAutosaveHint("Autosave paused while editing zones.");
+    });
+
+    els.zoneTableBody.addEventListener("focusout", () => {
+      setTimeout(() => {
+        const active = document.activeElement;
+        const stillInside =
+          active && els.zoneTableBody && els.zoneTableBody.contains(active);
+        if (stillInside) return;
+        isEditingZoneTable = false;
+        refreshZonesMeta();
+      }, 0);
+    });
+
+    els.zoneTableBody.addEventListener("click", (evt) => {
+      const target = evt.target;
+      if (!target) return;
+      if (target.dataset.action !== "delete") return;
+      const tr = target.closest("tr");
+      if (!tr) return;
+      const index = Number(tr.dataset.index);
+      if (!Number.isInteger(index) || index < 0 || index >= zonesModel.length) return;
+      zonesModel.splice(index, 1);
+      renderZones();
+    });
+
+    function renderZoneContext(nodeName) {
+      const name = String(nodeName || "").trim() || page.alarmNodeName;
+      if (page.alarmNodeId) {
+        const label = name ? `${name}` : "(unnamed Alarm)";
+        els.zoneContext.innerHTML = `Target Alarm: <span class="pill">${label}</span> • synced automatically (click Done in Node-RED editor to apply)`;
+        return;
+      }
+      els.zoneContext.textContent =
+        "Tip: open this page from the Alarm node editor to load/save zones automatically.";
+    }
+    renderZoneContext();
+
+    if (canTalkToEditor()) {
+      requestZonesFromEditor();
+    }
+
+		    function handleEditorZonesMessage(data) {
+		      if (!data || data.type !== "alarm-ultimate-zones") return;
+		      if (page.alarmNodeId && data.nodeId !== page.alarmNodeId) return;
+		      if (typeof data.zonesJson !== "string") return;
+		      try {
+		        editorConnected = true;
+		        setConnectionState("connected");
+		        if (isEditingZoneTable) {
+		          // Avoid clobbering the user's focus/typing due to background sync.
+		          return;
+		        }
+		        setZonesFromJson(data.zonesJson);
+		        // Align lastAutosaved with the normalized JSON to avoid immediate re-save.
+		        lastAutoSavedJson = zonesJsonText;
+		        if (typeof data.nodeName === "string") {
+		          renderZoneContext(data.nodeName);
+	        }
+	        showStatus(els.genStatus, "ok", `Loaded ${zonesModel.length} zones from Alarm editor.`);
+	        setAutosaveHint(`Autosave: loaded ${zonesModel.length} zones.`);
+      } catch (err) {
+        showStatus(els.genStatus, "err", `Load failed: ${String(err && err.message ? err.message : err)}`);
+        setAutosaveHint("Autosave: load failed.");
+      }
+    }
+
+    window.addEventListener("message", (evt) => {
+      if (evt.origin !== page.origin) return;
+      const data = evt.data && typeof evt.data === "object" ? evt.data : null;
+      handleEditorZonesMessage(data);
+    });
+
+    if (bc) {
+      bc.addEventListener("message", (evt) => {
+        const data = evt && evt.data && typeof evt.data === "object" ? evt.data : null;
+        handleEditorZonesMessage(data);
+      });
+    }
+
+    // Initial render.
+    renderZones();
+    setConnectionState(canTalkToEditor() ? "connecting" : "disconnected");
   </script>
 </body>
 

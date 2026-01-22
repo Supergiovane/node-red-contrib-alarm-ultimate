@@ -88,7 +88,8 @@ module.exports = function (RED) {
       try {
         const body = req.body && typeof req.body === 'object' ? req.body : {};
         api.command(body);
-        res.json({ ok: true });
+        const snapshot = api.getState && typeof api.getState === 'function' ? api.getState() : null;
+        res.json({ ok: true, result: snapshot });
       } catch (err) {
         res.status(500).json({ ok: false, error: err.message });
       }
@@ -255,6 +256,8 @@ module.exports = function (RED) {
       'bypassed',
       'unbypassed',
       'chime',
+      'zone_open',
+      'zone_close',
       'zone_ignored_exit',
       'zone_bypassed_trigger',
       'zone_restore',
@@ -549,6 +552,22 @@ module.exports = function (RED) {
       let fill = 'grey';
       let shape = 'ring';
       let text = 'DISARMED';
+
+      // When idle/disarmed, show recent arming errors to make the reason visible in the editor status.
+      if (!state.alarmActive && !state.entry && !state.arming && state.mode === 'disarmed') {
+        const last = Array.isArray(state.log) && state.log.length ? state.log[state.log.length - 1] : null;
+        const evt = last && typeof last.event === 'string' ? last.event : '';
+        if (evt === 'arm_blocked') {
+          const violations = Array.isArray(last.violations) ? last.violations.length : 0;
+          fill = 'yellow';
+          shape = 'ring';
+          text = `ARM BLOCKED${violations ? ` (${violations})` : ''}`;
+        } else if (evt === 'denied' && last && String(last.action || '') === 'arm') {
+          fill = 'red';
+          shape = 'ring';
+          text = 'ARM DENIED';
+        }
+      }
 
       if (state.alarmActive) {
         fill = 'red';
@@ -1107,7 +1126,7 @@ module.exports = function (RED) {
       }
       const until = now() + delay;
       state.entry = { zoneId: zone.id, until };
-      emitEvent('entry_delay', { zone: { id: zone.id, name: zone.name }, seconds: remainingSeconds(until) }, baseMsg);
+      emitEvent('entry_delay', { zone: buildZoneSummary(zone), seconds: remainingSeconds(until) }, baseMsg);
       startStatusInterval();
       clearEntryTimer();
       entryTimer = timerBag.setTimeout(() => {
@@ -1177,7 +1196,7 @@ module.exports = function (RED) {
       }
       state.bypass[id] = Boolean(enabled);
       persist();
-      emitEvent(enabled ? 'bypassed' : 'unbypassed', { zone: { id: zone.id, name: zone.name } }, baseMsg);
+      emitEvent(enabled ? 'bypassed' : 'unbypassed', { zone: buildZoneSummary(zone) }, baseMsg);
     }
 
     function handleControlMessage(msg) {
@@ -1278,7 +1297,7 @@ module.exports = function (RED) {
       if (!zone) {
         return;
       }
-      const resolved = helpers.resolveInput(msg, payloadPropName, config.translatorConfig, RED);
+      const resolved = helpers.resolveInput(msg, payloadPropName, null, RED);
       const value = resolved.boolean;
       if (value === undefined) {
         return;
@@ -1290,8 +1309,20 @@ module.exports = function (RED) {
       zoneMeta.lastChangeAt = now();
       state.zoneState[zone.id] = zoneMeta;
 
+      if (changed) {
+        emitEvent(
+          value === true ? 'zone_open' : 'zone_close',
+          {
+            zone: buildZoneSummary(zone),
+            open: value === true,
+            bypassed: state.bypass[zone.id] === true,
+          },
+          msg
+        );
+      }
+
       if (changed && emitRestoreEvents && value === false) {
-        emitEvent('zone_restore', { zone: { id: zone.id, name: zone.name, type: zone.type } }, msg);
+        emitEvent('zone_restore', { zone: buildZoneSummary(zone) }, msg);
       }
 
       if (changed) {
@@ -1317,7 +1348,7 @@ module.exports = function (RED) {
       }
 
       if (state.bypass[zone.id] === true && zone.bypassable !== false) {
-        emitEvent('zone_bypassed_trigger', { zone: { id: zone.id, name: zone.name, type: zone.type } }, msg);
+        emitEvent('zone_bypassed_trigger', { zone: buildZoneSummary(zone) }, msg);
         return;
       }
 
@@ -1335,13 +1366,13 @@ module.exports = function (RED) {
       }
 
       if (state.arming && !zone.instantDuringExit) {
-        emitEvent('zone_ignored_exit', { zone: { id: zone.id, name: zone.name, type: zone.type } }, msg);
+        emitEvent('zone_ignored_exit', { zone: buildZoneSummary(zone) }, msg);
         return;
       }
 
       if (state.mode === 'disarmed') {
         if (zone.chime) {
-          emitEvent('chime', { zone: { id: zone.id, name: zone.name, type: zone.type } }, msg);
+          emitEvent('chime', { zone: buildZoneSummary(zone) }, msg);
         }
         return;
       }

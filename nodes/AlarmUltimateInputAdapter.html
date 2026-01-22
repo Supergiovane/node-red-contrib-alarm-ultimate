@@ -1,0 +1,304 @@
+<script type="text/javascript">
+  RED.nodes.registerType("AlarmUltimateInputAdapter", {
+    category: "Alarm Ultimate",
+    color: "#A8DADC",
+    defaults: {
+      name: { value: "" },
+      presetSource: { value: "builtin" },
+      presetId: { value: "passthrough" },
+      userCode: { value: "return msg;", required: false },
+    },
+    inputs: 1,
+    outputs: 1,
+    icon: "alarm-ultimate.svg",
+    label: function () {
+      return this.name || "Input Adapter";
+    },
+    paletteLabel: function () {
+      return "Input Adapter";
+    },
+    oneditprepare: function () {
+      const self = this;
+      const els = {
+        presetSource: $("#node-input-presetSource"),
+        presetId: $("#node-input-presetId"),
+        builtinPreset: $("#node-input-builtinPreset"),
+        builtinInfo: $("#node-input-builtinInfo"),
+        userCode: $("#node-input-userCode"),
+      };
+
+      let builtinPresets = [];
+      let editor = null;
+      let userCodeCache = String(self.userCode || "return msg;");
+      let builtinIdCache = String(self.presetId || "passthrough");
+
+      function refreshBuiltinSelect() {
+        els.builtinPreset.empty();
+        builtinPresets.forEach((p) => {
+          els.builtinPreset.append(
+            $("<option></option>").attr("value", p.id).text(p.name),
+          );
+        });
+      }
+
+      function builtinExists(id) {
+        const target = String(id || "").trim();
+        if (!target) return false;
+        return builtinPresets.some((p) => p && p.id === target);
+      }
+
+      function setMode(mode) {
+        const m = mode === "user" ? "user" : "builtin";
+        els.presetSource.val(m);
+        $("#builtin-row").toggle(m === "builtin");
+      }
+
+      function setBuiltinInfo(presetId) {
+        const p = builtinPresets.find((x) => x.id === presetId);
+        if (!p) {
+          els.builtinInfo.text("");
+          return;
+        }
+        const desc = p.description ? ` — ${p.description}` : "";
+        els.builtinInfo.text(`${p.name}${desc}`);
+      }
+
+      function getSelectedBuiltinPreset() {
+        const id = String(els.builtinPreset.val() || "").trim();
+        return builtinPresets.find((p) => p && p.id === id) || null;
+      }
+
+      function applyBuiltinSelection(desiredId) {
+        let id = String(desiredId || "").trim();
+        if (!builtinExists(id)) {
+          id = builtinExists(builtinIdCache) ? builtinIdCache : "passthrough";
+        }
+        if (!builtinExists(id) && builtinPresets.length > 0) {
+          id = String(builtinPresets[0].id || "").trim();
+        }
+        if (builtinExists(id)) {
+          els.builtinPreset.val(id);
+          builtinIdCache = id;
+          return id;
+        }
+        return "";
+      }
+
+      function updateEditor() {
+        const src = els.presetSource.val() === "user" ? "user" : "builtin";
+        if (src === "builtin") {
+          const preset = getSelectedBuiltinPreset();
+          editor.setReadOnly(true);
+          editor.setValue(String((preset && preset.code) || ""), -1);
+          return;
+        }
+        editor.setReadOnly(false);
+        editor.setValue(String(userCodeCache || "return msg;"), -1);
+      }
+
+      editor = RED.editor.createEditor({
+        id: "node-input-code-editor",
+        mode: "ace/mode/javascript",
+        value: userCodeCache,
+      });
+      self._inputAdapterEditor = editor;
+
+      function loadBuiltins() {
+        const httpAdminRoot =
+          (RED.settings && RED.settings.httpAdminRoot) || "/";
+        const root = httpAdminRoot.endsWith("/")
+          ? httpAdminRoot
+          : `${httpAdminRoot}/`;
+        $.getJSON(`${root}alarm-ultimate/input-adapter/presets`)
+          .done((data) => {
+            builtinPresets = Array.isArray(data && data.presets)
+              ? data.presets
+              : [];
+            refreshBuiltinSelect();
+            const configured = String(els.presetId.val() || "").trim();
+            const selected = applyBuiltinSelection(configured || builtinIdCache);
+            if (els.presetSource.val() !== "user" && selected) {
+              els.presetId.val(selected);
+              setBuiltinInfo(selected);
+            }
+            updateEditor();
+          })
+          .fail(() => {
+            builtinPresets = [
+              {
+                id: "passthrough",
+                name: "Passthrough",
+                description: "",
+                code: "return msg;",
+              },
+            ];
+            refreshBuiltinSelect();
+            const configured = String(els.presetId.val() || "").trim();
+            const selected = applyBuiltinSelection(configured || builtinIdCache);
+            if (selected) setBuiltinInfo(selected);
+            updateEditor();
+          });
+      }
+
+      // Initialize.
+      loadBuiltins();
+      setMode(els.presetSource.val());
+
+      // Seed selects from stored presetId.
+      const initialSource =
+        els.presetSource.val() === "user" ? "user" : "builtin";
+      const initialId = String(els.presetId.val() || "");
+      if (initialSource === "builtin") {
+        builtinIdCache = String(initialId || builtinIdCache || "passthrough");
+      }
+      if (!els.userCode.val()) {
+        els.userCode.val(userCodeCache);
+      } else {
+        userCodeCache = String(els.userCode.val() || "return msg;");
+      }
+      updateEditor();
+
+      // Events.
+      els.presetSource.on("change", () => {
+        // keep user draft before switching away
+        if (editor && editor.getReadOnly && editor.getReadOnly() === false) {
+          userCodeCache = String(editor.getValue() || "");
+          els.userCode.val(userCodeCache);
+        }
+        const m = els.presetSource.val() === "user" ? "user" : "builtin";
+        setMode(m);
+        if (m === "builtin") {
+          const selected = applyBuiltinSelection(els.builtinPreset.val() || builtinIdCache);
+          if (selected) {
+            els.presetId.val(selected);
+            setBuiltinInfo(selected);
+          }
+        } else {
+          builtinIdCache = String(els.builtinPreset.val() || builtinIdCache);
+          els.presetId.val("custom");
+        }
+        updateEditor();
+      });
+
+      els.builtinPreset.on("change", () => {
+        const id = String(els.builtinPreset.val() || "");
+        builtinIdCache = id;
+        els.presetId.val(id);
+        setBuiltinInfo(id);
+        updateEditor();
+      });
+
+      editor.getSession().on("change", () => {
+        const src = els.presetSource.val() === "user" ? "user" : "builtin";
+        if (src !== "user") return;
+        userCodeCache = String(editor.getValue() || "");
+        els.userCode.val(userCodeCache);
+      });
+    },
+    oneditsave: function () {
+      // Keep presetId aligned with current selection.
+      const src =
+        $("#node-input-presetSource").val() === "user" ? "user" : "builtin";
+      if (src === "builtin") {
+        $("#node-input-presetId").val(
+          String($("#node-input-builtinPreset").val() || ""),
+        );
+      } else {
+        $("#node-input-presetId").val("custom");
+      }
+      if (this._inputAdapterEditor && src === "user") {
+        $("#node-input-userCode").val(
+          String(this._inputAdapterEditor.getValue() || ""),
+        );
+      }
+      if (this._inputAdapterEditor) {
+        try {
+          this._inputAdapterEditor.destroy();
+        } catch (_err) {
+          // ignore
+        }
+        this._inputAdapterEditor = null;
+      }
+    },
+    oneditcancel: function () {
+      if (this._inputAdapterEditor) {
+        try {
+          this._inputAdapterEditor.destroy();
+        } catch (_err) {
+          // ignore
+        }
+        this._inputAdapterEditor = null;
+      }
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="AlarmUltimateInputAdapter">
+  <div class="form-row">
+    <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-presetSource"
+      ><i class="fa fa-random"></i> Preset source</label
+    >
+    <select id="node-input-presetSource" style="width: 70%;">
+      <option value="builtin">Built-in</option>
+      <option value="user">User</option>
+    </select>
+  </div>
+
+  <br />
+
+  <div class="form-row" id="builtin-row">
+    <label for="node-input-builtinPreset"
+      ><i class="fa fa-cube"></i> Built-in preset</label
+    >
+    <select id="node-input-builtinPreset" style="width: 70%;"></select>
+    <br />
+    <br />
+    <div class="form-tips" id="node-input-builtinInfo"></div>
+  </div>
+
+  <div class="form-row">
+    <label><i class="fa fa-code"></i> Code</label>
+  </div>
+
+  <div class="form-row">
+    <div style="width:100%;">
+      <div
+        style="height: 320px; width: 100%;"
+        class="node-text-editor"
+        id="node-input-code-editor"
+      ></div>
+      <br />
+      <div class="form-tips">
+        Built-in presets are read-only. Switch to <b>User</b> to edit your
+        custom code. Return a msg, an array of msgs, or nothing to drop.
+      </div>
+    </div>
+  </div>
+
+  <input type="hidden" id="node-input-userCode" />
+  <input type="hidden" id="node-input-presetId" />
+  <br />
+  <br />
+  <br />
+  <br />
+</script>
+
+<script type="text/markdown" data-help-name="AlarmUltimateInputAdapter">
+  Translates incoming messages into the format expected by **Alarm System Ultimate** zones.
+
+  Configure a preset (built-in or user-defined). A preset is JavaScript code executed as a function body:
+
+  - Input: `msg`
+  - Return: a message object, an array of messages, or `null/undefined` to drop.
+
+  Example:
+
+  ```js
+  return { topic: msg.topic, payload: !!msg.payload };
+  ```
+</script>
