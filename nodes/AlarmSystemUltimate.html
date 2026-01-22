@@ -268,6 +268,37 @@
 </script>
 
 <script type="text/html" data-template-name="AlarmSystemUltimate">
+  <style>
+    .alarm-ultimate-editor .red-ui-button.au-btn {
+      border-radius: 8px;
+      font-weight: 600;
+      border-width: 1px;
+    }
+
+    .alarm-ultimate-editor .red-ui-button.au-btn i {
+      margin-right: 4px;
+    }
+
+    .alarm-ultimate-editor .red-ui-button.au-btn-primary {
+      background: #2563eb !important;
+      border-color: #1d4ed8 !important;
+      color: #fff !important;
+    }
+    .alarm-ultimate-editor .red-ui-button.au-btn-primary:hover {
+      background: #1d4ed8 !important;
+    }
+
+    .alarm-ultimate-editor .red-ui-button.au-btn-success {
+      background: #16a34a !important;
+      border-color: #15803d !important;
+      color: #fff !important;
+    }
+    .alarm-ultimate-editor .red-ui-button.au-btn-success:hover {
+      background: #15803d !important;
+    }
+  </style>
+
+  <div class="alarm-ultimate-editor">
   <div class="form-row">
     <b>Alarm System Ultimate (BETA)</b>
     &nbsp;&nbsp;<span style="color:red"
@@ -281,7 +312,7 @@
 
   <div class="form-row">
     <label>WEB PAGE</label>
-    <button type="button" class="red-ui-button" id="node-input-zones-panel">
+    <button type="button" class="red-ui-button au-btn au-btn-primary" id="node-input-zones-panel">
       <i class="fa fa-keyboard-o"></i> Panel
     </button>
   </div>
@@ -518,14 +549,15 @@
 
     <div class="form-row">
       <label><i class="fa fa-th-large"></i> Zones</label>
-      <button type="button" class="red-ui-button" id="node-input-zones-manage">
+      <button type="button" class="red-ui-button au-btn au-btn-success" id="node-input-zones-manage">
         <i class="fa fa-list"></i> Manage zones
       </button>
       <span id="node-input-zones-summary" style="margin-left:8px; color:#777;"></span>
     </div>
 
     <textarea id="node-input-zones" style="display:none;"></textarea>
-		</script>
+  </div>
+			</script>
 
 <script type="text/markdown" data-help-name="AlarmSystemUltimate">
   <p><b>BETA</b> – Alarm control panel node with a single armed/disarmed state, zones, entry/exit delays, bypass, chime, tamper/fire/24h zones, siren control, status and event log.</p>
