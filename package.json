@@ -1,8 +1,8 @@
 {
   "name": "node-red-contrib-alarm-ultimate",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Alarm System node for Node-RED.",
-  "author": "Supergiovane (https://github.com/Supergiovane)",
+  "author": "MAssimo Saccani (https://github.com/Supergiovane)",
   "license": "MIT",
   "keywords": [
     "node-red",

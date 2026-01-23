@@ -414,13 +414,17 @@
           <p class="hint" id="cmdStatus" style="display: none"></p>
 	        </section>
 
-	        <section class="card" id="zonesCard" data-section="zones">
-	          <h2>Zones</h2>
-	          <div class="hint" id="zonesHint">Loading...</div>
-	          <div style="overflow: auto; margin-top: 10px">
-	            <table>
-              <thead>
-                <tr>
+		        <section class="card" id="zonesCard" data-section="zones">
+		          <h2>Zones</h2>
+		          <div class="hint" id="zonesHint">Loading...</div>
+              <div class="buttons" style="margin-top:8px;">
+                <button id="btnZonesFilterOpen" type="button">OPEN</button>
+                <button id="btnZonesFilterAll" type="button">ALL</button>
+              </div>
+		          <div style="overflow: auto; margin-top: 10px">
+		            <table>
+	              <thead>
+	                <tr>
                   <th>Alarm</th>
                   <th>Zone</th>
                   <th>State</th>
@@ -436,22 +440,24 @@
     </main>
 
     <script>
-	      const els = {
-	        nodeButtons: document.getElementById("nodeButtons"),
-	        nodeHint: document.getElementById("nodeHint"),
-          selectionHint: document.getElementById("selectionHint"),
-          btnSelectAll: document.getElementById("btnSelectAll"),
-	        nodeStatus: document.getElementById("nodeStatus"),
-	        statusTitle: document.getElementById("statusTitle"),
-	        statusMeta: document.getElementById("statusMeta"),
-	        statusPill: document.getElementById("statusPill"),
-	        zonesBody: document.getElementById("zonesBody"),
-        zonesHint: document.getElementById("zonesHint"),
-        code: document.getElementById("code"),
-        cmdStatus: document.getElementById("cmdStatus"),
-        btnArm: document.getElementById("btnArm"),
-        btnDisarm: document.getElementById("btnDisarm"),
-      };
+		      const els = {
+		        nodeButtons: document.getElementById("nodeButtons"),
+		        nodeHint: document.getElementById("nodeHint"),
+	          selectionHint: document.getElementById("selectionHint"),
+	          btnSelectAll: document.getElementById("btnSelectAll"),
+		        nodeStatus: document.getElementById("nodeStatus"),
+		        statusTitle: document.getElementById("statusTitle"),
+		        statusMeta: document.getElementById("statusMeta"),
+		        statusPill: document.getElementById("statusPill"),
+		        zonesBody: document.getElementById("zonesBody"),
+	        zonesHint: document.getElementById("zonesHint"),
+	        btnZonesFilterOpen: document.getElementById("btnZonesFilterOpen"),
+	        btnZonesFilterAll: document.getElementById("btnZonesFilterAll"),
+	        code: document.getElementById("code"),
+	        cmdStatus: document.getElementById("cmdStatus"),
+	        btnArm: document.getElementById("btnArm"),
+	        btnDisarm: document.getElementById("btnDisarm"),
+	      };
 
       const params = new URLSearchParams(window.location.search);
       const preselectId = params.get("id") || "";
@@ -474,11 +480,15 @@
       let nodeStateTimer = null;
       let nodeStateById = new Map();
 
-      let audioCtx = null;
-      let armingBeepTimer = null;
-      let hasSeenState = false;
-      let lastMode = null;
-      let lastArmingActive = null;
+	      let audioCtx = null;
+	      let armingBeepTimer = null;
+	      let hasSeenState = false;
+	      let lastMode = null;
+	      let lastArmingActive = null;
+	      let lastZonesSnapshot = [];
+	      let zonesFilter = "open"; // "open" | "all"
+	      let zonesFilterUserSelected = false;
+	      let zonesFilterInitialized = false;
 
       function getAudioContext() {
         if (audioCtx) return audioCtx;
@@ -705,35 +715,61 @@
         return e;
       }
 
-      function armingErrorPill(state) {
-        const log = state && Array.isArray(state.log) ? state.log : [];
-        const last = log.length ? log[log.length - 1] : null;
-        const e = last && typeof last.event === "string" ? last.event : "";
-        if (e === "arm_blocked") {
-          return { cls: "warn", label: "ARM BLOCKED", details: lastEventSummary(state) };
-        }
-        if (e === "denied" && last && String(last.action || "") === "arm") {
-          return { cls: "danger", label: "ARM DENIED", details: lastEventSummary(state) };
-        }
-        return null;
-      }
+	      function armingErrorPill(state) {
+	        const log = state && Array.isArray(state.log) ? state.log : [];
+	        const last = log.length ? log[log.length - 1] : null;
+	        const e = last && typeof last.event === "string" ? last.event : "";
+	        if (e === "arm_blocked") {
+	          return { cls: "warn", label: "ARM BLOCKED", details: lastEventSummary(state) };
+	        }
+	        if (e === "denied" && last && String(last.action || "") === "arm") {
+	          return { cls: "danger", label: "ARM DENIED", details: lastEventSummary(state) };
+	        }
+	        return null;
+	      }
 
-      function renderZones(zones) {
-        els.zonesBody.innerHTML = "";
-        const list = Array.isArray(zones) ? zones : [];
-        if (list.length === 0) {
-          els.zonesHint.textContent = "No zones configured.";
-          return;
-        }
-        els.zonesHint.textContent = `${list.length} zones`;
+	      function updateZonesFilterButtons() {
+	        if (!els.btnZonesFilterOpen || !els.btnZonesFilterAll) return;
+	        els.btnZonesFilterOpen.classList.toggle("selected", zonesFilter === "open");
+	        els.btnZonesFilterAll.classList.toggle("selected", zonesFilter === "all");
+	      }
 
-        for (const z of list) {
-          const tr = document.createElement("tr");
-          const title = z.name ? `${z.name}` : z.id;
-          const stateText = z.bypassed ? "BYPASSED" : z.open ? "OPEN" : "CLOSED";
-          const stateClass = z.bypassed ? "zone-bypassed" : z.open ? "zone-open" : "zone-closed";
-          const topic = z.topic || z.topicPattern || "";
-          const alarmLabel = z.__alarmName || z.__alarmId || "";
+	      function setZonesFilter(next, opts) {
+	        const options = opts && typeof opts === "object" ? opts : {};
+	        const user = options.user === true;
+	        zonesFilter = String(next || "").toLowerCase() === "all" ? "all" : "open";
+	        if (user) zonesFilterUserSelected = true;
+	        updateZonesFilterButtons();
+	        renderZones(lastZonesSnapshot);
+	      }
+
+	      function renderZones(zones) {
+	        els.zonesBody.innerHTML = "";
+	        const list = Array.isArray(zones) ? zones : [];
+	        lastZonesSnapshot = list;
+	        const filtered = zonesFilter === "open" ? list.filter((z) => z && z.open) : list;
+
+	        if (list.length === 0) {
+	          els.zonesHint.textContent = "No zones configured.";
+	          return;
+	        }
+	        if (filtered.length === 0) {
+	          els.zonesHint.textContent = "No OPEN zones.";
+	          return;
+	        }
+	        if (zonesFilter === "open") {
+	          els.zonesHint.textContent = `${filtered.length} OPEN zones (of ${list.length})`;
+	        } else {
+	          els.zonesHint.textContent = `${list.length} zones`;
+	        }
+
+	        for (const z of filtered) {
+	          const tr = document.createElement("tr");
+	          const title = z.name ? `${z.name}` : z.id;
+	          const stateText = z.bypassed ? "BYPASSED" : z.open ? "OPEN" : "CLOSED";
+	          const stateClass = z.bypassed ? "zone-bypassed" : z.open ? "zone-open" : "zone-closed";
+	          const topic = z.topic || z.topicPattern || "";
+	          const alarmLabel = z.__alarmName || z.__alarmId || "";
 
           tr.innerHTML = `
             <td>${escapeHtml(alarmLabel)}</td>
@@ -901,9 +937,9 @@
           renderNodeButtons();
         }
 
-        async function loadState() {
-          const ids = Array.from(selectedIds);
-          if (!ids.length) return;
+	        async function loadState() {
+	          const ids = Array.from(selectedIds);
+	          if (!ids.length) return;
 
           const results = await Promise.allSettled(ids.map((id) => fetchStateForNode(id)));
           const okStates = [];
@@ -1006,13 +1042,18 @@
               els.statusPill.textContent = armErr.label;
               els.statusPill.className = `pill ${armErr.cls}`;
             }
-          }
+	          }
 
-          renderZones(zones);
-          if (!multiple) {
-            handleStateBeeps(okStates[0].data && okStates[0].data.state);
-          }
-        }
+	          if (!zonesFilterInitialized && !zonesFilterUserSelected) {
+	            zonesFilter = zones.some((z) => z && z.open) ? "open" : "all";
+	            zonesFilterInitialized = true;
+	            updateZonesFilterButtons();
+	          }
+	          renderZones(zones);
+	          if (!multiple) {
+	            handleStateBeeps(okStates[0].data && okStates[0].data.state);
+	          }
+	        }
 
       function startPolling() {
         if (pollTimer) clearInterval(pollTimer);
@@ -1109,14 +1150,20 @@
         return v.length ? v : undefined;
       }
 
-      // No select: buttons manage selection.
-      if (els.btnSelectAll) {
-        els.btnSelectAll.addEventListener("click", () => selectAll());
-      }
+	      // No select: buttons manage selection.
+	      if (els.btnSelectAll) {
+	        els.btnSelectAll.addEventListener("click", () => selectAll());
+	      }
+	      if (els.btnZonesFilterOpen) {
+	        els.btnZonesFilterOpen.addEventListener("click", () => setZonesFilter("open", { user: true }));
+	      }
+	      if (els.btnZonesFilterAll) {
+	        els.btnZonesFilterAll.addEventListener("click", () => setZonesFilter("all", { user: true }));
+	      }
 
-      els.btnArm.addEventListener("click", async () => {
-        playKeyClick("action");
-        try {
+	      els.btnArm.addEventListener("click", async () => {
+	        playKeyClick("action");
+	        try {
           await sendCommand({ command: "arm", code: codeValue() });
           if (els.cmdStatus.style.display === "none") {
             showCmdStatus(`Arm sent to ${selectedIds.size} node(s).`, "ok");
