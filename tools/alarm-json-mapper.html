@@ -768,13 +768,13 @@
 	      return payload;
 	    }
 
-    function scheduleAutosave(errors) {
-      if (isEditingZoneTable) {
-        if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
-        autoSaveTimer = null;
-        setAutosaveHint("Autosave paused while editing zones.");
-        return;
-      }
+	    function scheduleAutosave(errors) {
+	      if (isEditingZoneTable) {
+	        if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
+	        autoSaveTimer = null;
+	        setAutosaveHint("Autosave paused while editing zones.");
+	        return;
+	      }
       if (!page.alarmNodeId) {
         setAutosaveHint("");
         setConnectionState("disconnected");
@@ -792,12 +792,22 @@
         setAutosaveHint("Autosave paused: fix zone errors to save.");
         return;
       }
-      if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
-      autoSaveTimer = window.setTimeout(() => {
-        autoSaveTimer = null;
-        sendZonesToEditor(true);
-      }, 250);
-    }
+	      if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
+	      autoSaveTimer = window.setTimeout(() => {
+	        autoSaveTimer = null;
+	        sendZonesToEditor(true);
+	      }, 80);
+	    }
+
+	    function flushZonesToEditor(quiet) {
+	      if (!page.alarmNodeId) return;
+	      if (!canTalkToEditor()) return;
+	      const errors = validateModel();
+	      if (errors && errors.length > 0) return;
+	      if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
+	      autoSaveTimer = null;
+	      sendZonesToEditor(quiet !== false);
+	    }
 
 	    function validateModel() {
 	      const errors = [];
@@ -1924,24 +1934,26 @@
       }
     });
 
-    // Track editing state to avoid autosave while typing.
-    els.zoneTableBody.addEventListener("focusin", () => {
-      isEditingZoneTable = true;
-      if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
-      autoSaveTimer = null;
-      setAutosaveHint("Autosave paused while editing zones.");
-    });
+	    // Track editing state to avoid autosave while typing.
+	    els.zoneTableBody.addEventListener("focusin", () => {
+	      isEditingZoneTable = true;
+	      if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
+	      autoSaveTimer = null;
+	      setAutosaveHint("Autosave paused while editing zones.");
+	    });
 
-    els.zoneTableBody.addEventListener("focusout", () => {
-      setTimeout(() => {
-        const active = document.activeElement;
-        const stillInside =
-          active && els.zoneTableBody && els.zoneTableBody.contains(active);
-        if (stillInside) return;
-        isEditingZoneTable = false;
-        refreshZonesMeta();
-      }, 0);
-    });
+	    els.zoneTableBody.addEventListener("focusout", () => {
+	      setTimeout(() => {
+	        const active = document.activeElement;
+	        const stillInside =
+	          active && els.zoneTableBody && els.zoneTableBody.contains(active);
+	        if (stillInside) return;
+	        isEditingZoneTable = false;
+	        refreshZonesMeta();
+	        // Flush as soon as the user leaves the zone table, to reduce lost changes.
+	        flushZonesToEditor(true);
+	      }, 0);
+	    });
 
     els.zoneTableBody.addEventListener("click", (evt) => {
       const target = evt.target;
@@ -1996,11 +2008,18 @@
       }
     }
 
-    window.addEventListener("message", (evt) => {
-      if (evt.origin !== page.origin) return;
-      const data = evt.data && typeof evt.data === "object" ? evt.data : null;
-      handleEditorZonesMessage(data);
-    });
+	    window.addEventListener("message", (evt) => {
+	      if (evt.origin !== page.origin) return;
+	      const data = evt.data && typeof evt.data === "object" ? evt.data : null;
+	      handleEditorZonesMessage(data);
+	    });
+
+	    // Best-effort flush on close/navigation away, so edits are not lost if the user closes quickly.
+	    window.addEventListener("beforeunload", () => flushZonesToEditor(true));
+	    window.addEventListener("pagehide", () => flushZonesToEditor(true));
+	    document.addEventListener("visibilitychange", () => {
+	      if (document.hidden) flushZonesToEditor(true);
+	    });
 
     if (bc) {
       bc.addEventListener("message", (evt) => {

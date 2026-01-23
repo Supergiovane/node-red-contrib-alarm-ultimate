@@ -2,15 +2,16 @@
   RED.nodes.registerType("AlarmSystemUltimate", {
     category: "Alarm Ultimate",
     color: "#A8DADC",
-    defaults: {
-      name: { value: "" },
-      controlTopic: { value: "alarm" },
-      payloadPropName: { value: "payload", required: false },
-      persistState: { value: true },
-      requireCodeForArm: { value: false },
-      requireCodeForDisarm: { value: true },
-      armCode: { value: "" },
-      duressCode: { value: "" },
+	    defaults: {
+	      name: { value: "" },
+	      controlTopic: { value: "alarm" },
+	      payloadPropName: { value: "payload", required: false },
+	      persistState: { value: true },
+	      syncTargets: { value: "" },
+	      requireCodeForArm: { value: false },
+	      requireCodeForDisarm: { value: true },
+	      armCode: { value: "" },
+	      duressCode: { value: "" },
 	      blockArmOnViolations: { value: true },
 	      exitDelaySeconds: { value: 30, validate: RED.validators.number() },
 	      entryDelaySeconds: { value: 30, validate: RED.validators.number() },
@@ -55,8 +56,8 @@
     paletteLabel: function () {
       return "Alarm System (BETA)";
 	    },
-		    oneditprepare: function () {
-		      const nodeId = this.id;
+			    oneditprepare: function () {
+			      const nodeId = this.id;
 		      const origin = window.location.origin;
 		      const openerOrigin = origin;
 		      const bc =
@@ -85,10 +86,12 @@
         this.sirenOffPayloadType || "bool",
       );
 
-      const zonesField = $("#node-input-zones");
-      const zonesSummary = $("#node-input-zones-summary");
+	      const zonesField = $("#node-input-zones");
+	      const zonesSummary = $("#node-input-zones-summary");
+	      const syncTargetsField = $("#node-input-syncTargets");
+	      const syncTargetsUi = $("#node-input-syncTargets-ui");
 
-      function parseZonesText(text) {
+	      function parseZonesText(text) {
         const raw = String(text || "").trim();
         if (!raw) return [];
 
@@ -119,9 +122,131 @@
           }
         }
         return zones;
-      }
+	      }
 
-      function updateZonesSummary() {
+	      function parseSyncTargets(text) {
+	        const raw = String(text || "").trim();
+	        if (!raw) return {};
+	        try {
+	          const parsed = JSON.parse(raw);
+	          return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+	        } catch (_err) {
+	          return {};
+	        }
+	      }
+
+	      function normalizeSyncAction(value) {
+	        const v = String(value || "").trim().toLowerCase();
+	        if (v === "arm") return "arm";
+	        if (v === "disarm") return "disarm";
+	        return "leave";
+	      }
+
+		      function syncActionLabel(value) {
+		        const v = normalizeSyncAction(value);
+		        if (v === "arm") return "Arm";
+		        if (v === "disarm") return "Disarm";
+		        return "Leave as is";
+		      }
+
+		      function escapeHtml(text) {
+		        return String(text || "")
+		          .replace(/&/g, "&amp;")
+		          .replace(/</g, "&lt;")
+		          .replace(/>/g, "&gt;")
+		          .replace(/"/g, "&quot;")
+		          .replace(/'/g, "&#039;");
+		      }
+
+		      function buildSyncTargetsUi() {
+		        if (!syncTargetsUi || !syncTargetsUi.length) return;
+		        try {
+		          const saved = parseSyncTargets(syncTargetsField.val());
+
+		          // Collect other Alarm nodes in the workspace.
+		          const other = [];
+		          try {
+		            if (RED && RED.nodes && typeof RED.nodes.eachNode === "function") {
+		              RED.nodes.eachNode((n) => {
+		                if (!n) return;
+		                const type = String(n.type || "");
+		                if (type !== "AlarmSystemUltimate") return;
+		                if (n.id === nodeId) return;
+		                other.push({ id: n.id, name: String(n.name || "").trim() });
+		              });
+		            }
+		          } catch (_err) {}
+
+		          other.sort((a, b) => {
+		            const an = (a.name || a.id).toLowerCase();
+		            const bn = (b.name || b.id).toLowerCase();
+		            return an.localeCompare(bn);
+		          });
+
+		          if (other.length === 0) {
+		            syncTargetsUi.html('<span style="color:#777;">No other Alarm nodes found.</span>');
+		            return;
+		          }
+
+		          const table = $('<table style="width:100%; border-collapse:collapse;"></table>');
+		          table.append(
+		            '<thead><tr>' +
+		              '<th style="text-align:left; padding:4px 6px;">Alarm</th>' +
+		              '<th style="text-align:left; padding:4px 6px; width:160px;">On ARM</th>' +
+		              '<th style="text-align:left; padding:4px 6px; width:160px;">On DISARM</th>' +
+		            '</tr></thead>',
+		          );
+
+		          const tbody = $("<tbody></tbody>");
+		          other.forEach((n) => {
+		            const rule = saved[n.id] && typeof saved[n.id] === "object" ? saved[n.id] : {};
+		            const onArm = normalizeSyncAction(rule.onArm);
+		            const onDisarm = normalizeSyncAction(rule.onDisarm);
+
+		            const armSel = $('<select style="width:100%;"></select>');
+		            const disarmSel = $('<select style="width:100%;"></select>');
+		            ["arm", "leave", "disarm"].forEach((v) => {
+		              armSel.append(`<option value="${v}">${syncActionLabel(v)}</option>`);
+		              disarmSel.append(`<option value="${v}">${syncActionLabel(v)}</option>`);
+		            });
+		            armSel.val(onArm);
+		            disarmSel.val(onDisarm);
+
+		            const tr = $("<tr></tr>");
+		            const label = n.name ? `${n.name}` : "(unnamed Alarm)";
+		            tr.append(
+		              `<td style="padding:4px 6px;">${escapeHtml(label)}</td>`,
+		            );
+		            const tdArm = $('<td style="padding:4px 6px;"></td>').append(armSel);
+		            const tdDisarm = $('<td style="padding:4px 6px;"></td>').append(disarmSel);
+		            tr.append(tdArm).append(tdDisarm);
+		            tbody.append(tr);
+
+		            function persist() {
+		              const next = parseSyncTargets(syncTargetsField.val());
+		              next[n.id] = {
+		                onArm: String(armSel.val() || "leave"),
+		                onDisarm: String(disarmSel.val() || "leave"),
+		              };
+		              syncTargetsField.val(JSON.stringify(next));
+		              try {
+		                syncTargetsField.trigger("change");
+		              } catch (_err) {}
+		            }
+
+		            armSel.on("change", persist);
+		            disarmSel.on("change", persist);
+		          });
+		          table.append(tbody);
+		          syncTargetsUi.empty().append(table);
+		        } catch (err) {
+		          syncTargetsUi.html(
+		            `<span style="color:#c00;">Unable to render sync list. Check browser console. (${escapeHtml(err && err.message ? err.message : err)})</span>`,
+		          );
+		        }
+		      }
+
+	      function updateZonesSummary() {
         try {
           const zones = parseZonesText(zonesField.val());
           zonesSummary.text(zones.length ? `${zones.length} zones configured` : "No zones configured");
@@ -216,7 +341,7 @@
 	        }
 	      };
 
-	      window.addEventListener("message", messageListener);
+		      window.addEventListener("message", messageListener);
 	      if (bc) {
 	        bc.addEventListener("message", (ev) => {
 	          const data = ev && ev.data && typeof ev.data === "object" ? ev.data : null;
@@ -227,9 +352,10 @@
 	        });
 	        this._alarmUltimateZonesBroadcast = bc;
 	      }
-	      this._alarmUltimateZonesMessageListener = messageListener;
-	      updateZonesSummary();
-			    },
+		      this._alarmUltimateZonesMessageListener = messageListener;
+		      updateZonesSummary();
+		      setTimeout(() => buildSyncTargetsUi(), 0);
+				    },
 			    oneditsave: function () {
 			      if (this._alarmUltimateZonesMessageListener) {
 			        window.removeEventListener("message", this._alarmUltimateZonesMessageListener);
@@ -317,10 +443,21 @@
     </button>
   </div>
 
-    <div class="form-row">
-	    <label for="node-input-name"
-	        ><i class="icon-tag"></i> Name</label
-	      >
+  <div class="form-row">
+    <label><i class="fa fa-random"></i> Sync other alarms</label>
+    <div style="width: 70%;">
+      <div class="form-tips" style="margin: 0 0 6px 0;">
+        When this Alarm is armed/disarmed, optionally arm/disarm other Alarm nodes in the workspace (codes are forwarded if present).
+      </div>
+      <div id="node-input-syncTargets-ui"></div>
+      <input type="hidden" id="node-input-syncTargets" />
+    </div>
+  </div>
+
+	    <div class="form-row">
+		    <label for="node-input-name"
+		        ><i class="icon-tag"></i> Name</label
+		      >
       <input type="text" id="node-input-name" placeholder="Name" />
     </div>
 
@@ -587,10 +724,11 @@
   | Siren topic                        | Topic used on output 2 to turn the siren on/off (default: `controlTopic + "/siren"`).                                                |
   | Siren ON/OFF payload               | Values emitted on output 2 for siren on/off (typed).                                                                                 |
   | Siren duration (s)                 | Auto stop duration (`0` = latch until disarm).                                                                                       |
-  | Latch siren until disarm           | Forces siren to remain on until disarm (ignores duration).                                                                           |
-  | Emit restore events                | Emits `zone_restore` when a zone returns to false.                                                                                   |
-	  | Event log size                     | Max stored log entries in node context (0 disables log).                                                                             |
-	  | Zones                              | Zone definitions. Use **Manage zones** to edit with the web tool (advanced JSON is available there).                                 |
+	  | Latch siren until disarm           | Forces siren to remain on until disarm (ignores duration).                                                                           |
+	  | Emit restore events                | Emits `zone_restore` when a zone returns to false.                                                                                   |
+		  | Event log size                     | Max stored log entries in node context (0 disables log).                                                                             |
+		  | Sync other alarms                  | Optional: when this node is armed/disarmed, it can arm/disarm other Alarm nodes. The original `msg.code`/`msg.pin` are forwarded.    |
+		  | Zones                              | Zone definitions. Use **Manage zones** to edit with the web tool (advanced JSON is available there).                                 |
 
 	  <br/>
 

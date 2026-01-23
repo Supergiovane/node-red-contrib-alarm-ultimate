@@ -32,6 +32,19 @@ function writeJsonFileAtomicSync(filePath, data) {
 module.exports = function (RED) {
   const helpers = require('./lib/node-helpers.js');
 
+  function parseJsonObject(value) {
+    const raw = String(value || '').trim();
+    if (!raw) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+    } catch (_err) {
+      return null;
+    }
+  }
+
   if (RED && RED.httpAdmin && typeof RED.httpAdmin.get === 'function') {
     const needsRead =
       RED.auth && typeof RED.auth.needsPermission === 'function'
@@ -106,6 +119,7 @@ module.exports = function (RED) {
 
     const controlTopic = config.controlTopic || 'alarm';
     const payloadPropName = config.payloadPropName || 'payload';
+    const syncTargetsConfig = parseJsonObject(config.syncTargets) || {};
 
     const requireCodeForArm = config.requireCodeForArm === true;
     const requireCodeForDisarm = config.requireCodeForDisarm !== false;
@@ -1035,6 +1049,7 @@ module.exports = function (RED) {
       state.mode = 'disarmed';
       persist();
       emitEvent('disarmed', { reason, duress: Boolean(duress) }, baseMsg);
+      return true;
     }
 
     function violatedZonesForArm() {
@@ -1057,13 +1072,13 @@ module.exports = function (RED) {
     function arm(baseMsg, reason) {
       if (state.mode === 'armed' && !state.arming) {
         emitEvent('already_armed', { target: 'armed' }, baseMsg);
-        return;
+        return true;
       }
 
       const violations = blockArmOnViolations ? violatedZonesForArm() : [];
       if (blockArmOnViolations && violations.length > 0) {
         emitEvent('arm_blocked', { target: 'armed', violations }, baseMsg);
-        return;
+        return false;
       }
 
       stopOpenZonesDuringArming();
@@ -1084,7 +1099,7 @@ module.exports = function (RED) {
         stopOpenZonesDuringArming();
         persist();
         emitEvent('armed', { reason }, baseMsg);
-        return;
+        return true;
       }
 
       const until = now() + exitDelayMs;
@@ -1113,6 +1128,55 @@ module.exports = function (RED) {
         persist();
         emitEvent('armed', { reason }, baseMsg);
       }, exitDelayMs);
+      return true;
+    }
+
+    function isSyncedControlMessage(msg) {
+      return Boolean(msg && typeof msg === 'object' && msg._alarmUltimateSync);
+    }
+
+    function normalizeSyncAction(value) {
+      const v = String(value || '').toLowerCase().trim();
+      if (v === 'arm') return 'arm';
+      if (v === 'disarm') return 'disarm';
+      return 'leave';
+    }
+
+    function syncOtherAlarms(trigger, baseMsg) {
+      if (!syncTargetsConfig || typeof syncTargetsConfig !== 'object') {
+        return;
+      }
+      if (isSyncedControlMessage(baseMsg)) {
+        return;
+      }
+      const when = trigger === 'disarm' ? 'onDisarm' : 'onArm';
+      const entries = Object.entries(syncTargetsConfig);
+      if (!entries.length) {
+        return;
+      }
+      for (const [targetId, rule] of entries) {
+        if (!targetId || targetId === node.id) continue;
+        const action = normalizeSyncAction(rule && typeof rule === 'object' ? rule[when] : '');
+        if (action === 'leave') continue;
+        const api = alarmInstances.get(targetId);
+        if (!api || typeof api.command !== 'function') continue;
+
+        const payload = {
+          command: action,
+          _alarmUltimateSync: {
+            origin: node.id,
+            trigger,
+          },
+        };
+        if (typeof baseMsg.code === 'string') payload.code = baseMsg.code;
+        if (typeof baseMsg.pin === 'string') payload.pin = baseMsg.pin;
+
+        try {
+          api.command(payload);
+        } catch (_err) {
+          // ignore
+        }
+      }
     }
 
     function startEntryDelay(zone, baseMsg) {
@@ -1260,9 +1324,11 @@ module.exports = function (RED) {
         if (validation.duress) {
           triggerAlarm('duress', null, msg, true);
           disarm(msg, 'duress', true);
+          syncOtherAlarms('disarm', msg);
           return true;
         }
         disarm(msg, 'manual', false);
+        syncOtherAlarms('disarm', msg);
         return true;
       }
 
@@ -1285,7 +1351,10 @@ module.exports = function (RED) {
         if (validation.duress) {
           triggerAlarm('duress', null, msg, true);
         }
-        arm(msg, 'manual');
+        const accepted = arm(msg, 'manual');
+        if (accepted) {
+          syncOtherAlarms('arm', msg);
+        }
         return true;
       }
 
@@ -1432,6 +1501,9 @@ module.exports = function (RED) {
         }
         if (typeof payload.zone === 'string') {
           msg.zone = payload.zone;
+        }
+        if (payload._alarmUltimateSync && typeof payload._alarmUltimateSync === 'object') {
+          msg._alarmUltimateSync = payload._alarmUltimateSync;
         }
 
         node.receive(msg);

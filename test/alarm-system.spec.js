@@ -518,4 +518,65 @@ describe('AlarmSystemUltimate node', function () {
       })
       .catch(done);
   });
+
+  it('syncs arm/disarm to other Alarm nodes', function (done) {
+    const flowId = 'alarm-sync';
+    const flow = [
+      { id: flowId, type: 'tab', label: 'alarm-sync' },
+      {
+        id: 'alarmA',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        name: 'Alarm A',
+        controlTopic: 'alarmA',
+        exitDelaySeconds: 0,
+        requireCodeForDisarm: false,
+        syncTargets: JSON.stringify({
+          alarmB: { onArm: 'arm', onDisarm: 'disarm' },
+        }),
+        wires: [['aEvents']],
+      },
+      { id: 'aEvents', type: 'helper', z: flowId },
+      {
+        id: 'alarmB',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        name: 'Alarm B',
+        controlTopic: 'alarmB',
+        exitDelaySeconds: 0,
+        requireCodeForDisarm: false,
+        wires: [['bEvents']],
+      },
+      { id: 'bEvents', type: 'helper', z: flowId },
+    ];
+
+    loadAlarm(flow)
+      .then(() => {
+        const alarmA = helper.getNode('alarmA');
+        const bEvents = helper.getNode('bEvents');
+
+        const seenB = [];
+        bEvents.on('input', (msg) => {
+          if (msg && typeof msg.event === 'string') {
+            seenB.push(msg.event);
+          }
+        });
+
+        alarmA.receive({ topic: 'alarmA', command: 'arm' });
+        setTimeout(() => {
+          alarmA.receive({ topic: 'alarmA', command: 'disarm' });
+        }, 60);
+
+        setTimeout(() => {
+          try {
+            expect(seenB).to.include('armed');
+            expect(seenB).to.include('disarmed');
+            done();
+          } catch (err) {
+            done(err);
+          }
+        }, 250);
+      })
+      .catch(done);
+  });
 });
