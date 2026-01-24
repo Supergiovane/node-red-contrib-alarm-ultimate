@@ -11,7 +11,7 @@
     "type": "comment",
     "z": "c0a4b6d3e5f70819",
     "name": "Requires @flowfuse/node-red-dashboard",
-    "info": "Install `@flowfuse/node-red-dashboard` (Dashboard 2.0), then import this flow.\n\nDashboard V2 URLs (default):\n- Panel:    http://<node-red-host>:1880/dashboard/panel\n- Controls: http://<node-red-host>:1880/dashboard/controls\n- Sensors:  http://<node-red-host>:1880/dashboard/sensors\n- Zones:    http://<node-red-host>:1880/dashboard/zones\n- Status:   http://<node-red-host>:1880/dashboard/status\n\nNotes:\n- If you changed the Dashboard path in the `ui-base` config, adjust `/dashboard` accordingly.\n- The embedded Alarm Panel is served from Node-RED *admin* endpoints (`/alarm-ultimate/alarm-panel`).",
+    "info": "Install `@flowfuse/node-red-dashboard` (Dashboard 2.0), then import this flow.\n\nDashboard V2 URLs (default):\n- Panel:    http://<node-red-host>:1880/dashboard/panel\n- Controls: http://<node-red-host>:1880/dashboard/controls\n- Sensors:  http://<node-red-host>:1880/dashboard/sensors\n- Zones:    http://<node-red-host>:1880/dashboard/zones\n- Log:      http://<node-red-host>:1880/dashboard/log\n- Status:   http://<node-red-host>:1880/dashboard/status\n\nNotes:\n- If you changed the Dashboard path in the `ui-base` config, adjust `/dashboard` accordingly.\n- The embedded Alarm Panel is served from Node-RED *admin* endpoints (`/alarm-ultimate/alarm-panel`).",
     "x": 290,
     "y": 60,
     "wires": []
@@ -95,6 +95,28 @@
     "templateScope": "local",
     "className": "",
     "x": 820,
+    "y": 200,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "2d3e4f5061728394",
+    "type": "ui-template",
+    "z": "c0a4b6d3e5f70819",
+    "group": "5c6d7e8f901a2b3c",
+    "name": "Log (embed)",
+    "order": 1,
+    "width": 12,
+    "height": 14,
+    "head": "",
+    "format": "<template>\n  <iframe :src=\"panelUrl\" style=\"width:100%; height:560px; border:0; border-radius:10px;\"></iframe>\n</template>\n\n<script>\nexport default {\n  data () {\n    return {\n      panelUrl: ''\n    }\n  },\n  mounted () {\n    const alarmNodeId = 'a2b3c4d5e6f70819'\n    const setupUrl = new URL('../_setup', window.location.href)\n\n    fetch(setupUrl)\n      .then(r => r.json())\n      .then(setup => {\n        const httpAdminRoot = setup?.RED?.httpAdminRoot ?? '/'\n        const root = httpAdminRoot.endsWith('/') ? httpAdminRoot : `${httpAdminRoot}/`\n        this.panelUrl = `${root}alarm-ultimate/alarm-panel?embed=1&view=log&id=${encodeURIComponent(alarmNodeId)}`\n      })\n      .catch(() => {\n        const relative = `../alarm-ultimate/alarm-panel?embed=1&view=log&id=${encodeURIComponent(alarmNodeId)}`\n        this.panelUrl = new URL(relative, window.location.href).toString()\n      })\n  }\n}\n</script>\n",
+    "storeOutMessages": true,
+    "passthru": true,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 1090,
     "y": 200,
     "wires": [
       []
@@ -654,6 +676,42 @@
     "disabled": false
   },
   {
+    "id": "f5060718293b4c5d",
+    "type": "ui-page",
+    "name": "Log",
+    "ui": "c4d5e6f708192a3b",
+    "path": "/log",
+    "icon": "format-list-text",
+    "layout": "grid",
+    "theme": "b3c4d5e6f708192a",
+    "breakpoints": [
+      {
+        "name": "Default",
+        "px": 0,
+        "cols": 12
+      },
+      {
+        "name": "Tablet",
+        "px": 576,
+        "cols": 12
+      },
+      {
+        "name": "Small Desktop",
+        "px": 768,
+        "cols": 12
+      },
+      {
+        "name": "Desktop",
+        "px": 1024,
+        "cols": 12
+      }
+    ],
+    "order": 5,
+    "className": "",
+    "visible": true,
+    "disabled": false
+  },
+  {
     "id": "d3e4f5060718293a",
     "type": "ui-page",
     "name": "Status",
@@ -684,7 +742,7 @@
         "cols": 12
       }
     ],
-    "order": 5,
+    "order": 6,
     "className": "",
     "visible": true,
     "disabled": false
@@ -750,6 +808,20 @@
     "type": "ui-group",
     "name": "Zones",
     "page": "e4f5060718293b4c",
+    "width": 12,
+    "height": 1,
+    "order": 1,
+    "showTitle": true,
+    "className": "",
+    "visible": true,
+    "disabled": false,
+    "groupType": "default"
+  },
+  {
+    "id": "5c6d7e8f901a2b3c",
+    "type": "ui-group",
+    "name": "Log",
+    "page": "f5060718293b4c5d",
     "width": 12,
     "height": 1,
     "order": 1,

@@ -66,6 +66,15 @@
         display: none;
       }
 
+      body.view-keypad #logCard,
+      body.view-zones #logCard {
+        display: none;
+      }
+
+      body.view-log .grid {
+        display: none;
+      }
+
       header {
         padding: 16px;
         border-bottom: 1px solid var(--border);
@@ -354,6 +363,11 @@
         font-size: 12px;
         margin: 8px 0 0 0;
       }
+
+      .log-details {
+        color: var(--muted);
+        font-size: 11px;
+      }
     </style>
   </head>
   <body>
@@ -437,6 +451,32 @@
           </div>
         </section>
       </div>
+
+      <section class="card" id="logCard" data-section="log">
+        <h2>Log</h2>
+        <div class="hint" id="logHint">Loading...</div>
+        <div class="buttons" style="margin-top:8px;">
+          <button id="btnLogFilterAll" type="button">ALL</button>
+          <button id="btnLogFilterAlarm" type="button">ALARM</button>
+          <button id="btnLogFilterArming" type="button">ARMING</button>
+          <button id="btnLogFilterZones" type="button">ZONES</button>
+          <button id="btnLogFilterErrors" type="button">ERRORS</button>
+          <button id="btnLogDownload" type="button">Download JSON</button>
+        </div>
+        <div style="overflow:auto; margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Alarm</th>
+                <th>Time</th>
+                <th>Event</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="logBody"></tbody>
+          </table>
+        </div>
+      </section>
     </main>
 
     <script>
@@ -453,6 +493,14 @@
 	        zonesHint: document.getElementById("zonesHint"),
 	        btnZonesFilterOpen: document.getElementById("btnZonesFilterOpen"),
 	        btnZonesFilterAll: document.getElementById("btnZonesFilterAll"),
+	        logBody: document.getElementById("logBody"),
+	        logHint: document.getElementById("logHint"),
+	        btnLogFilterAll: document.getElementById("btnLogFilterAll"),
+	        btnLogFilterAlarm: document.getElementById("btnLogFilterAlarm"),
+	        btnLogFilterArming: document.getElementById("btnLogFilterArming"),
+	        btnLogFilterZones: document.getElementById("btnLogFilterZones"),
+	        btnLogFilterErrors: document.getElementById("btnLogFilterErrors"),
+	        btnLogDownload: document.getElementById("btnLogDownload"),
 	        code: document.getElementById("code"),
 	        cmdStatus: document.getElementById("cmdStatus"),
 	        btnArm: document.getElementById("btnArm"),
@@ -472,13 +520,21 @@
         document.body.classList.add("view-zones");
       } else if (view === "keypad") {
         document.body.classList.add("view-keypad");
+      } else if (view === "log") {
+        document.body.classList.add("view-log");
       }
+
+      const showLog = view !== "zones" && view !== "keypad";
 
       let nodesList = [];
       let selectedIds = new Set();
       let pollTimer = null;
       let nodeStateTimer = null;
       let nodeStateById = new Map();
+
+      let logFilter = "all"; // all | alarm | arming | zones | errors
+      let logsById = new Map(); // alarmId -> entries[]
+      let logLastTsById = new Map(); // alarmId -> last ts
 
 	      let audioCtx = null;
 	      let armingBeepTimer = null;
@@ -791,6 +847,260 @@
           .replace(/'/g, "&#039;");
       }
 
+      function pad2(n) {
+        return String(Math.max(0, Math.trunc(Number(n) || 0))).padStart(2, "0");
+      }
+
+      function formatTs(ts) {
+        const t = Number(ts) || 0;
+        if (!t) return "";
+        const d = new Date(t);
+        return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(
+          d.getMinutes(),
+        )}:${pad2(d.getSeconds())}`;
+      }
+
+      function logGroupForEvent(e) {
+        const evt = String(e || "").toLowerCase();
+        if (evt === "alarm") return "alarm";
+        if (evt === "error" || evt === "denied") return "errors";
+        if (
+          evt === "arming" ||
+          evt === "armed" ||
+          evt === "disarmed" ||
+          evt === "entry_delay" ||
+          evt === "arm_blocked" ||
+          evt === "already_armed" ||
+          evt === "reset" ||
+          evt === "siren_on" ||
+          evt === "siren_off"
+        )
+          return "arming";
+        if (
+          evt === "bypassed" ||
+          evt === "unbypassed" ||
+          evt === "chime" ||
+          evt === "zone_open" ||
+          evt === "zone_close" ||
+          evt === "zone_ignored_exit" ||
+          evt === "zone_bypassed_trigger" ||
+          evt === "zone_restore"
+        )
+          return "zones";
+        return "all";
+      }
+
+      function eventPillClass(evt) {
+        const g = logGroupForEvent(evt);
+        if (g === "alarm") return "danger";
+        if (g === "errors") return "danger";
+        if (g === "arming") return "warn";
+        if (g === "zones") return "";
+        return "";
+      }
+
+      function eventDetails(entry) {
+        const e = entry && entry.event ? String(entry.event) : "";
+
+        if (e === "alarm") {
+          const k = entry && entry.kind ? String(entry.kind) : "";
+          const z = entry && entry.zone && typeof entry.zone === "object" ? entry.zone : null;
+          const zn = z && (z.name || z.id) ? String(z.name || z.id) : "";
+          const silent = entry && entry.silent === true ? "silent" : "";
+          return [k ? `kind=${k}` : "", zn ? `zone=${zn}` : "", silent].filter(Boolean).join(" • ");
+        }
+
+        if (e === "denied") {
+          const a = entry && entry.action ? String(entry.action) : "";
+          const t = entry && entry.target ? String(entry.target) : "";
+          return [a ? `action=${a}` : "", t ? `target=${t}` : ""].filter(Boolean).join(" • ");
+        }
+
+        if (e === "error") {
+          const err = entry && entry.error ? String(entry.error) : "";
+          const z = entry && entry.zone ? String(entry.zone) : "";
+          return [err ? `error=${err}` : "", z ? `zone=${z}` : ""].filter(Boolean).join(" • ");
+        }
+
+        if (e === "arm_blocked") {
+          const v = Array.isArray(entry && entry.violations) ? entry.violations : [];
+          if (!v.length) return "violations";
+          const top = v
+            .slice(0, 3)
+            .map((x) => (x && typeof x === "object" ? x.id || x.name || x.zone || "" : ""))
+            .filter(Boolean)
+            .join(", ");
+          return `violations=${v.length}${top ? ` (${top}${v.length > 3 ? ", …" : ""})` : ""}`;
+        }
+
+        if (e === "arming" || e === "entry_delay") {
+          const s = Number.isFinite(Number(entry && entry.seconds)) ? Number(entry.seconds) : null;
+          const z = entry && entry.zone && typeof entry.zone === "object" ? entry.zone : null;
+          const zn = z && (z.name || z.id) ? String(z.name || z.id) : "";
+          return [s !== null ? `seconds=${s}` : "", zn ? `zone=${zn}` : ""].filter(Boolean).join(" • ");
+        }
+
+        if (e === "armed" || e === "disarmed") {
+          const r = entry && entry.reason ? String(entry.reason) : "";
+          const d = entry && entry.duress === true ? "duress" : "";
+          return [r ? `reason=${r}` : "", d].filter(Boolean).join(" • ");
+        }
+
+        if (e === "siren_on" || e === "siren_off") {
+          const r = entry && entry.reason ? String(entry.reason) : "";
+          return r ? `reason=${r}` : "";
+        }
+
+        if (
+          e === "bypassed" ||
+          e === "unbypassed" ||
+          e === "chime" ||
+          e === "zone_open" ||
+          e === "zone_close" ||
+          e === "zone_ignored_exit" ||
+          e === "zone_bypassed_trigger" ||
+          e === "zone_restore"
+        ) {
+          const z = entry && entry.zone && typeof entry.zone === "object" ? entry.zone : null;
+          const zn = z && (z.name || z.id) ? String(z.name || z.id) : "";
+          const b = entry && entry.bypassed === true ? "bypassed" : "";
+          return [zn ? `zone=${zn}` : "", b].filter(Boolean).join(" • ");
+        }
+
+        try {
+          const copy = { ...(entry || {}) };
+          delete copy.ts;
+          delete copy.event;
+          const keys = Object.keys(copy);
+          if (!keys.length) return "";
+          const txt = JSON.stringify(copy);
+          return txt.length > 220 ? `${txt.slice(0, 220)}…` : txt;
+        } catch (_err) {
+          return "";
+        }
+      }
+
+      function updateLogFilterButtons() {
+        const map = [
+          ["all", els.btnLogFilterAll],
+          ["alarm", els.btnLogFilterAlarm],
+          ["arming", els.btnLogFilterArming],
+          ["zones", els.btnLogFilterZones],
+          ["errors", els.btnLogFilterErrors],
+        ];
+        map.forEach(([key, el]) => {
+          if (!el) return;
+          el.classList.toggle("selected", logFilter === key);
+        });
+      }
+
+      function setLogFilter(next) {
+        const v = String(next || "").toLowerCase();
+        logFilter = ["all", "alarm", "arming", "zones", "errors"].includes(v) ? v : "all";
+        updateLogFilterButtons();
+        renderLogs();
+      }
+
+      function resetLogTracking() {
+        logsById = new Map();
+        logLastTsById = new Map();
+      }
+
+      async function fetchLogForNode(nodeId, since) {
+        const qs = new URLSearchParams();
+        qs.set("limit", "200");
+        if (Number.isFinite(Number(since)) && Number(since) > 0) {
+          qs.set("since", String(Number(since)));
+        }
+        const res = await fetch(apiUrl(`/alarm-ultimate/alarm/${encodeURIComponent(nodeId)}/log?${qs.toString()}`), {
+          credentials: "same-origin",
+          headers: { ...authHeaders() },
+        });
+        if (!res.ok) throw new Error(`Unable to load log (${res.status})`);
+        return res.json();
+      }
+
+      async function loadLogs(okStates) {
+        if (!showLog) return;
+        if (!els.logBody || !els.logHint) return;
+        const ids = Array.from(selectedIds);
+        if (!ids.length) return;
+
+        const nameById = new Map(
+          (Array.isArray(okStates) ? okStates : []).map((x) => [x.id, (x.data && x.data.name) || x.id]),
+        );
+
+        const results = await Promise.allSettled(
+          ids.map(async (id) => {
+            const since = logLastTsById.has(id) ? logLastTsById.get(id) : null;
+            const data = await fetchLogForNode(id, since);
+            return { id, data };
+          }),
+        );
+
+        for (const r of results) {
+          if (r.status !== "fulfilled") continue;
+          const id = r.value.id;
+          const payload = r.value.data && typeof r.value.data === "object" ? r.value.data : {};
+          const entries = Array.isArray(payload.log) ? payload.log : [];
+
+          const prev = logsById.get(id) || [];
+          const next = logLastTsById.has(id) ? prev.concat(entries) : entries;
+          logsById.set(id, next);
+
+          const maxTs = next.reduce((m, e) => Math.max(m, Number(e && e.ts) || 0), 0);
+          logLastTsById.set(id, maxTs);
+        }
+
+        renderLogs(nameById);
+      }
+
+      function renderLogs(nameById) {
+        if (!els.logBody || !els.logHint) return;
+        const ids = Array.from(selectedIds);
+        const nameMap = nameById instanceof Map ? nameById : new Map(ids.map((id) => [id, id]));
+
+        const all = [];
+        ids.forEach((id) => {
+          const alarmName = nameMap.get(id) || id;
+          const list = logsById.get(id) || [];
+          list.forEach((e) => all.push({ ...(e || {}), __alarmId: id, __alarmName: alarmName }));
+        });
+
+        const filtered =
+          logFilter === "all" ? all : all.filter((e) => logGroupForEvent(e && e.event) === logFilter);
+
+        filtered.sort((a, b) => (Number(b.ts) || 0) - (Number(a.ts) || 0));
+        const show = filtered.slice(0, 200);
+
+        if (!show.length) {
+          els.logHint.textContent = "No log entries yet.";
+          els.logBody.innerHTML = "";
+          return;
+        }
+
+        els.logHint.textContent = `Showing ${show.length} entr${show.length === 1 ? "y" : "ies"}${
+          logFilter !== "all" ? ` (${logFilter})` : ""
+        }.`;
+        els.logBody.innerHTML = "";
+
+        for (const entry of show) {
+          const tr = document.createElement("tr");
+          const alarmLabel = entry.__alarmName || entry.__alarmId || "";
+          const evt = entry && entry.event ? String(entry.event) : "";
+          const cls = eventPillClass(evt);
+          const details = eventDetails(entry);
+
+          tr.innerHTML = `
+            <td>${escapeHtml(alarmLabel)}</td>
+            <td>${escapeHtml(formatTs(entry.ts))}</td>
+            <td><span class="pill small ${cls}">${escapeHtml(evt)}</span></td>
+            <td class="log-details">${escapeHtml(details)}</td>
+          `;
+          els.logBody.appendChild(tr);
+        }
+      }
+
         function normalizePreselectIds(raw) {
           const v = String(raw || "").trim();
           if (!v) return [];
@@ -841,19 +1151,20 @@
           els.selectionHint.innerHTML = `Selected: <span class="pill small">${count}</span> (click buttons to add/remove)`;
         }
 
-        function setSelectedIds(next) {
-          const ids = Array.isArray(next) ? next.map(String).filter(Boolean) : [];
-          selectedIds = new Set(ids);
-          // enforce non-empty selection when possible
-          if (selectedIds.size === 0 && nodesList[0]) {
-            selectedIds.add(nodesList[0].id);
-          }
-          persistSelectedIds();
-          resetStateAudioTracking();
-          updateSelectionHint();
-          renderNodeButtons();
-          loadState().catch(() => {});
-        }
+	        function setSelectedIds(next) {
+	          const ids = Array.isArray(next) ? next.map(String).filter(Boolean) : [];
+	          selectedIds = new Set(ids);
+	          // enforce non-empty selection when possible
+	          if (selectedIds.size === 0 && nodesList[0]) {
+	            selectedIds.add(nodesList[0].id);
+	          }
+	          persistSelectedIds();
+	          resetStateAudioTracking();
+	          resetLogTracking();
+	          updateSelectionHint();
+	          renderNodeButtons();
+	          loadState().catch(() => {});
+	        }
 
         function selectAll() {
           if (!nodesList.length) return;
@@ -1049,11 +1360,14 @@
 	            zonesFilterInitialized = true;
 	            updateZonesFilterButtons();
 	          }
-	          renderZones(zones);
-	          if (!multiple) {
-	            handleStateBeeps(okStates[0].data && okStates[0].data.state);
-	          }
-	        }
+		          renderZones(zones);
+		          if (!multiple) {
+		            handleStateBeeps(okStates[0].data && okStates[0].data.state);
+		          }
+              if (showLog) {
+                await loadLogs(okStates);
+              }
+		        }
 
       function startPolling() {
         if (pollTimer) clearInterval(pollTimer);
@@ -1157,14 +1471,53 @@
 	      if (els.btnZonesFilterOpen) {
 	        els.btnZonesFilterOpen.addEventListener("click", () => setZonesFilter("open", { user: true }));
 	      }
-	      if (els.btnZonesFilterAll) {
-	        els.btnZonesFilterAll.addEventListener("click", () => setZonesFilter("all", { user: true }));
-	      }
+		      if (els.btnZonesFilterAll) {
+		        els.btnZonesFilterAll.addEventListener("click", () => setZonesFilter("all", { user: true }));
+		      }
+		      if (els.btnLogFilterAll) {
+		        els.btnLogFilterAll.addEventListener("click", () => setLogFilter("all"));
+		      }
+		      if (els.btnLogFilterAlarm) {
+		        els.btnLogFilterAlarm.addEventListener("click", () => setLogFilter("alarm"));
+		      }
+		      if (els.btnLogFilterArming) {
+		        els.btnLogFilterArming.addEventListener("click", () => setLogFilter("arming"));
+		      }
+		      if (els.btnLogFilterZones) {
+		        els.btnLogFilterZones.addEventListener("click", () => setLogFilter("zones"));
+		      }
+		      if (els.btnLogFilterErrors) {
+		        els.btnLogFilterErrors.addEventListener("click", () => setLogFilter("errors"));
+		      }
+		      if (els.btnLogDownload) {
+		        els.btnLogDownload.addEventListener("click", () => {
+		          const ids = Array.from(selectedIds);
+		          const out = [];
+		          ids.forEach((id) => {
+		            const alarmName = nodesList.find((n) => n && n.id === id)?.name || id;
+		            const list = logsById.get(id) || [];
+		            list.forEach((e) => out.push({ ...(e || {}), alarmId: id, alarmName }));
+		          });
+		          out.sort((a, b) => (Number(a.ts) || 0) - (Number(b.ts) || 0));
+		          const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+		          const a = document.createElement("a");
+		          a.href = URL.createObjectURL(blob);
+		          a.download = `alarm-log-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+		          document.body.appendChild(a);
+		          a.click();
+		          setTimeout(() => {
+		            try {
+		              URL.revokeObjectURL(a.href);
+		              a.remove();
+		            } catch (_err) {}
+		          }, 0);
+		        });
+		      }
 
-	      els.btnArm.addEventListener("click", async () => {
-	        playKeyClick("action");
-	        try {
-          await sendCommand({ command: "arm", code: codeValue() });
+		      els.btnArm.addEventListener("click", async () => {
+		        playKeyClick("action");
+		        try {
+	          await sendCommand({ command: "arm", code: codeValue() });
           if (els.cmdStatus.style.display === "none") {
             showCmdStatus(`Arm sent to ${selectedIds.size} node(s).`, "ok");
           }
@@ -1209,14 +1562,18 @@
         else if (/^\d$/.test(e.key)) playKeyClick("key");
       });
 
-	      (async function init() {
-	        try {
-	          setNodeHint(`API root: ${httpAdminRoot()}`);
-	          await loadNodes();
-            await loadNodeStatesForButtons().catch(() => {});
-	          await loadState();
-	          startPolling();
-            startNodeButtonPolling();
+		      (async function init() {
+		        try {
+		          setNodeHint(`API root: ${httpAdminRoot()}`);
+		          updateLogFilterButtons();
+		          if (showLog && els.logHint) {
+		            els.logHint.textContent = "Loading...";
+		          }
+		          await loadNodes();
+	            await loadNodeStatesForButtons().catch(() => {});
+		          await loadState();
+		          startPolling();
+	            startNodeButtonPolling();
 	        } catch (err) {
 	          setNodeHint(err.message);
 	          els.zonesHint.textContent = err.message;

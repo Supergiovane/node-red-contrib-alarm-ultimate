@@ -92,6 +92,7 @@ The Alarm Panel supports:
 
 - Preselect node: `/alarm-ultimate/alarm-panel?id=<alarmNodeId>`
 - Embed mode (for Dashboard iframes): `/alarm-ultimate/alarm-panel?embed=1&id=<alarmNodeId>`
+- Views: `view=keypad`, `view=zones`, `view=log` (e.g. `/alarm-ultimate/alarm-panel?embed=1&view=log&id=<alarmNodeId>`)
 
 The Zones JSON Mapper supports:
 
@@ -104,6 +105,7 @@ The Zones JSON Mapper supports:
 - `examples/alarm-ultimate-dashboard.json`: Node-RED Dashboard example embedding the Alarm Panel in a `ui_template` iframe.
 - `examples/alarm-ultimate-dashboard-controls.json`: Node-RED Dashboard example with the embedded panel plus command buttons (and a small sensor simulator).
 - `examples/alarm-ultimate-dashboard-v2.json`: Dashboard 2.0 example for `@flowfuse/node-red-dashboard` (Alarm Panel + basic controls + status).
+- `examples/alarm-ultimate-home-assistant-alarm-panel.json`: Home Assistant Add-on example (no MQTT) using the HA Alarm Panel card + `AlarmUltimateInputAdapter`.
 
 See `examples/README.md`.
 
@@ -127,6 +129,7 @@ HTTP admin endpoints:
 
 - `GET /alarm-ultimate/alarm/nodes`
 - `GET /alarm-ultimate/alarm/:id/state`
+- `GET /alarm-ultimate/alarm/:id/log`
 - `GET /alarm-ultimate/input-adapter/presets`
 - `POST /alarm-ultimate/alarm/:id/command`
 - `GET /alarm-ultimate/alarm-json-mapper`

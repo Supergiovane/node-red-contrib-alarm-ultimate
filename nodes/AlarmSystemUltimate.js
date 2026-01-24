@@ -92,6 +92,27 @@ module.exports = function (RED) {
       res.json(api.getState());
     });
 
+    RED.httpAdmin.get('/alarm-ultimate/alarm/:id/log', needsRead, (req, res) => {
+      const api = alarmInstances.get(req.params.id);
+      if (!api) {
+        res.sendStatus(404);
+        return;
+      }
+      const getLog = api.getLog && typeof api.getLog === 'function' ? api.getLog : null;
+      if (!getLog) {
+        res.status(501).json({ ok: false, error: 'log_not_supported' });
+        return;
+      }
+      const since = Number(req.query && req.query.since);
+      const limit = Number(req.query && req.query.limit);
+      res.json(
+        getLog({
+          since: Number.isFinite(since) ? since : null,
+          limit: Number.isFinite(limit) ? limit : null,
+        })
+      );
+    });
+
     RED.httpAdmin.post('/alarm-ultimate/alarm/:id/command', needsWrite, (req, res) => {
       const api = alarmInstances.get(req.params.id);
       if (!api) {
@@ -708,6 +729,27 @@ module.exports = function (RED) {
         controlTopic,
         state: snapshotState(),
         zones: buildZoneStateSnapshot(),
+      };
+    }
+
+    function getLogSnapshot(opts) {
+      const options = opts && typeof opts === 'object' ? opts : {};
+      const since = Number.isFinite(Number(options.since)) ? Number(options.since) : null;
+      const limit = Number.isFinite(Number(options.limit)) ? clampInt(options.limit, 200, 0, 500) : null;
+
+      const all = Array.isArray(state.log) ? state.log : [];
+      const filtered = since ? all.filter((e) => (e && Number(e.ts)) > since) : all;
+      const out = limit === null ? filtered : limit === 0 ? [] : filtered.slice(-limit);
+
+      return {
+        id: node.id,
+        name: node.name || '',
+        now: now(),
+        total: all.length,
+        returned: out.length,
+        since,
+        limit,
+        log: out.map((e) => ({ ...(e || {}) })),
       };
     }
 
@@ -1474,6 +1516,7 @@ module.exports = function (RED) {
       name: node.name || '',
       controlTopic,
       getState: getUiState,
+      getLog: getLogSnapshot,
       command(body) {
         const payload = body && typeof body === 'object' ? body : {};
         const msg = { topic: controlTopic };

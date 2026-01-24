@@ -11,7 +11,7 @@
     "type": "comment",
     "z": "a9f3e19b2b7c4d01",
     "name": "Requires node-red-dashboard",
-    "info": "Installa `node-red-dashboard`, poi importa questo flow.\n\nSe hai cambiato `httpAdminRoot`, modifica l'URL dell'iframe nel nodo ui_template.",
+    "info": "Installa `node-red-dashboard`, poi importa questo flow.\n\nL'iframe usa un URL *relativo* che esce da `/ui` (`../alarm-ultimate/...`) così funziona anche con un path prefix (es. Home Assistant Ingress).\nPuoi usare anche `view=log` per mostrare il registro eventi all'utente.",
     "x": 200,
     "y": 60,
     "wires": []
@@ -30,6 +30,17 @@
     "name": "Panel",
     "tab": "f1c9d0f3d9b8a001",
     "order": 1,
+    "disp": true,
+    "width": "12",
+    "collapse": false,
+    "className": ""
+  },
+  {
+    "id": "1e2d3c4b5a697801",
+    "type": "ui_group",
+    "name": "Log",
+    "tab": "f1c9d0f3d9b8a001",
+    "order": 2,
     "disp": true,
     "width": "12",
     "collapse": false,
@@ -87,7 +98,7 @@
     "order": 1,
     "width": "12",
     "height": "18",
-    "format": "<iframe src=\"/alarm-ultimate/alarm-panel?embed=1&id=a1b2c3d4e5f6a7b8\" style=\"width:100%; height:720px; border:0; border-radius:10px;\"></iframe>",
+    "format": "<iframe src=\"../alarm-ultimate/alarm-panel?embed=1&id=a1b2c3d4e5f6a7b8\" style=\"width:100%; height:720px; border:0; border-radius:10px;\"></iframe>",
     "storeOutMessages": false,
     "fwdInMessages": false,
     "resendOnRefresh": true,
@@ -95,5 +106,23 @@
     "className": "",
     "x": 520,
     "y": 160
+  },
+  {
+    "id": "2f1e0d3c4b5a6978",
+    "type": "ui_template",
+    "z": "a9f3e19b2b7c4d01",
+    "group": "1e2d3c4b5a697801",
+    "name": "Alarm Log (embed)",
+    "order": 1,
+    "width": "12",
+    "height": "10",
+    "format": "<iframe src=\"../alarm-ultimate/alarm-panel?embed=1&view=log&id=a1b2c3d4e5f6a7b8\" style=\"width:100%; height:420px; border:0; border-radius:10px;\"></iframe>",
+    "storeOutMessages": false,
+    "fwdInMessages": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 520,
+    "y": 220
   }
 ]
