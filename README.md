@@ -13,6 +13,14 @@
 
 Alarm System Ultimate nodes + web panel for Node-RED.
 
+<p align="center">
+  <a href="https://youtu.be/HUPzhVgObBE">
+    <img src="https://img.youtube.com/vi/HUPzhVgObBE/hqdefault.jpg" alt="Alarm Ultimate video (YouTube)" width="640">
+  </a>
+  <br>
+  <a href="https://youtu.be/HUPzhVgObBE">Watch the video on YouTube</a>
+</p>
+
 Includes:
 
 - `AlarmSystemUltimate` (BETA): full alarm control panel node (zones, entry/exit delays, bypass, chime, 24h/fire/tamper, siren, event log).
