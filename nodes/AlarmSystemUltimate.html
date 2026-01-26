@@ -2,19 +2,19 @@
   RED.nodes.registerType("AlarmSystemUltimate", {
     category: "Alarm Ultimate",
     color: "#A8DADC",
-	    defaults: {
-	      name: { value: "" },
-	      controlTopic: { value: "alarm" },
-	      payloadPropName: { value: "payload", required: false },
-	      persistState: { value: true },
-	      syncTargets: { value: "" },
-	      requireCodeForArm: { value: false },
-	      requireCodeForDisarm: { value: true },
-	      armCode: { value: "" },
-	      duressCode: { value: "" },
-	      blockArmOnViolations: { value: true },
-	      exitDelaySeconds: { value: 30, validate: RED.validators.number() },
-	      entryDelaySeconds: { value: 30, validate: RED.validators.number() },
+    defaults: {
+      name: { value: "" },
+      controlTopic: { value: "alarm" },
+      payloadPropName: { value: "payload", required: false },
+      persistState: { value: true },
+      syncTargets: { value: "" },
+      requireCodeForArm: { value: false },
+      requireCodeForDisarm: { value: true },
+      armCode: { value: "" },
+      duressCode: { value: "" },
+      blockArmOnViolations: { value: true },
+      exitDelaySeconds: { value: 30, validate: RED.validators.number() },
+      entryDelaySeconds: { value: 30, validate: RED.validators.number() },
       emitOpenZonesDuringArming: { value: false },
       openZonesArmingIntervalSeconds: {
         value: 1,
@@ -55,18 +55,18 @@
     },
     paletteLabel: function () {
       return "Alarm System (BETA)";
-	    },
-			    oneditprepare: function () {
-			      const nodeId = this.id;
-		      const origin = window.location.origin;
-		      const openerOrigin = origin;
-		      const bc =
-		        typeof BroadcastChannel === "function"
-		          ? new BroadcastChannel("alarm-ultimate-zones")
-		          : null;
-		      const payloadField = $("#node-input-payloadPropName");
-		      if (payloadField.val() === "") payloadField.val("payload");
-		      payloadField.typedInput({ default: "msg", types: ["msg"] });
+    },
+    oneditprepare: function () {
+      const nodeId = this.id;
+      const origin = window.location.origin;
+      const openerOrigin = origin;
+      const bc =
+        typeof BroadcastChannel === "function"
+          ? new BroadcastChannel("alarm-ultimate-zones")
+          : null;
+      const payloadField = $("#node-input-payloadPropName");
+      if (payloadField.val() === "") payloadField.val("payload");
+      payloadField.typedInput({ default: "msg", types: ["msg"] });
 
       $("#node-input-sirenOnPayload").typedInput({
         default: this.sirenOnPayloadType || "bool",
@@ -86,12 +86,12 @@
         this.sirenOffPayloadType || "bool",
       );
 
-	      const zonesField = $("#node-input-zones");
-	      const zonesSummary = $("#node-input-zones-summary");
-	      const syncTargetsField = $("#node-input-syncTargets");
-	      const syncTargetsUi = $("#node-input-syncTargets-ui");
+      const zonesField = $("#node-input-zones");
+      const zonesSummary = $("#node-input-zones-summary");
+      const syncTargetsField = $("#node-input-syncTargets");
+      const syncTargetsUi = $("#node-input-syncTargets-ui");
 
-	      function parseZonesText(text) {
+      function parseZonesText(text) {
         const raw = String(text || "").trim();
         if (!raw) return [];
 
@@ -122,131 +122,131 @@
           }
         }
         return zones;
-	      }
+      }
 
-	      function parseSyncTargets(text) {
-	        const raw = String(text || "").trim();
-	        if (!raw) return {};
-	        try {
-	          const parsed = JSON.parse(raw);
-	          return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-	        } catch (_err) {
-	          return {};
-	        }
-	      }
+      function parseSyncTargets(text) {
+        const raw = String(text || "").trim();
+        if (!raw) return {};
+        try {
+          const parsed = JSON.parse(raw);
+          return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+        } catch (_err) {
+          return {};
+        }
+      }
 
-	      function normalizeSyncAction(value) {
-	        const v = String(value || "").trim().toLowerCase();
-	        if (v === "arm") return "arm";
-	        if (v === "disarm") return "disarm";
-	        return "leave";
-	      }
+      function normalizeSyncAction(value) {
+        const v = String(value || "").trim().toLowerCase();
+        if (v === "arm") return "arm";
+        if (v === "disarm") return "disarm";
+        return "leave";
+      }
 
-		      function syncActionLabel(value) {
-		        const v = normalizeSyncAction(value);
-		        if (v === "arm") return "Arm";
-		        if (v === "disarm") return "Disarm";
-		        return "Leave as is";
-		      }
+      function syncActionLabel(value) {
+        const v = normalizeSyncAction(value);
+        if (v === "arm") return "Arm";
+        if (v === "disarm") return "Disarm";
+        return "Leave as is";
+      }
 
-		      function escapeHtml(text) {
-		        return String(text || "")
-		          .replace(/&/g, "&amp;")
-		          .replace(/</g, "&lt;")
-		          .replace(/>/g, "&gt;")
-		          .replace(/"/g, "&quot;")
-		          .replace(/'/g, "&#039;");
-		      }
+      function escapeHtml(text) {
+        return String(text || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
 
-		      function buildSyncTargetsUi() {
-		        if (!syncTargetsUi || !syncTargetsUi.length) return;
-		        try {
-		          const saved = parseSyncTargets(syncTargetsField.val());
+      function buildSyncTargetsUi() {
+        if (!syncTargetsUi || !syncTargetsUi.length) return;
+        try {
+          const saved = parseSyncTargets(syncTargetsField.val());
 
-		          // Collect other Alarm nodes in the workspace.
-		          const other = [];
-		          try {
-		            if (RED && RED.nodes && typeof RED.nodes.eachNode === "function") {
-		              RED.nodes.eachNode((n) => {
-		                if (!n) return;
-		                const type = String(n.type || "");
-		                if (type !== "AlarmSystemUltimate") return;
-		                if (n.id === nodeId) return;
-		                other.push({ id: n.id, name: String(n.name || "").trim() });
-		              });
-		            }
-		          } catch (_err) {}
+          // Collect other Alarm nodes in the workspace.
+          const other = [];
+          try {
+            if (RED && RED.nodes && typeof RED.nodes.eachNode === "function") {
+              RED.nodes.eachNode((n) => {
+                if (!n) return;
+                const type = String(n.type || "");
+                if (type !== "AlarmSystemUltimate") return;
+                if (n.id === nodeId) return;
+                other.push({ id: n.id, name: String(n.name || "").trim() });
+              });
+            }
+          } catch (_err) { }
 
-		          other.sort((a, b) => {
-		            const an = (a.name || a.id).toLowerCase();
-		            const bn = (b.name || b.id).toLowerCase();
-		            return an.localeCompare(bn);
-		          });
+          other.sort((a, b) => {
+            const an = (a.name || a.id).toLowerCase();
+            const bn = (b.name || b.id).toLowerCase();
+            return an.localeCompare(bn);
+          });
 
-		          if (other.length === 0) {
-		            syncTargetsUi.html('<span style="color:#777;">No other Alarm nodes found.</span>');
-		            return;
-		          }
+          if (other.length === 0) {
+            syncTargetsUi.html('<span style="color:#777;">No other Alarm nodes found.</span>');
+            return;
+          }
 
-		          const table = $('<table style="width:100%; border-collapse:collapse;"></table>');
-		          table.append(
-		            '<thead><tr>' +
-		              '<th style="text-align:left; padding:4px 6px;">Alarm</th>' +
-		              '<th style="text-align:left; padding:4px 6px; width:160px;">On ARM</th>' +
-		              '<th style="text-align:left; padding:4px 6px; width:160px;">On DISARM</th>' +
-		            '</tr></thead>',
-		          );
+          const table = $('<table style="width:100%; border-collapse:collapse;"></table>');
+          table.append(
+            '<thead><tr>' +
+            '<th style="text-align:left; padding:4px 6px;">Alarm</th>' +
+            '<th style="text-align:left; padding:4px 6px; width:160px;">On ARM</th>' +
+            '<th style="text-align:left; padding:4px 6px; width:160px;">On DISARM</th>' +
+            '</tr></thead>',
+          );
 
-		          const tbody = $("<tbody></tbody>");
-		          other.forEach((n) => {
-		            const rule = saved[n.id] && typeof saved[n.id] === "object" ? saved[n.id] : {};
-		            const onArm = normalizeSyncAction(rule.onArm);
-		            const onDisarm = normalizeSyncAction(rule.onDisarm);
+          const tbody = $("<tbody></tbody>");
+          other.forEach((n) => {
+            const rule = saved[n.id] && typeof saved[n.id] === "object" ? saved[n.id] : {};
+            const onArm = normalizeSyncAction(rule.onArm);
+            const onDisarm = normalizeSyncAction(rule.onDisarm);
 
-		            const armSel = $('<select style="width:100%;"></select>');
-		            const disarmSel = $('<select style="width:100%;"></select>');
-		            ["arm", "leave", "disarm"].forEach((v) => {
-		              armSel.append(`<option value="${v}">${syncActionLabel(v)}</option>`);
-		              disarmSel.append(`<option value="${v}">${syncActionLabel(v)}</option>`);
-		            });
-		            armSel.val(onArm);
-		            disarmSel.val(onDisarm);
+            const armSel = $('<select style="width:100%;"></select>');
+            const disarmSel = $('<select style="width:100%;"></select>');
+            ["arm", "leave", "disarm"].forEach((v) => {
+              armSel.append(`<option value="${v}">${syncActionLabel(v)}</option>`);
+              disarmSel.append(`<option value="${v}">${syncActionLabel(v)}</option>`);
+            });
+            armSel.val(onArm);
+            disarmSel.val(onDisarm);
 
-		            const tr = $("<tr></tr>");
-		            const label = n.name ? `${n.name}` : "(unnamed Alarm)";
-		            tr.append(
-		              `<td style="padding:4px 6px;">${escapeHtml(label)}</td>`,
-		            );
-		            const tdArm = $('<td style="padding:4px 6px;"></td>').append(armSel);
-		            const tdDisarm = $('<td style="padding:4px 6px;"></td>').append(disarmSel);
-		            tr.append(tdArm).append(tdDisarm);
-		            tbody.append(tr);
+            const tr = $("<tr></tr>");
+            const label = n.name ? `${n.name}` : "(unnamed Alarm)";
+            tr.append(
+              `<td style="padding:4px 6px;">${escapeHtml(label)}</td>`,
+            );
+            const tdArm = $('<td style="padding:4px 6px;"></td>').append(armSel);
+            const tdDisarm = $('<td style="padding:4px 6px;"></td>').append(disarmSel);
+            tr.append(tdArm).append(tdDisarm);
+            tbody.append(tr);
 
-		            function persist() {
-		              const next = parseSyncTargets(syncTargetsField.val());
-		              next[n.id] = {
-		                onArm: String(armSel.val() || "leave"),
-		                onDisarm: String(disarmSel.val() || "leave"),
-		              };
-		              syncTargetsField.val(JSON.stringify(next));
-		              try {
-		                syncTargetsField.trigger("change");
-		              } catch (_err) {}
-		            }
+            function persist() {
+              const next = parseSyncTargets(syncTargetsField.val());
+              next[n.id] = {
+                onArm: String(armSel.val() || "leave"),
+                onDisarm: String(disarmSel.val() || "leave"),
+              };
+              syncTargetsField.val(JSON.stringify(next));
+              try {
+                syncTargetsField.trigger("change");
+              } catch (_err) { }
+            }
 
-		            armSel.on("change", persist);
-		            disarmSel.on("change", persist);
-		          });
-		          table.append(tbody);
-		          syncTargetsUi.empty().append(table);
-		        } catch (err) {
-		          syncTargetsUi.html(
-		            `<span style="color:#c00;">Unable to render sync list. Check browser console. (${escapeHtml(err && err.message ? err.message : err)})</span>`,
-		          );
-		        }
-		      }
+            armSel.on("change", persist);
+            disarmSel.on("change", persist);
+          });
+          table.append(tbody);
+          syncTargetsUi.empty().append(table);
+        } catch (err) {
+          syncTargetsUi.html(
+            `<span style="color:#c00;">Unable to render sync list. Check browser console. (${escapeHtml(err && err.message ? err.message : err)})</span>`,
+          );
+        }
+      }
 
-	      function updateZonesSummary() {
+      function updateZonesSummary() {
         try {
           const zones = parseZonesText(zonesField.val());
           zonesSummary.text(zones.length ? `${zones.length} zones configured` : "No zones configured");
@@ -264,115 +264,115 @@
         window.open(`${root}alarm-ultimate/alarm-json-mapper${idPart}`, "_blank");
       }
 
-	      $("#node-input-zones-panel").on("click", function (evt) {
-	        evt.preventDefault();
-	        const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
-	        const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
-	        const idPart = nodeId ? `?id=${encodeURIComponent(nodeId)}` : "";
-	        window.open(
-	          `${root}alarm-ultimate/alarm-panel${idPart}`,
-	          "_blank",
-	          "noopener,noreferrer",
-	        );
-	      });
+      $("#node-input-zones-panel").on("click", function (evt) {
+        evt.preventDefault();
+        const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
+        const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
+        const idPart = nodeId ? `?id=${encodeURIComponent(nodeId)}` : "";
+        window.open(
+          `${root}alarm-ultimate/alarm-panel${idPart}`,
+          "_blank",
+          "noopener,noreferrer",
+        );
+      });
 
-	      $("#node-input-zones-manage").on("click", function (evt) {
-	        evt.preventDefault();
-	        openZonesManager();
-	      });
+      $("#node-input-zones-manage").on("click", function (evt) {
+        evt.preventDefault();
+        openZonesManager();
+      });
 
-	      const messageListener = (evt) => {
-	        if (!evt || evt.origin !== openerOrigin) return;
-	        const data = evt.data && typeof evt.data === "object" ? evt.data : null;
-	        if (!data || typeof data.type !== "string") return;
-	        if (data.nodeId && data.nodeId !== nodeId) return;
+      const messageListener = (evt) => {
+        if (!evt || evt.origin !== openerOrigin) return;
+        const data = evt.data && typeof evt.data === "object" ? evt.data : null;
+        if (!data || typeof data.type !== "string") return;
+        if (data.nodeId && data.nodeId !== nodeId) return;
 
-	        if (data.type === "alarm-ultimate-request-zones") {
-	          let zonesJson = "";
-	          try {
-	            const zones = parseZonesText(zonesField.val());
-	            zonesJson = zones.length ? JSON.stringify(zones, null, 2) : "";
-	          } catch (_err) {
-	            zonesJson = "";
-	          }
-	          try {
-	            evt.source.postMessage(
-	              {
-	                type: "alarm-ultimate-zones",
-	                nodeId,
-	                nodeName: String($("#node-input-name").val() || "").trim() || String(this.name || ""),
-	                zonesJson,
-	              },
-	              openerOrigin,
-	            );
-	          } catch (_err) {
-	            // ignore
-	          }
-	          try {
-	            if (bc) {
-	              bc.postMessage({
-	                type: "alarm-ultimate-zones",
-	                nodeId,
-	                nodeName: String($("#node-input-name").val() || "").trim() || String(this.name || ""),
-	                zonesJson,
-	              });
-	            }
-	          } catch (_err) {
-	            // ignore
-	          }
-	          return;
-	        }
+        if (data.type === "alarm-ultimate-request-zones") {
+          let zonesJson = "";
+          try {
+            const zones = parseZonesText(zonesField.val());
+            zonesJson = zones.length ? JSON.stringify(zones, null, 2) : "";
+          } catch (_err) {
+            zonesJson = "";
+          }
+          try {
+            evt.source.postMessage(
+              {
+                type: "alarm-ultimate-zones",
+                nodeId,
+                nodeName: String($("#node-input-name").val() || "").trim() || String(this.name || ""),
+                zonesJson,
+              },
+              openerOrigin,
+            );
+          } catch (_err) {
+            // ignore
+          }
+          try {
+            if (bc) {
+              bc.postMessage({
+                type: "alarm-ultimate-zones",
+                nodeId,
+                nodeName: String($("#node-input-name").val() || "").trim() || String(this.name || ""),
+                zonesJson,
+              });
+            }
+          } catch (_err) {
+            // ignore
+          }
+          return;
+        }
 
-	        if (data.type === "alarm-ultimate-zones" && typeof data.zonesJson === "string") {
-	          zonesField.val(String(data.zonesJson || ""));
-	          try {
-	            zonesField.trigger("change");
-	          } catch (_err) {
-	            // ignore
-	          }
-	          try {
-	            if (RED && RED.nodes && typeof RED.nodes.dirty === "function") {
-	              RED.nodes.dirty(true);
-	            }
-	          } catch (_err) {
-	            // ignore
-	          }
-	          updateZonesSummary();
-	        }
-	      };
+        if (data.type === "alarm-ultimate-zones" && typeof data.zonesJson === "string") {
+          zonesField.val(String(data.zonesJson || ""));
+          try {
+            zonesField.trigger("change");
+          } catch (_err) {
+            // ignore
+          }
+          try {
+            if (RED && RED.nodes && typeof RED.nodes.dirty === "function") {
+              RED.nodes.dirty(true);
+            }
+          } catch (_err) {
+            // ignore
+          }
+          updateZonesSummary();
+        }
+      };
 
-		      window.addEventListener("message", messageListener);
-	      if (bc) {
-	        bc.addEventListener("message", (ev) => {
-	          const data = ev && ev.data && typeof ev.data === "object" ? ev.data : null;
-	          if (!data || typeof data.type !== "string") return;
-	          if (data.nodeId && data.nodeId !== nodeId) return;
-	          // Reuse the same handler surface by calling it with a minimal shape.
-	          messageListener({ origin: openerOrigin, data, source: null });
-	        });
-	        this._alarmUltimateZonesBroadcast = bc;
-	      }
-		      this._alarmUltimateZonesMessageListener = messageListener;
-		      updateZonesSummary();
-		      setTimeout(() => buildSyncTargetsUi(), 0);
-				    },
-			    oneditsave: function () {
-			      if (this._alarmUltimateZonesMessageListener) {
-			        window.removeEventListener("message", this._alarmUltimateZonesMessageListener);
-			        this._alarmUltimateZonesMessageListener = null;
-			      }
-			      if (this._alarmUltimateZonesBroadcast) {
-			        try {
-			          this._alarmUltimateZonesBroadcast.close();
-			        } catch (_err) {
-			          // ignore
-			        }
-			        this._alarmUltimateZonesBroadcast = null;
-			      }
-		      this.sirenOnPayloadType = $("#node-input-sirenOnPayload").typedInput(
-		        "type",
-	      );
-	      this.sirenOffPayloadType = $("#node-input-sirenOffPayload").typedInput(
+      window.addEventListener("message", messageListener);
+      if (bc) {
+        bc.addEventListener("message", (ev) => {
+          const data = ev && ev.data && typeof ev.data === "object" ? ev.data : null;
+          if (!data || typeof data.type !== "string") return;
+          if (data.nodeId && data.nodeId !== nodeId) return;
+          // Reuse the same handler surface by calling it with a minimal shape.
+          messageListener({ origin: openerOrigin, data, source: null });
+        });
+        this._alarmUltimateZonesBroadcast = bc;
+      }
+      this._alarmUltimateZonesMessageListener = messageListener;
+      updateZonesSummary();
+      setTimeout(() => buildSyncTargetsUi(), 0);
+    },
+    oneditsave: function () {
+      if (this._alarmUltimateZonesMessageListener) {
+        window.removeEventListener("message", this._alarmUltimateZonesMessageListener);
+        this._alarmUltimateZonesMessageListener = null;
+      }
+      if (this._alarmUltimateZonesBroadcast) {
+        try {
+          this._alarmUltimateZonesBroadcast.close();
+        } catch (_err) {
+          // ignore
+        }
+        this._alarmUltimateZonesBroadcast = null;
+      }
+      this.sirenOnPayloadType = $("#node-input-sirenOnPayload").typedInput(
+        "type",
+      );
+      this.sirenOffPayloadType = $("#node-input-sirenOffPayload").typedInput(
         "type",
       );
     },
@@ -438,7 +438,7 @@
 	      ><i class="fa fa-youtube-play"></i>&nbsp;<a
 	        target="_blank"
 	        href="https://youtu.be/HUPzhVgObBE"
-	        ><u>SEE IT ON YOUTUBE</u></a
+	        ><u>YOUTUBE</u></a
 	      ></span
 	    >
 	  </div>
