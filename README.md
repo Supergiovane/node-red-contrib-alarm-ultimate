@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/banner.png" alt="Alarm Ultimate for Node-RED" width="600">
+  <img src="docs/images/banner.png" alt="Alarm Ultimate for Node-RED" width="400">
 </p>
 
 [![NPM version][npm-version-image]][npm-url]
