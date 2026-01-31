@@ -110,7 +110,8 @@
 
     textarea,
     select,
-    input[type="text"] {
+    input[type="text"],
+    input[type="number"] {
       width: 100%;
       border: 1px solid var(--border);
       background: transparent;
@@ -125,6 +126,48 @@
     textarea {
       min-height: 240px;
       resize: vertical;
+    }
+
+    input[type="number"] {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .zone-sup {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .zone-sup label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .zone-sup .sup-time {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .zone-sup .sup-time span {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    .zone-sup input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+    }
+
+    .zone-sup input[type="number"] {
+      min-width: 80px;
     }
 
     .buttons {
@@ -246,6 +289,7 @@
     }
 
     td input[type="text"],
+    td input[type="number"],
     td select {
       width: 100%;
       padding: 6px 8px;
@@ -326,6 +370,7 @@
 	              <th style="width: 140px;">Match</th>
 	              <th style="width: 220px;">Name</th>
 	              <th style="width: 140px;">Kind</th>
+	              <th style="width: 260px;">Supervision</th>
 	              <th style="width: 90px;">Actions</th>
 	            </tr>
 	          </thead>
@@ -724,6 +769,48 @@
       z.bypassable = z.bypassable !== false;
       z.chime = z.chime === true;
 
+      // Normalize optional supervision config (keeps JSON clean and UI-friendly).
+      const supervisionConfig =
+        z.supervision && typeof z.supervision === "object"
+          ? { ...z.supervision }
+          : (z.supervisionEnabled === true ||
+              z.supervision === true ||
+              z.supervisionBlockArm !== undefined ||
+              z.supervisionTimeoutSeconds !== undefined ||
+              z.supervisionSeconds !== undefined)
+            ? {
+                enabled: z.supervisionEnabled === true || z.supervision === true,
+                timeoutSeconds:
+                  z.supervisionTimeoutSeconds !== undefined
+                    ? z.supervisionTimeoutSeconds
+                    : z.supervisionSeconds !== undefined
+                      ? z.supervisionSeconds
+                      : undefined,
+                blockArm: z.supervisionBlockArm,
+              }
+            : null;
+
+      if (supervisionConfig && supervisionConfig.enabled === true) {
+        const timeoutSeconds = Number(supervisionConfig.timeoutSeconds);
+        const blockArm = Object.prototype.hasOwnProperty.call(supervisionConfig, "blockArm")
+          ? supervisionConfig.blockArm !== false
+          : true;
+        z.supervision = {
+          enabled: true,
+          timeoutSeconds: Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? timeoutSeconds : null,
+          blockArm,
+        };
+        if (z.supervision.timeoutSeconds === null) delete z.supervision.timeoutSeconds;
+      } else {
+        delete z.supervision;
+      }
+
+      // Drop legacy supervision fields (we keep only `supervision`).
+      delete z.supervisionEnabled;
+      delete z.supervisionTimeoutSeconds;
+      delete z.supervisionSeconds;
+      delete z.supervisionBlockArm;
+
 	      // Drop UI-only fields if any.
 	      delete z.__errors;
 	      delete z.__idExplicit;
@@ -818,6 +905,14 @@
 
         if (!topic && !topicPattern) zone.__errors.push("Missing topic/pattern.");
         if (topic && topicPattern) zone.__errors.push("Choose topic OR pattern (not both).");
+
+        const sup = zone && zone.supervision && typeof zone.supervision === "object" ? zone.supervision : null;
+        if (sup && sup.enabled === true) {
+          const t = Number(sup.timeoutSeconds);
+          if (!(Number.isFinite(t) && t > 0)) {
+            zone.__errors.push("Supervision enabled but timeoutSeconds is missing/invalid.");
+          }
+        }
       });
 
 	      // Detect duplicates for explicit ids only.
@@ -913,6 +1008,54 @@
         kindSelect.value = zoneKind(zone);
         tdKind.appendChild(kindSelect);
 
+        const tdSup = document.createElement("td");
+        const sup = zone && zone.supervision && typeof zone.supervision === "object" ? zone.supervision : null;
+        const supEnabled = Boolean(sup && sup.enabled === true);
+        const supTimeout =
+          sup && sup.enabled === true && Number.isFinite(Number(sup.timeoutSeconds)) ? String(Number(sup.timeoutSeconds)) : "";
+        const supBlockArm =
+          sup && sup.enabled === true && Object.prototype.hasOwnProperty.call(sup, "blockArm") ? sup.blockArm !== false : true;
+
+        const supWrap = document.createElement("div");
+        supWrap.className = "zone-sup";
+
+        const supEnabledLabel = document.createElement("label");
+        const supEnabledCb = document.createElement("input");
+        supEnabledCb.type = "checkbox";
+        supEnabledCb.checked = supEnabled;
+        supEnabledCb.dataset.field = "supEnabled";
+        supEnabledLabel.appendChild(supEnabledCb);
+        supEnabledLabel.appendChild(document.createTextNode("On"));
+
+        const supTimeWrap = document.createElement("div");
+        supTimeWrap.className = "sup-time";
+        const supTimeoutInput = document.createElement("input");
+        supTimeoutInput.type = "number";
+        supTimeoutInput.min = "0";
+        supTimeoutInput.step = "1";
+        supTimeoutInput.placeholder = "120";
+        supTimeoutInput.value = supTimeout;
+        supTimeoutInput.dataset.field = "supTimeout";
+        supTimeoutInput.disabled = !supEnabled;
+        const supS = document.createElement("span");
+        supS.textContent = "s";
+        supTimeWrap.appendChild(supTimeoutInput);
+        supTimeWrap.appendChild(supS);
+
+        const supBlockLabel = document.createElement("label");
+        const supBlockCb = document.createElement("input");
+        supBlockCb.type = "checkbox";
+        supBlockCb.checked = supEnabled ? supBlockArm : true;
+        supBlockCb.dataset.field = "supBlockArm";
+        supBlockCb.disabled = !supEnabled;
+        supBlockLabel.appendChild(supBlockCb);
+        supBlockLabel.appendChild(document.createTextNode("Block arm"));
+
+        supWrap.appendChild(supEnabledLabel);
+        supWrap.appendChild(supTimeWrap);
+        supWrap.appendChild(supBlockLabel);
+        tdSup.appendChild(supWrap);
+
         const tdActions = document.createElement("td");
         const delBtn = document.createElement("button");
         delBtn.type = "button";
@@ -925,6 +1068,7 @@
 	        tr.appendChild(tdMatch);
 	        tr.appendChild(tdName);
 	        tr.appendChild(tdKind);
+	        tr.appendChild(tdSup);
 	        tr.appendChild(tdActions);
 
 	        els.zoneTableBody.appendChild(tr);
@@ -1899,6 +2043,17 @@
         }
       } else if (field === "kind") {
         applyZoneKind(zone, target.value);
+      } else if (field === "supTimeout") {
+        if (!zone.supervision || typeof zone.supervision !== "object") {
+          zone.supervision = { enabled: true };
+        }
+        zone.supervision.enabled = true;
+        const t = Number(target.value);
+        if (Number.isFinite(t) && t > 0) {
+          zone.supervision.timeoutSeconds = t;
+        } else {
+          delete zone.supervision.timeoutSeconds;
+        }
       }
 
       refreshZonesMeta();
@@ -1930,6 +2085,45 @@
 
       if (field === "kind") {
         applyZoneKind(zone, target.value);
+        refreshZonesMeta();
+      }
+
+      if (field === "supEnabled") {
+        const enabled = target.checked === true;
+        if (enabled) {
+          if (!zone.supervision || typeof zone.supervision !== "object") {
+            zone.supervision = { enabled: true, blockArm: true };
+          }
+          zone.supervision.enabled = true;
+          if (!Object.prototype.hasOwnProperty.call(zone.supervision, "blockArm")) {
+            zone.supervision.blockArm = true;
+          }
+          const timeoutEl = tr.querySelector('input[data-field="supTimeout"]');
+          const blockEl = tr.querySelector('input[data-field="supBlockArm"]');
+          if (timeoutEl) timeoutEl.disabled = false;
+          if (blockEl) blockEl.disabled = false;
+        } else {
+          delete zone.supervision;
+          const timeoutEl = tr.querySelector('input[data-field="supTimeout"]');
+          const blockEl = tr.querySelector('input[data-field="supBlockArm"]');
+          if (timeoutEl) {
+            timeoutEl.disabled = true;
+            timeoutEl.value = "";
+          }
+          if (blockEl) {
+            blockEl.disabled = true;
+            blockEl.checked = true;
+          }
+        }
+        refreshZonesMeta();
+      }
+
+      if (field === "supBlockArm") {
+        if (!zone.supervision || typeof zone.supervision !== "object") {
+          zone.supervision = { enabled: true };
+        }
+        zone.supervision.enabled = true;
+        zone.supervision.blockArm = target.checked === true;
         refreshZonesMeta();
       }
     });

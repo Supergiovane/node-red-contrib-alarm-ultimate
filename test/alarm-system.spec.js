@@ -579,4 +579,192 @@ describe('AlarmSystemUltimate node', function () {
       })
       .catch(done);
   });
+
+  it('emits supervision_lost and supervision_restored for supervised zones', function (done) {
+    const flowId = 'alarm-supervision1';
+    const flow = [
+      { id: flowId, type: 'tab', label: 'alarm-supervision1' },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm',
+        requireCodeForDisarm: false,
+        zones: JSON.stringify({
+          id: 'front',
+          topic: 'sensor/frontdoor',
+          type: 'perimeter',
+          supervision: { enabled: true, timeoutSeconds: 0.05 },
+        }),
+        wires: [['events']],
+      },
+      { id: 'events', type: 'helper', z: flowId },
+    ];
+
+    loadAlarm(flow)
+      .then(() => {
+        const alarm = helper.getNode('alarm');
+        const events = helper.getNode('events');
+
+        const received = { lost: false, restored: false };
+        let finished = false;
+
+        function maybeDone() {
+          if (finished) return;
+          if (received.lost && received.restored) {
+            finished = true;
+            done();
+          }
+        }
+
+        events.on('input', (msg) => {
+          try {
+            if (msg && msg.event === 'supervision_lost') received.lost = true;
+            if (msg && msg.event === 'supervision_restored') received.restored = true;
+            maybeDone();
+          } catch (err) {
+            if (!finished) {
+              finished = true;
+              done(err);
+            }
+          }
+        });
+
+        alarm.receive({ topic: 'sensor/frontdoor', payload: true });
+        setTimeout(() => {
+          alarm.receive({ topic: 'sensor/frontdoor', payload: true });
+        }, 120);
+
+        setTimeout(() => {
+          if (finished) return;
+          finished = true;
+          done(new Error('Timeout waiting for supervision events'));
+        }, 700);
+      })
+      .catch(done);
+  });
+
+  it('starts supervision immediately (no initial sensor message)', function (done) {
+    const flowId = 'alarm-supervision3';
+    const flow = [
+      { id: flowId, type: 'tab', label: 'alarm-supervision3' },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm',
+        requireCodeForDisarm: false,
+        zones: JSON.stringify({
+          id: 'front',
+          topic: 'sensor/frontdoor',
+          type: 'perimeter',
+          supervision: { enabled: true, timeoutSeconds: 0.05 },
+        }),
+        wires: [['events']],
+      },
+      { id: 'events', type: 'helper', z: flowId },
+    ];
+
+    loadAlarm(flow)
+      .then(() => {
+        const alarm = helper.getNode('alarm');
+        const events = helper.getNode('events');
+
+        const received = { lost: false, restored: false };
+        let finished = false;
+
+        function maybeDone() {
+          if (finished) return;
+          if (received.lost && received.restored) {
+            finished = true;
+            done();
+          }
+        }
+
+        events.on('input', (msg) => {
+          try {
+            if (msg && msg.event === 'supervision_lost') {
+              received.lost = true;
+              // Restore by sending a valid sensor update.
+              setTimeout(() => {
+                alarm.receive({ topic: 'sensor/frontdoor', payload: false });
+              }, 10);
+            }
+            if (msg && msg.event === 'supervision_restored') received.restored = true;
+            maybeDone();
+          } catch (err) {
+            if (!finished) {
+              finished = true;
+              done(err);
+            }
+          }
+        });
+
+        setTimeout(() => {
+          if (finished) return;
+          finished = true;
+          done(new Error('Timeout waiting for immediate supervision events'));
+        }, 700);
+      })
+      .catch(done);
+  });
+
+  it('blocks arming when supervision is lost (blockArmOnViolations)', function (done) {
+    const flowId = 'alarm-supervision2';
+    const flow = [
+      { id: flowId, type: 'tab', label: 'alarm-supervision2' },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm',
+        exitDelaySeconds: 0,
+        requireCodeForDisarm: false,
+        blockArmOnViolations: true,
+        zones: JSON.stringify({
+          id: 'front',
+          topic: 'sensor/frontdoor',
+          type: 'perimeter',
+          supervision: { enabled: true, timeoutSeconds: 0.05, blockArm: true },
+        }),
+        wires: [['events']],
+      },
+      { id: 'events', type: 'helper', z: flowId },
+    ];
+
+    loadAlarm(flow)
+      .then(() => {
+        const alarm = helper.getNode('alarm');
+        const events = helper.getNode('events');
+
+        const seen = [];
+        events.on('input', (msg) => {
+          if (msg && typeof msg.event === 'string') {
+            seen.push(msg);
+          }
+        });
+
+        // Start supervision timer without opening the zone.
+        alarm.receive({ topic: 'sensor/frontdoor', payload: false });
+
+        setTimeout(() => {
+          alarm.receive({ topic: 'alarm', command: 'arm' });
+        }, 120);
+
+        setTimeout(() => {
+          try {
+            const blocked = seen.find((m) => m && m.event === 'arm_blocked');
+            expect(blocked, 'arm_blocked not received').to.exist;
+            const violations = blocked && blocked.payload ? blocked.payload.violations : null;
+            expect(violations).to.be.an('array');
+            expect(violations[0]).to.include({ id: 'front' });
+            expect(Boolean(violations[0].supervisionLost)).to.equal(true);
+            done();
+          } catch (err) {
+            done(err);
+          }
+        }, 450);
+      })
+      .catch(done);
+  });
 });

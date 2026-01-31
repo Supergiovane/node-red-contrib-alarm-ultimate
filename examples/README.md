@@ -16,6 +16,17 @@ Notes:
 
 - The old Alarm “Translator” option has been removed. If you need to translate incoming device messages, use the `AlarmUltimateInputAdapter` node.
 - Zones can be edited from the Alarm node editor via the “Manage zones” button (opens the `alarm-json-mapper` tool).
+- Optional: you can enable **sensor supervision** per-zone (to detect devices that stop reporting). When a supervised zone is missing, the Alarm Panel shows `… • MISSING` and the node emits `supervision_lost` / `supervision_restored`.
+
+  Example zone snippet:
+
+  ```json
+  {
+    "id": "frontdoor",
+    "topic": "sensor/frontdoor",
+    "supervision": { "enabled": true, "timeoutSeconds": 120, "blockArm": true }
+  }
+  ```
 
 ## Dashboard (node-red-dashboard)
 

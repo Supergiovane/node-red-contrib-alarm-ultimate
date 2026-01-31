@@ -344,6 +344,10 @@
       .zone-bypassed {
         color: var(--warn);
       }
+      .zone-missing {
+        color: var(--warn);
+        font-weight: 700;
+      }
 
       .kbd {
         display: grid;
@@ -803,7 +807,10 @@
 	        els.zonesBody.innerHTML = "";
 	        const list = Array.isArray(zones) ? zones : [];
 	        lastZonesSnapshot = list;
-	        const filtered = zonesFilter === "open" ? list.filter((z) => z && z.open) : list;
+	        const filtered =
+            zonesFilter === "open"
+              ? list.filter((z) => z && (z.open || (z.supervision && z.supervision.lost)))
+              : list;
 
 	        if (list.length === 0) {
 	          els.zonesHint.textContent = "No zones configured.";
@@ -814,7 +821,7 @@
 	          return;
 	        }
 	        if (zonesFilter === "open") {
-	          els.zonesHint.textContent = `${filtered.length} OPEN zones (of ${list.length})`;
+	          els.zonesHint.textContent = `${filtered.length} OPEN/TROUBLE zones (of ${list.length})`;
 	        } else {
 	          els.zonesHint.textContent = `${list.length} zones`;
 	        }
@@ -822,15 +829,17 @@
 	        for (const z of filtered) {
 	          const tr = document.createElement("tr");
 	          const title = z.name ? `${z.name}` : z.id;
-	          const stateText = z.bypassed ? "BYPASSED" : z.open ? "OPEN" : "CLOSED";
-	          const stateClass = z.bypassed ? "zone-bypassed" : z.open ? "zone-open" : "zone-closed";
+            const missing = Boolean(z && z.supervision && z.supervision.lost);
+            const baseText = z.bypassed ? "BYPASSED" : z.open ? "OPEN" : "CLOSED";
+            const baseClass = z.bypassed ? "zone-bypassed" : z.open ? "zone-open" : "zone-closed";
+            const stateHtml = `${missing ? `<span class="${baseClass}">${escapeHtml(baseText)}</span><span class="zone-missing"> • MISSING</span>` : `<span class="${baseClass}">${escapeHtml(baseText)}</span>`}`;
 	          const topic = z.topic || z.topicPattern || "";
 	          const alarmLabel = z.__alarmName || z.__alarmId || "";
 
           tr.innerHTML = `
             <td>${escapeHtml(alarmLabel)}</td>
             <td>${escapeHtml(title)}</td>
-            <td class="${stateClass}">${escapeHtml(stateText)}</td>
+            <td>${stateHtml}</td>
             <td>${escapeHtml(z.type || "")}</td>
             <td>${escapeHtml(topic)}</td>
           `;
@@ -884,7 +893,9 @@
           evt === "zone_close" ||
           evt === "zone_ignored_exit" ||
           evt === "zone_bypassed_trigger" ||
-          evt === "zone_restore"
+          evt === "zone_restore" ||
+          evt === "supervision_lost" ||
+          evt === "supervision_restored"
         )
           return "zones";
         return "all";
@@ -959,12 +970,15 @@
           e === "zone_close" ||
           e === "zone_ignored_exit" ||
           e === "zone_bypassed_trigger" ||
-          e === "zone_restore"
+          e === "zone_restore" ||
+          e === "supervision_lost" ||
+          e === "supervision_restored"
         ) {
           const z = entry && entry.zone && typeof entry.zone === "object" ? entry.zone : null;
           const zn = z && (z.name || z.id) ? String(z.name || z.id) : "";
           const b = entry && entry.bypassed === true ? "bypassed" : "";
-          return [zn ? `zone=${zn}` : "", b].filter(Boolean).join(" • ");
+          const t = Number.isFinite(Number(entry && entry.timeoutSeconds)) ? `timeout=${Number(entry.timeoutSeconds)}s` : "";
+          return [zn ? `zone=${zn}` : "", b, t].filter(Boolean).join(" • ");
         }
 
         try {

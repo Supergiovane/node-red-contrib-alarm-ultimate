@@ -189,11 +189,21 @@ module.exports = function (RED) {
       const zoneState = {};
       for (const zone of zones) {
         if (!zone || !zone.id) continue;
-        const meta = state.zoneState[zone.id] || { active: false, lastChangeAt: 0, lastTriggerAt: 0 };
+        const meta = state.zoneState[zone.id] || {
+          active: false,
+          lastChangeAt: 0,
+          lastTriggerAt: 0,
+          lastSeenAt: 0,
+          supervisionLost: false,
+          supervisionLostAt: 0,
+        };
         zoneState[zone.id] = {
           active: meta.active === true,
           lastChangeAt: Number(meta.lastChangeAt) || 0,
           lastTriggerAt: Number(meta.lastTriggerAt) || 0,
+          lastSeenAt: Number(meta.lastSeenAt) || 0,
+          supervisionLost: meta.supervisionLost === true,
+          supervisionLostAt: Number(meta.supervisionLostAt) || 0,
         };
       }
       return {
@@ -242,6 +252,9 @@ module.exports = function (RED) {
             active: meta.active === true,
             lastChangeAt: Number(meta.lastChangeAt) || 0,
             lastTriggerAt: Number(meta.lastTriggerAt) || 0,
+            lastSeenAt: Number(meta.lastSeenAt) || 0,
+            supervisionLost: meta.supervisionLost === true,
+            supervisionLostAt: Number(meta.supervisionLostAt) || 0,
           };
         }
         state.zoneState = nextZoneState;
@@ -263,6 +276,7 @@ module.exports = function (RED) {
     let entryTimer = null;
     let sirenTimer = null;
     let statusInterval = null;
+    const supervisionTimers = new Map();
 
     const OUTPUT_ALL_EVENTS = 0;
     const OUTPUT_SIREN = 1;
@@ -296,6 +310,8 @@ module.exports = function (RED) {
       'zone_ignored_exit',
       'zone_bypassed_trigger',
       'zone_restore',
+      'supervision_lost',
+      'supervision_restored',
     ]);
     const errorEvents = new Set(['error', 'denied']);
 
@@ -537,6 +553,37 @@ module.exports = function (RED) {
         delete zone.modes;
       }
 
+      // Optional sensor supervision (per-zone).
+      // Starts after the first valid sensor message is received for that zone.
+      const supervisionConfig = zone.supervision && typeof zone.supervision === 'object' ? zone.supervision : null;
+      const enabledRaw =
+        supervisionConfig && Object.prototype.hasOwnProperty.call(supervisionConfig, 'enabled')
+          ? supervisionConfig.enabled
+          : Object.prototype.hasOwnProperty.call(zone, 'supervisionEnabled')
+            ? zone.supervisionEnabled
+            : zone.supervision === true;
+      zone.supervisionEnabled = enabledRaw === true;
+
+      const timeoutSecondsRaw =
+        supervisionConfig && Object.prototype.hasOwnProperty.call(supervisionConfig, 'timeoutSeconds')
+          ? supervisionConfig.timeoutSeconds
+          : Object.prototype.hasOwnProperty.call(zone, 'supervisionTimeoutSeconds')
+            ? zone.supervisionTimeoutSeconds
+            : Object.prototype.hasOwnProperty.call(zone, 'supervisionSeconds')
+              ? zone.supervisionSeconds
+              : null;
+      const timeoutSeconds = Number(timeoutSecondsRaw);
+      zone.supervisionTimeoutMs =
+        zone.supervisionEnabled === true && Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? timeoutSeconds * 1000 : 0;
+
+      const blockArmRaw =
+        supervisionConfig && Object.prototype.hasOwnProperty.call(supervisionConfig, 'blockArm')
+          ? supervisionConfig.blockArm
+          : Object.prototype.hasOwnProperty.call(zone, 'supervisionBlockArm')
+            ? zone.supervisionBlockArm
+            : true;
+      zone.supervisionBlockArm = blockArmRaw !== false;
+
       return zone;
     }
 
@@ -601,6 +648,17 @@ module.exports = function (RED) {
           fill = 'red';
           shape = 'ring';
           text = 'ARM DENIED';
+        } else {
+          const troubleCount = zones.filter((z) => {
+            if (!z || z.supervisionEnabled !== true) return false;
+            const meta = state.zoneState && state.zoneState[z.id];
+            return meta && meta.supervisionLost === true;
+          }).length;
+          if (troubleCount > 0) {
+            fill = 'yellow';
+            shape = 'ring';
+            text = `TROUBLE${troubleCount ? ` (${troubleCount})` : ''}`;
+          }
         }
       }
 
@@ -705,7 +763,14 @@ module.exports = function (RED) {
 
     function buildZoneStateSnapshot() {
       return zones.map((zone) => {
-        const meta = state.zoneState[zone.id] || { active: false, lastChangeAt: 0, lastTriggerAt: 0 };
+        const meta = state.zoneState[zone.id] || {
+          active: false,
+          lastChangeAt: 0,
+          lastTriggerAt: 0,
+          lastSeenAt: 0,
+          supervisionLost: false,
+          supervisionLostAt: 0,
+        };
         return {
           id: zone.id,
           name: zone.name,
@@ -718,6 +783,14 @@ module.exports = function (RED) {
           open: meta.active === true,
           lastChangeAt: meta.lastChangeAt || 0,
           lastTriggerAt: meta.lastTriggerAt || 0,
+          lastSeenAt: meta.lastSeenAt || 0,
+          supervision: {
+            enabled: zone.supervisionEnabled === true,
+            timeoutSeconds: zone.supervisionEnabled === true ? Number(zone.supervisionTimeoutMs || 0) / 1000 : 0,
+            blockArm: zone.supervisionEnabled === true ? zone.supervisionBlockArm !== false : false,
+            lost: meta.supervisionLost === true,
+            lostAt: meta.supervisionLostAt || 0,
+          },
         };
       });
     }
@@ -1104,11 +1177,104 @@ module.exports = function (RED) {
           continue;
         }
         const zoneState = state.zoneState[zone.id];
-        if (zoneState && zoneState.active === true) {
-          violations.push({ id: zone.id, name: zone.name, type: zone.type });
+        if (
+          (zoneState && zoneState.active === true) ||
+          (zone.supervisionEnabled === true && zone.supervisionBlockArm !== false && zoneState && zoneState.supervisionLost === true)
+        ) {
+          violations.push({
+            id: zone.id,
+            name: zone.name,
+            type: zone.type,
+            open: zoneState && zoneState.active === true,
+            supervisionLost: zoneState && zoneState.supervisionLost === true,
+          });
         }
       }
       return violations;
+    }
+
+    function clearSupervisionTimer(zoneId) {
+      const existing = supervisionTimers.get(zoneId);
+      if (existing) {
+        timerBag.clearTimeout(existing);
+      }
+      supervisionTimers.delete(zoneId);
+    }
+
+    function scheduleSupervisionTimer(zone) {
+      if (!zone || zone.supervisionEnabled !== true) {
+        return;
+      }
+      const timeoutMs = Number(zone.supervisionTimeoutMs) || 0;
+      if (timeoutMs <= 0) {
+        return;
+      }
+
+      const zoneId = zone.id;
+      clearSupervisionTimer(zoneId);
+
+      const handle = timerBag.setTimeout(() => {
+        supervisionTimers.delete(zoneId);
+        const meta = state.zoneState && state.zoneState[zoneId];
+        if (!meta) return;
+        const lastSeenAt = Number(meta.lastSeenAt) || 0;
+        if (!lastSeenAt) return;
+        if (meta.supervisionLost === true) return;
+
+        const elapsed = now() - lastSeenAt;
+        if (elapsed < timeoutMs) {
+          scheduleSupervisionTimer(zone);
+          return;
+        }
+
+        meta.supervisionLost = true;
+        meta.supervisionLostAt = now();
+        state.zoneState[zoneId] = meta;
+        scheduleFileCacheWrite();
+        emitEvent(
+          'supervision_lost',
+          {
+            zone: buildZoneSummary(zone),
+            timeoutSeconds: timeoutMs / 1000,
+            lastSeenAt,
+          },
+          { topic: controlTopic, _alarmUltimateSupervision: { zoneId } }
+        );
+      }, timeoutMs);
+
+      supervisionTimers.set(zoneId, handle);
+    }
+
+    function bootstrapSupervision() {
+      const ts = now();
+      for (const zone of zones) {
+        if (!zone || zone.supervisionEnabled !== true) continue;
+        const timeoutMs = Number(zone.supervisionTimeoutMs) || 0;
+        if (timeoutMs <= 0) continue;
+        const zoneId = zone.id;
+        if (!zoneId) continue;
+        const meta = state.zoneState && state.zoneState[zoneId] ? state.zoneState[zoneId] : null;
+        const next =
+          meta && typeof meta === 'object'
+            ? { ...meta }
+            : {
+                active: false,
+                lastChangeAt: 0,
+                lastTriggerAt: 0,
+                lastSeenAt: 0,
+                supervisionLost: false,
+                supervisionLostAt: 0,
+              };
+
+        // Start supervision immediately: if no valid sensor updates arrive, it will go missing after timeout.
+        if (!Number(next.lastSeenAt)) {
+          next.lastSeenAt = ts;
+        }
+        state.zoneState[zoneId] = next;
+        if (next.supervisionLost !== true) {
+          scheduleSupervisionTimer(zone);
+        }
+      }
     }
 
     function arm(baseMsg, reason) {
@@ -1414,11 +1580,39 @@ module.exports = function (RED) {
         return;
       }
 
-      const zoneMeta = state.zoneState[zone.id] || { active: false, lastChangeAt: 0, lastTriggerAt: 0 };
+      const ts = now();
+      const zoneMeta = state.zoneState[zone.id] || {
+        active: false,
+        lastChangeAt: 0,
+        lastTriggerAt: 0,
+        lastSeenAt: 0,
+        supervisionLost: false,
+        supervisionLostAt: 0,
+      };
       const changed = zoneMeta.active !== value;
       zoneMeta.active = value;
-      zoneMeta.lastChangeAt = now();
+      zoneMeta.lastChangeAt = ts;
+      zoneMeta.lastSeenAt = ts;
       state.zoneState[zone.id] = zoneMeta;
+
+      if (zone.supervisionEnabled === true && (Number(zone.supervisionTimeoutMs) || 0) > 0) {
+        if (zoneMeta.supervisionLost === true) {
+          zoneMeta.supervisionLost = false;
+          zoneMeta.supervisionLostAt = 0;
+          state.zoneState[zone.id] = zoneMeta;
+          scheduleFileCacheWrite();
+          emitEvent(
+            'supervision_restored',
+            {
+              zone: buildZoneSummary(zone),
+              timeoutSeconds: Number(zone.supervisionTimeoutMs || 0) / 1000,
+              lastSeenAt: zoneMeta.lastSeenAt || 0,
+            },
+            msg
+          );
+        }
+        scheduleSupervisionTimer(zone);
+      }
 
       if (changed) {
         emitEvent(
@@ -1510,6 +1704,7 @@ module.exports = function (RED) {
 
     updateStatus();
     emitAnyZoneOpenIfChanged();
+    bootstrapSupervision();
 
     const api = {
       id: node.id,

@@ -735,7 +735,7 @@
 	  | Emit restore events                | Emits `zone_restore` when a zone returns to false.                                                                                   |
 		  | Event log size                     | Max stored log entries in node context (0 disables log).                                                                             |
 		  | Sync other alarms                  | Optional: when this node is armed/disarmed, it can arm/disarm other Alarm nodes. The original `msg.code`/`msg.pin` are forwarded.    |
-		  | Zones                              | Zone definitions. Use **Manage zones** to edit with the web tool (advanced JSON is available there).                                 |
+		  | Zones                              | Zone definitions. Use **Manage zones** to edit with the web tool (advanced JSON is available there, including optional supervision). |
 
 	  <br/>
 
@@ -746,6 +746,24 @@
 	  - The Alarm Panel supports `?id=<alarmNodeId>` and an embed mode for Dashboard: `?embed=1&id=<alarmNodeId>`.
 
 	  <br/>
+
+  ## Zones JSON (advanced)
+
+  Each zone can optionally enable **sensor supervision** (per-zone): if no valid sensor updates are received within `timeoutSeconds`, the node emits `supervision_lost` (supervision starts immediately when the node runs, and `supervision_restored` is emitted on the next valid update).
+
+  Example:
+
+  ```json
+  {
+    "id": "frontdoor",
+    "name": "Front door",
+    "topic": "sensor/frontdoor",
+    "type": "perimeter",
+    "supervision": { "enabled": true, "timeoutSeconds": 120, "blockArm": true }
+  }
+  ```
+
+  <br/>
 
   ## Outputs
 
@@ -776,7 +794,7 @@
 
   **Output 5 (Zone Activity)**
 
-  - Same message as Output 1, only for zone events (`zone_open`, `zone_close`, `bypassed`, `unbypassed`, `chime`, `zone_ignored_exit`, `zone_bypassed_trigger`, `zone_restore`).
+  - Same message as Output 1, only for zone events (`zone_open`, `zone_close`, `bypassed`, `unbypassed`, `chime`, `zone_ignored_exit`, `zone_bypassed_trigger`, `zone_restore`, `supervision_lost`, `supervision_restored`).
 
   **Output 6 (Errors/Denied)**
 
@@ -806,7 +824,7 @@
   - `armed` → `{ reason }`
   - `disarmed` → `{ reason, duress }`
   - `already_armed` → `{ target }`
-  - `arm_blocked` → `{ target, violations:[{id,name,type}] }`
+  - `arm_blocked` → `{ target, violations:[{id,name,type,open,supervisionLost}] }`
   - `status` → `{ state: { mode, arming, entry, alarmActive, silentAlarmActive, sirenActive, alarmZone, bypassedZones, log } }`
   - `reset` → `{}`
   - `denied` → `{ action: "arm"|"disarm", target? }`
@@ -818,6 +836,8 @@
   - `alarm` → `{ kind, zone, silent }` where `kind` can be `instant|entry_timeout|panic|duress|fire|tamper|24h|...`
   - `chime` → `{ zone:{id,name,type} }` (while disarmed)
   - `zone_open` → `{ zone:{id,name,type,topic}, open:true, bypassed }` (always)
+  - `supervision_lost` → `{ zone:{id,name,type,topic}, timeoutSeconds, lastSeenAt }`
+  - `supervision_restored` → `{ zone:{id,name,type,topic}, timeoutSeconds, lastSeenAt }`
   - `zone_close` → `{ zone:{id,name,type,topic}, open:false, bypassed }` (always)
   - `zone_ignored_exit` → `{ zone:{id,name,type} }` (triggered during exit delay and not allowed)
   - `zone_bypassed_trigger` → `{ zone:{id,name,type} }`

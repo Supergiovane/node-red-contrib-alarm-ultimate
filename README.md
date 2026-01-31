@@ -23,7 +23,7 @@ Alarm System Ultimate nodes + web panel for Node-RED.
 
 Includes:
 
-- `AlarmSystemUltimate` (BETA): full alarm control panel node (zones, entry/exit delays, bypass, chime, 24h/fire/tamper, siren, event log).
+- `AlarmSystemUltimate` (BETA): full alarm control panel node (zones, entry/exit delays, bypass, chime, 24h/fire/tamper, siren, event log, optional per-zone sensor supervision).
 - `AlarmUltimateInputAdapter`: translates incoming messages into zone messages for `AlarmSystemUltimate` using built-in or user-defined presets.
 - Output-only helper nodes: `AlarmUltimateState`, `AlarmUltimateZone`, `AlarmUltimateSiren`.
 - Web tools: Zones JSON mapper + web Alarm Panel (embeddable in Node-RED Dashboard).
@@ -73,6 +73,29 @@ Main node that:
 - Receives **sensor messages** on any other topic and matches them to a configured zone
 
 It emits events and state updates on multiple outputs (see the node help in the editor for full details).
+
+#### Optional per-zone sensor supervision
+
+You can enable **sensor supervision** per zone to detect devices that stop reporting.
+
+- Supervision starts **immediately** when the node runs.
+- If a zone does not receive a **valid** sensor update for `timeoutSeconds`, the node emits `supervision_lost` and the Alarm Panel shows `… • MISSING`.
+- The next valid sensor update emits `supervision_restored`.
+- If `blockArm: true` and **Block arm on violations** is enabled, arming is blocked while the zone is missing.
+
+“Valid” means the message value can be converted to boolean using the Alarm node **With Input** property (default `msg.payload`), e.g. `true/false`, `open/closed`, `on/off`, `1/0`.
+
+Example zone:
+
+```json
+{
+  "id": "frontdoor",
+  "name": "Front door",
+  "topic": "sensor/frontdoor",
+  "type": "perimeter",
+  "supervision": { "enabled": true, "timeoutSeconds": 120, "blockArm": true }
+}
+```
 
 ### Output-only helper nodes
 
