@@ -1,5 +1,26 @@
-node_modules
+# Dependencies / package manager
+node_modules/
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 package-lock.json
-_npm_cache
+_npm_cache/
+
+# OS / editor
 .DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Env / local config
+.env
+.env.*
+
+# Archives / local bundles
+*.tgz

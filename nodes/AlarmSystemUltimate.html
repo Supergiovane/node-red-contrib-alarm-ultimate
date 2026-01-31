@@ -451,6 +451,31 @@
   </div>
 
   <div class="form-row">
+    <label><i class="fa fa-th-large"></i> Zones</label>
+    <button type="button" class="red-ui-button au-btn au-btn-success" id="node-input-zones-manage">
+      <i class="fa fa-list"></i> Manage zones
+    </button>
+    <span id="node-input-zones-summary" style="margin-left:8px; color:#777;"></span>
+  </div>
+
+  <textarea id="node-input-zones" style="display:none;"></textarea>
+
+  <div class="form-row">
+    <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-controlTopic"><i class="fa fa-tag"></i> Control topic</label>
+    <input type="text" id="node-input-controlTopic" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-input-payloadPropName"><i class="fa fa-ellipsis-h"></i> With Input</label>
+    <input type="text" id="node-input-payloadPropName" />
+  </div>
+
+  <div class="form-row">
     <label><i class="fa fa-random"></i> Sync other alarms</label>
     <div style="width: 70%;">
       <div class="form-tips" style="margin: 0 0 6px 0;">
@@ -460,28 +485,6 @@
       <input type="hidden" id="node-input-syncTargets" />
     </div>
   </div>
-
-	    <div class="form-row">
-		    <label for="node-input-name"
-		        ><i class="icon-tag"></i> Name</label
-		      >
-      <input type="text" id="node-input-name" placeholder="Name" />
-    </div>
-
-    <div class="form-row">
-	    <label for="node-input-controlTopic"
-	        ><i class="fa fa-tag"></i> Control topic</label
-	      >
-      <input type="text" id="node-input-controlTopic" />
-    </div>
-
-    <div class="form-row">
-	      <label
-	        for="node-input-payloadPropName"
-	        ><i class="fa fa-ellipsis-h"></i> With Input</label
-	      >
-      <input type="text" id="node-input-payloadPropName" />
-    </div>
 
     <div class="form-row">
 	    <label for="node-input-persistState"
@@ -690,16 +693,6 @@
         step="0.1"
       />
     </div>
-
-    <div class="form-row">
-      <label><i class="fa fa-th-large"></i> Zones</label>
-      <button type="button" class="red-ui-button au-btn au-btn-success" id="node-input-zones-manage">
-        <i class="fa fa-list"></i> Manage zones
-      </button>
-      <span id="node-input-zones-summary" style="margin-left:8px; color:#777;"></span>
-    </div>
-
-    <textarea id="node-input-zones" style="display:none;"></textarea>
   </div>
 			</script>
 
@@ -713,39 +706,41 @@
 
   <br/>
 
-  | Property                           | Description                                                                                                                          |
-  | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-  | Control topic                      | Topic that receives runtime commands (arm/disarm/status/bypass/siren/panic/reset).                                                   |
-  | With Input                         | Message property evaluated as sensor value (default `payload`).                                                                      |
-  | Persist state                      | Persists arming state, bypass list and event log across restarts.                                                                    |
-  | Require code for arm               | Requires a valid PIN for arming commands (via `msg.code` or `msg.pin`). If **Code** is empty, commands are allowed.                  |
-  | Require code for disarm            | Requires a valid PIN for disarming commands (via `msg.code` or `msg.pin`). If **Code** is empty, commands are allowed.               |
-  | Code                               | PIN required to arm/disarm when enabled.                                                                                             |
-  | Duress code                        | If provided and `msg.code` matches, the node raises a silent duress alarm while still executing the command.                         |
-  | Block arm on violations            | Prevents arming if any active (true) zone would be armed (excluding bypassed zones). Checked both at arm start and after exit delay. |
-  | Exit/Entry delay (s)               | Global exit/entry delays (each zone can override entry delay).                                                                       |
-  | Emit open zones while arming       | Emits open zones one-by-one on the dedicated output while arming (during exit delay).                                                |
-  | Arming list interval (s)           | Interval between each open zone emitted while arming.                                                                                |
-  | Open zones request topic           | When a message arrives with `msg.topic` equal to this topic, the node lists open zones even while disarmed.                          |
-  | Request list interval (s)          | Interval between each open zone emitted on request (0 = send immediately).                                                           |
-  | Siren topic                        | Topic used on output 2 to turn the siren on/off (default: `controlTopic + "/siren"`).                                                |
-  | Siren ON/OFF payload               | Values emitted on output 2 for siren on/off (typed).                                                                                 |
-  | Siren duration (s)                 | Auto stop duration (`0` = latch until disarm).                                                                                       |
-	  | Latch siren until disarm           | Forces siren to remain on until disarm (ignores duration).                                                                           |
-	  | Emit restore events                | Emits `zone_restore` when a zone returns to false.                                                                                   |
-		  | Event log size                     | Max stored log entries in node context (0 disables log).                                                                             |
-		  | Sync other alarms                  | Optional: when this node is armed/disarmed, it can arm/disarm other Alarm nodes. The original `msg.code`/`msg.pin` are forwarded.    |
-		  | Zones                              | Zone definitions. Use **Manage zones** to edit with the web tool (advanced JSON is available there, including optional supervision). |
+  ### WEB PAGE
 
-	  <br/>
+  - **Panel**: `/alarm-ultimate/alarm-panel` (supports `?id=<alarmNodeId>` and `?embed=1&id=<alarmNodeId>`).
+  - **Zones**: use **Manage zones** to open `/alarm-ultimate/alarm-json-mapper` and save the JSON back into the node.
+  - **Name**: optional label shown in the Alarm Panel.
+  - **Control topic**: topic that receives commands (and is used as base for some outputs).
+  - **With Input**: message property evaluated as sensor value (default `payload`). It must be convertible to boolean (`true/false`, `open/closed`, `on/off`, `1/0`, ...).
 
-	  ### Web tools
+  <br/>
 
-	  - **Zones Manager**: available at `/alarm-ultimate/alarm-json-mapper` (or via the **Manage zones** button).
-	  - **Alarm Panel**: available at `/alarm-ultimate/alarm-panel` (or via the **Panel** button).
-	  - The Alarm Panel supports `?id=<alarmNodeId>` and an embed mode for Dashboard: `?embed=1&id=<alarmNodeId>`.
+  ### Settings
 
-	  <br/>
+  | Property                     | Description                                                                                                                          |
+  | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+  | Persist state                | Persists arming state, bypass list and event log across restarts.                                                                    |
+  | Require code for arm         | Requires a valid PIN for arming commands (via `msg.code` or `msg.pin`). If **Code** is empty, commands are allowed.                  |
+  | Require code for disarm      | Requires a valid PIN for disarming commands (via `msg.code` or `msg.pin`). If **Code** is empty, commands are allowed.               |
+  | Code                         | PIN required to arm/disarm when enabled.                                                                                             |
+  | Duress code                  | If provided and `msg.code` matches, the node raises a silent duress alarm while still executing the command.                         |
+  | Block arm on violations      | Prevents arming if any active (true) zone would be armed (excluding bypassed zones). Checked both at arm start and after exit delay. |
+  | Exit/Entry delay (s)         | Global exit/entry delays (each zone can override entry delay).                                                                       |
+  | Emit open zones while arming | Emits open zones one-by-one on the dedicated output while arming (during exit delay).                                                |
+  | Arming list interval (s)     | Interval between each open zone emitted while arming.                                                                                |
+  | Open zones request topic     | When a message arrives with `msg.topic` equal to this topic, the node lists open zones even while disarmed.                          |
+  | Request list interval (s)    | Interval between each open zone emitted on request (0 = send immediately).                                                           |
+  | Siren topic                  | Topic used on output 2 to turn the siren on/off (default: `controlTopic + "/siren"`).                                                |
+  | Siren ON/OFF payload         | Values emitted on output 2 for siren on/off (typed).                                                                                 |
+  | Siren duration (s)           | Auto stop duration (`0` = latch until disarm).                                                                                       |
+  | Latch siren until disarm     | Forces siren to remain on until disarm (ignores duration).                                                                           |
+  | Emit restore events          | Emits `zone_restore` when a zone returns to false.                                                                                   |
+  | Event log size               | Max stored log entries in node context (0 disables log).                                                                             |
+  | Sync other alarms            | Optional: when this node is armed/disarmed, it can arm/disarm other Alarm nodes. The original `msg.code`/`msg.pin` are forwarded.    |
+  | Zones                        | Zone definitions. Use **Manage zones** to edit with the web tool (advanced JSON is available there, including optional supervision). |
+
+  <br/>
 
   ## Zones JSON (advanced)
 
@@ -945,7 +940,7 @@
 
   <br/>
 
-  [SEE THE README FOR FULL HELP AND SAMPLES](https://github.com/Supergiovane/node-red-contrib-alarm-ultimate)</br>
+  [SEE THE README FOR FULL HELP AND SAMPLES](https://github.com/Supergiovane/node-red-contrib-alarm-ultimate)<br/>
 
   [Find it useful?](https://www.paypal.me/techtoday)
 </script>
