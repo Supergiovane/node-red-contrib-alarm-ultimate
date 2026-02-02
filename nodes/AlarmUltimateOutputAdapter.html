@@ -1,40 +1,40 @@
 <script type="text/javascript">
-	  RED.nodes.registerType("AlarmUltimateInputAdapter", {
-	    category: "Alarm Ultimate",
-	    color: "#A8DADC",
-	    defaults: {
-	      name: { value: "" },
-	      alarmId: { value: "", required: false },
-	      presetSource: { value: "builtin" },
-	      presetId: { value: "passthrough" },
-	      userCode: { value: "return msg;", required: false },
-	    },
-    inputs: 1,
+  RED.nodes.registerType("AlarmUltimateOutputAdapter", {
+    category: "Alarm Ultimate",
+    color: "#A8DADC",
+    defaults: {
+      name: { value: "" },
+      alarmId: { value: "", required: true },
+      presetSource: { value: "builtin" },
+      presetId: { value: "passthrough" },
+      userCode: { value: "return msg;", required: false },
+    },
+    inputs: 0,
     outputs: 1,
     icon: "alarm-ultimate.svg",
     label: function () {
-      return this.name || "Input Adapter";
+      return this.name || "Output Adapter";
     },
     paletteLabel: function () {
-      return "Input Adapter";
+      return "Output Adapter";
     },
-	    oneditprepare: function () {
-	      const self = this;
-	      const els = {
-	        alarmId: $("#node-input-alarmId"),
-	        presetSource: $("#node-input-presetSource"),
-	        presetId: $("#node-input-presetId"),
-	        builtinPreset: $("#node-input-builtinPreset"),
-	        builtinInfo: $("#node-input-builtinInfo"),
-	        userCode: $("#node-input-userCode"),
-	      };
+    oneditprepare: function () {
+      const self = this;
+      const els = {
+        alarmId: $("#node-input-alarmId"),
+        presetSource: $("#node-input-presetSource"),
+        presetId: $("#node-input-presetId"),
+        builtinPreset: $("#node-input-builtinPreset"),
+        builtinInfo: $("#node-input-builtinInfo"),
+        userCode: $("#node-input-userCode"),
+      };
 
-	      const panelButton = $("#node-input-alarm-panel");
+      const panelButton = $("#node-input-alarm-panel");
 
-	      let builtinPresets = [];
-	      let editor = null;
-	      let userCodeCache = String(self.userCode || "return msg;");
-	      let builtinIdCache = String(self.presetId || "passthrough");
+      let builtinPresets = [];
+      let editor = null;
+      let userCodeCache = String(self.userCode || "return msg;");
+      let builtinIdCache = String(self.presetId || "passthrough");
 
       function refreshBuiltinSelect() {
         els.builtinPreset.empty();
@@ -105,15 +105,15 @@
         mode: "ace/mode/javascript",
         value: userCodeCache,
       });
-      self._inputAdapterEditor = editor;
+      self._outputAdapterEditor = editor;
 
-	      function loadBuiltins() {
-	        const httpAdminRoot =
-	          (RED.settings && RED.settings.httpAdminRoot) || "/";
-	        const root = httpAdminRoot.endsWith("/")
-	          ? httpAdminRoot
-	          : `${httpAdminRoot}/`;
-	        $.getJSON(`${root}alarm-ultimate/input-adapter/presets`)
+      function loadBuiltins() {
+        const httpAdminRoot =
+          (RED.settings && RED.settings.httpAdminRoot) || "/";
+        const root = httpAdminRoot.endsWith("/")
+          ? httpAdminRoot
+          : `${httpAdminRoot}/`;
+        $.getJSON(`${root}alarm-ultimate/output-adapter/presets`)
           .done((data) => {
             builtinPresets = Array.isArray(data && data.presets)
               ? data.presets
@@ -141,33 +141,33 @@
             const selected = applyBuiltinSelection(configured || builtinIdCache);
             if (selected) setBuiltinInfo(selected);
             updateEditor();
-	          });
-	      }
+          });
+      }
 
-	      function loadAlarmNodes() {
-	        const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
-	        const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
-	        const url = `${root}alarm-ultimate/alarm/nodes`;
-	        try {
-	          $.getJSON(url)
-	            .done((data) => {
-	              const nodes = Array.isArray(data && data.nodes) ? data.nodes : [];
-	              els.alarmId.empty();
-	              els.alarmId.append($("<option></option>").attr("value", "").text("-- select --"));
-	              nodes.forEach((n) => {
-	                const label = n.name ? `${n.name} (${n.id})` : n.id;
-	                els.alarmId.append($("<option></option>").attr("value", n.id).text(label));
-	              });
-	              if (self.alarmId) els.alarmId.val(self.alarmId);
-	            })
-	            .fail(() => {});
-	        } catch (_err) {}
-	      }
+      function loadAlarmNodes() {
+        const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
+        const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
+        const url = `${root}alarm-ultimate/alarm/nodes`;
+        try {
+          $.getJSON(url)
+            .done((data) => {
+              const nodes = Array.isArray(data && data.nodes) ? data.nodes : [];
+              els.alarmId.empty();
+              els.alarmId.append($("<option></option>").attr("value", "").text("-- select --"));
+              nodes.forEach((n) => {
+                const label = n.name ? `${n.name} (${n.id})` : n.id;
+                els.alarmId.append($("<option></option>").attr("value", n.id).text(label));
+              });
+              if (self.alarmId) els.alarmId.val(self.alarmId);
+            })
+            .fail(() => {});
+        } catch (_err) {}
+      }
 
-	      // Initialize.
-	      loadBuiltins();
-	      loadAlarmNodes();
-	      setMode(els.presetSource.val());
+      // Initialize.
+      loadBuiltins();
+      loadAlarmNodes();
+      setMode(els.presetSource.val());
 
       // Seed selects from stored presetId.
       const initialSource =
@@ -183,6 +183,19 @@
       }
       updateEditor();
 
+      panelButton.off("click").on("click", (evt) => {
+        evt.preventDefault();
+        const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
+        const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
+        const alarmId = els.alarmId.val() || self.alarmId || "";
+        const idPart = alarmId ? `?id=${encodeURIComponent(alarmId)}` : "";
+        window.open(
+          `${root}alarm-ultimate/alarm-panel${idPart}`,
+          "_blank",
+          "noopener,noreferrer",
+        );
+      });
+
       // Events.
       els.presetSource.on("change", () => {
         // keep user draft before switching away
@@ -193,7 +206,9 @@
         const m = els.presetSource.val() === "user" ? "user" : "builtin";
         setMode(m);
         if (m === "builtin") {
-          const selected = applyBuiltinSelection(els.builtinPreset.val() || builtinIdCache);
+          const selected = applyBuiltinSelection(
+            els.builtinPreset.val() || builtinIdCache,
+          );
           if (selected) {
             els.presetId.val(selected);
             setBuiltinInfo(selected);
@@ -213,26 +228,13 @@
         updateEditor();
       });
 
-	      editor.getSession().on("change", () => {
-	        const src = els.presetSource.val() === "user" ? "user" : "builtin";
-	        if (src !== "user") return;
-	        userCodeCache = String(editor.getValue() || "");
-	        els.userCode.val(userCodeCache);
-	      });
-
-	      panelButton.off("click").on("click", (evt) => {
-	        evt.preventDefault();
-	        const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
-	        const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
-	        const alarmId = els.alarmId.val() || self.alarmId || "";
-	        const idPart = alarmId ? `?id=${encodeURIComponent(alarmId)}` : "";
-	        window.open(
-	          `${root}alarm-ultimate/alarm-panel${idPart}`,
-	          "_blank",
-	          "noopener,noreferrer",
-	        );
-	      });
-	    },
+      editor.getSession().on("change", () => {
+        const src = els.presetSource.val() === "user" ? "user" : "builtin";
+        if (src !== "user") return;
+        userCodeCache = String(editor.getValue() || "");
+        els.userCode.val(userCodeCache);
+      });
+    },
     oneditsave: function () {
       // Keep presetId aligned with current selection.
       const src =
@@ -244,57 +246,57 @@
       } else {
         $("#node-input-presetId").val("custom");
       }
-      if (this._inputAdapterEditor && src === "user") {
+      if (this._outputAdapterEditor && src === "user") {
         $("#node-input-userCode").val(
-          String(this._inputAdapterEditor.getValue() || ""),
+          String(this._outputAdapterEditor.getValue() || ""),
         );
       }
-      if (this._inputAdapterEditor) {
+      if (this._outputAdapterEditor) {
         try {
-          this._inputAdapterEditor.destroy();
+          this._outputAdapterEditor.destroy();
         } catch (_err) {
           // ignore
         }
-        this._inputAdapterEditor = null;
+        this._outputAdapterEditor = null;
       }
     },
     oneditcancel: function () {
-      if (this._inputAdapterEditor) {
+      if (this._outputAdapterEditor) {
         try {
-          this._inputAdapterEditor.destroy();
+          this._outputAdapterEditor.destroy();
         } catch (_err) {
           // ignore
         }
-        this._inputAdapterEditor = null;
+        this._outputAdapterEditor = null;
       }
     },
   });
 </script>
 
-	<script type="text/html" data-template-name="AlarmUltimateInputAdapter">
-	  <div class="form-row">
-	    <label>WEB PAGE</label>
-	    <button type="button" class="red-ui-button" id="node-input-alarm-panel">
-	      <i class="fa fa-keyboard-o"></i> Panel
-	    </button>
-	  </div>
+<script type="text/html" data-template-name="AlarmUltimateOutputAdapter">
+  <div class="form-row">
+    <label>WEB PAGE</label>
+    <button type="button" class="red-ui-button" id="node-input-alarm-panel">
+      <i class="fa fa-keyboard-o"></i> Panel
+    </button>
+  </div>
 
-	  <div class="form-row">
-	    <label for="node-input-name"><i class="icon-tag"></i> Name</label>
-	    <input type="text" id="node-input-name" placeholder="Name" />
-	  </div>
+  <div class="form-row">
+    <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+    <input type="text" id="node-input-name" placeholder="Name" />
+  </div>
 
-	  <div class="form-row">
-	    <label for="node-input-alarmId"><i class="fa fa-link"></i> Alarm node</label>
-	    <select id="node-input-alarmId" style="width: 70%"></select>
-	  </div>
+  <div class="form-row">
+    <label for="node-input-alarmId"><i class="fa fa-link"></i> Alarm node</label>
+    <select id="node-input-alarmId" style="width: 70%"></select>
+  </div>
 
-	  <br />
+  <br />
 
-	  <div class="form-row">
-	    <label for="node-input-presetSource"
-	      ><i class="fa fa-random"></i> Preset source</label
-	    >
+  <div class="form-row">
+    <label for="node-input-presetSource"
+      ><i class="fa fa-random"></i> Preset source</label
+    >
     <select id="node-input-presetSource" style="width: 70%;">
       <option value="builtin">Built-in</option>
       <option value="user">User</option>
@@ -305,7 +307,7 @@
 
   <div class="form-row" id="builtin-row">
     <label for="node-input-builtinPreset"
-      ><i class="fa fa-cube"></i> Built-in preset</label
+      ><i class="fa fa-sign-out"></i> Output</label
     >
     <select id="node-input-builtinPreset" style="width: 70%;"></select>
     <br />
@@ -340,40 +342,52 @@
   <br />
 </script>
 
-<script type="text/markdown" data-help-name="AlarmUltimateInputAdapter">
-  Converts messages from other systems (KNX, HomeKit, MQTT, custom payloads...) into the simple format expected by **Alarm System Ultimate**.
+<script type="text/markdown" data-help-name="AlarmUltimateOutputAdapter">
+  Sends Alarm events/state to other systems (HomeKit, MQTT, dashboards, TTS, ...), using presets.
 
   ## Quick start
 
-  1. Put **Input Adapter** before the **Alarm System (BETA)** node.
-  2. Choose a built-in preset (or write your own).
-  3. Wire: *your source* → **Input Adapter** → **Alarm System**.
+  1. Drop an **Output Adapter** node (no wiring from the Alarm node is needed).
+  2. Select your **Alarm node** (recommended).
+  3. Pick an **Output** preset:
+     - stream/filter presets like `All Events`, `Siren`, `Zone Activity`, `Any Zone Open`, `Open Zones (...)`
+     - transform presets like `HomeKit Security System (basic)`
+     - formatter presets like `Cycle open zones (format)`
+  4. Wire the Output Adapter to your target node (MQTT out, HomeKit, debug, ...).
 
-  The output of this node should normally be:
+  Notes:
 
-  - `msg.topic` = the zone topic you configured in the Alarm node
-  - `msg.payload` = something boolean-like (`true/false`, `open/closed`, `on/off`, `1/0`, ...)
+  - This node has **no input pin**: it subscribes internally to the Alarm bus.
+  - If **Alarm node** is not selected, it listens to **any** Alarm node (useful for debugging, not recommended in production).
 
-  ## HomeKit (important)
+  ### Built-in presets
 
-  If you select an **Alarm node**, this node can automatically inject `msg.controlTopic` (read from the selected Alarm node).  
-  This is useful for presets like **Apple HomeKit Security System**, so you don’t have to manually set the Control topic in every message.
+  The **Output** dropdown contains built-in presets that can:
+
+  - **Filter** by message group (former Alarm “outputs”): `All Events`, `Siren`, `Alarm Triggered`, `Arm/Disarm Updates`, `Zone Activity`, `Errors/Denied`, `Any Zone Open`, `Open Zones (Arming)`, `Open Zones (On Request)`, `Open Zones (Cycle)`.
+  - **Transform** to an integration format (example: `HomeKit Security System (basic)`).
+  - **Format** open-zones messages into a readable payload (example: `Cycle open zones (format)`).
+
+  HomeKit note:
+
+  - During `arming` (exit delay) HomeKit expects **TargetState** to change, while **CurrentState** usually stays on the previous state until arming completes.
+
+  ### User preset
 
   Configure a preset (built-in or user-defined). A preset is JavaScript code executed as a function body:
 
   - Input: `msg`
   - Return: a message object, an array of messages, or `null/undefined` to drop.
 
-  Example:
+  Example (map armed/disarmed to a topic):
 
   ```js
-  // convert payload to boolean and keep the same topic
-  return { ...(msg || {}), payload: !!msg.payload };
+  if (!msg || typeof msg !== "object") return;
+  if (msg.topic && msg.topic.endsWith("/event") && msg.event === "armed") {
+    return { topic: "alarm/state", payload: "armed" };
+  }
+  if (msg.topic && msg.topic.endsWith("/event") && msg.event === "disarmed") {
+    return { topic: "alarm/state", payload: "disarmed" };
+  }
   ```
-
-  Notes:
-
-  - Built-in presets include sensor mappings (boolean conversions) and integrations.
-  - **Apple HomeKit Security System** preset maps HomeKit values (0..3) to Alarm control commands (`arm_home`/`arm_away`/`arm_night`/`disarm`).
-    To control the Alarm node, ensure the output `msg.topic` equals the Alarm **Control topic** (you can pass `msg.controlTopic` and the preset will use it).
 </script>

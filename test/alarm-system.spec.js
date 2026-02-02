@@ -5,8 +5,6 @@ const { helper } = require('./helpers');
 
 const alarmNode = require('../nodes/AlarmSystemUltimate.js');
 
-const ALARM_OUTPUT_COUNT = 9;
-
 function loadAlarm(flow, credentials) {
   const normalizedFlow = flow.map((node, index) => {
     if (
@@ -18,15 +16,7 @@ function loadAlarm(flow, credentials) {
       node.z &&
       !(Object.prototype.hasOwnProperty.call(node, 'x') && Object.prototype.hasOwnProperty.call(node, 'y'))
     ) {
-      const adjusted = { ...node, x: 100 + index * 10, y: 100 + index * 10 };
-      if (adjusted.type === 'AlarmSystemUltimate' && Array.isArray(adjusted.wires)) {
-        const nextWires = adjusted.wires.map((wire) => (Array.isArray(wire) ? wire : []));
-        while (nextWires.length < ALARM_OUTPUT_COUNT) {
-          nextWires.push([]);
-        }
-        adjusted.wires = nextWires;
-      }
-      return adjusted;
+      return { ...node, x: 100 + index * 10, y: 100 + index * 10 };
     }
     return node;
   });
@@ -64,16 +54,14 @@ describe('AlarmSystemUltimate node', function () {
         requireCodeForDisarm: false,
         blockArmOnViolations: true,
         zones: '{"id":"front","name":"Front","topic":"sensor/frontdoor","type":"perimeter","entry":true}',
-        wires: [['events'], ['siren']],
+        wires: [['out']],
       },
-      { id: 'events', type: 'helper', z: flowId },
-      { id: 'siren', type: 'helper', z: flowId },
+      { id: 'out', type: 'helper', z: flowId },
     ];
 
     loadAlarm(flow).then(() => {
       const alarm = helper.getNode('alarm');
-      const events = helper.getNode('events');
-      const siren = helper.getNode('siren');
+      const out = helper.getNode('out');
 
       const received = { entry: false, alarm: false, sirenOn: false };
 
@@ -83,25 +71,11 @@ describe('AlarmSystemUltimate node', function () {
         }
       }
 
-      events.on('input', (msg) => {
+      out.on('input', (msg) => {
         try {
-          if (msg.event === 'entry_delay') {
-            received.entry = true;
-          }
-          if (msg.event === 'alarm') {
-            received.alarm = true;
-          }
-          maybeDone();
-        } catch (err) {
-          done(err);
-        }
-      });
-
-      siren.on('input', (msg) => {
-        try {
-          if (msg.event === 'siren_on') {
-            received.sirenOn = true;
-          }
+          if (msg && msg.topic === 'alarm/event' && msg.event === 'entry_delay') received.entry = true;
+          if (msg && msg.topic === 'alarm/event' && msg.event === 'alarm') received.alarm = true;
+          if (msg && msg.topic === 'alarm/siren' && msg.event === 'siren_on') received.sirenOn = true;
           maybeDone();
         } catch (err) {
           done(err);
@@ -129,31 +103,31 @@ describe('AlarmSystemUltimate node', function () {
         sirenDurationSeconds: 0.2,
         requireCodeForDisarm: false,
         zones: '{"id":"front","topic":"sensor/frontdoor","type":"perimeter","entry":true}',
-        wires: [['events'], ['siren']],
+        wires: [['out']],
       },
-      { id: 'events', type: 'helper', z: flowId },
-      { id: 'siren', type: 'helper', z: flowId },
+      { id: 'out', type: 'helper', z: flowId },
     ];
 
     loadAlarm(flow).then(() => {
       const alarm = helper.getNode('alarm');
-      const events = helper.getNode('events');
-      const siren = helper.getNode('siren');
+      const out = helper.getNode('out');
 
       const seenEvents = [];
       const sirenOn = [];
 
-      events.on('input', (msg) => {
-        seenEvents.push(msg.event);
-        if (msg.event === 'entry_delay') {
+      out.on('input', (msg) => {
+        if (msg && msg.topic === 'alarm/event' && msg.event) {
+          seenEvents.push(msg.event);
+        }
+        if (msg && msg.topic === 'alarm/event' && msg.event === 'entry_delay') {
           setTimeout(() => {
             alarm.receive({ topic: 'alarm', command: 'disarm' });
           }, 20);
         }
       });
 
-      siren.on('input', (msg) => {
-        if (msg.event === 'siren_on') {
+      out.on('input', (msg) => {
+        if (msg && msg.topic === 'alarm/siren' && msg.event === 'siren_on') {
           sirenOn.push(msg);
         }
       });
@@ -191,26 +165,23 @@ describe('AlarmSystemUltimate node', function () {
         sirenDurationSeconds: 0.2,
         requireCodeForDisarm: false,
         zones: '{"id":"front","topic":"sensor/frontdoor","type":"perimeter","entry":false,"bypassable":true}',
-        wires: [['events'], ['siren']],
+        wires: [['out']],
       },
-      { id: 'events', type: 'helper', z: flowId },
-      { id: 'siren', type: 'helper', z: flowId },
+      { id: 'out', type: 'helper', z: flowId },
     ];
 
     loadAlarm(flow).then(() => {
       const alarm = helper.getNode('alarm');
-      const events = helper.getNode('events');
-      const siren = helper.getNode('siren');
+      const out = helper.getNode('out');
 
       const seenEvents = [];
       let sirenOn = false;
 
-      events.on('input', (msg) => {
-        seenEvents.push(msg.event);
-      });
-
-      siren.on('input', (msg) => {
-        if (msg.event === 'siren_on') {
+      out.on('input', (msg) => {
+        if (msg && msg.topic === 'alarm/event' && msg.event) {
+          seenEvents.push(msg.event);
+        }
+        if (msg && msg.topic === 'alarm/siren' && msg.event === 'siren_on') {
           sirenOn = true;
         }
       });
@@ -262,16 +233,14 @@ describe('AlarmSystemUltimate node', function () {
           null,
           2
         ),
-        wires: [['events'], ['siren']],
+        wires: [['out']],
       },
-      { id: 'events', type: 'helper', z: flowId },
-      { id: 'siren', type: 'helper', z: flowId },
+      { id: 'out', type: 'helper', z: flowId },
     ];
 
     loadAlarm(flow).then(() => {
       const alarm = helper.getNode('alarm');
-      const events = helper.getNode('events');
-      const siren = helper.getNode('siren');
+      const out = helper.getNode('out');
 
       const received = { entry: false, alarm: false, sirenOn: false };
 
@@ -281,25 +250,11 @@ describe('AlarmSystemUltimate node', function () {
         }
       }
 
-      events.on('input', (msg) => {
+      out.on('input', (msg) => {
         try {
-          if (msg.event === 'entry_delay') {
-            received.entry = true;
-          }
-          if (msg.event === 'alarm') {
-            received.alarm = true;
-          }
-          maybeDone();
-        } catch (err) {
-          done(err);
-        }
-      });
-
-      siren.on('input', (msg) => {
-        try {
-          if (msg.event === 'siren_on') {
-            received.sirenOn = true;
-          }
+          if (msg && msg.topic === 'alarm/event' && msg.event === 'entry_delay') received.entry = true;
+          if (msg && msg.topic === 'alarm/event' && msg.event === 'alarm') received.alarm = true;
+          if (msg && msg.topic === 'alarm/siren' && msg.event === 'siren_on') received.sirenOn = true;
           maybeDone();
         } catch (err) {
           done(err);
@@ -313,7 +268,7 @@ describe('AlarmSystemUltimate node', function () {
     }).catch(done);
   });
 
-  it('routes alarm events to the "Alarm Triggered" output', function (done) {
+  it('emits the "alarm" event on the output', function (done) {
     const flowId = 'alarm5';
     const flow = [
       { id: flowId, type: 'tab', label: 'alarm5' },
@@ -327,22 +282,21 @@ describe('AlarmSystemUltimate node', function () {
         sirenDurationSeconds: 0,
         requireCodeForDisarm: false,
         zones: '{"id":"front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
-        wires: [['events'], ['siren'], ['alarmTriggered']],
+        wires: [['out']],
       },
-      { id: 'events', type: 'helper', z: flowId },
-      { id: 'siren', type: 'helper', z: flowId },
-      { id: 'alarmTriggered', type: 'helper', z: flowId },
+      { id: 'out', type: 'helper', z: flowId },
     ];
 
     loadAlarm(flow)
       .then(() => {
         const alarm = helper.getNode('alarm');
-        const alarmTriggered = helper.getNode('alarmTriggered');
+        const out = helper.getNode('out');
 
-        alarmTriggered.on('input', (msg) => {
+        out.on('input', (msg) => {
           try {
-            expect(msg.event).to.equal('alarm');
-            done();
+            if (msg && msg.topic === 'alarm/event' && msg.event === 'alarm') {
+              done();
+            }
           } catch (err) {
             done(err);
           }
@@ -370,22 +324,21 @@ describe('AlarmSystemUltimate node', function () {
         sirenDurationSeconds: 0,
         requireCodeForDisarm: false,
         zones: '{"id":"front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
-        wires: [['events'], ['siren'], [], [], [], [], ['anyZoneOpen']],
+        wires: [['out']],
       },
-      { id: 'events', type: 'helper', z: flowId },
-      { id: 'siren', type: 'helper', z: flowId },
-      { id: 'anyZoneOpen', type: 'helper', z: flowId },
+      { id: 'out', type: 'helper', z: flowId },
     ];
 
     loadAlarm(flow)
       .then(() => {
         const alarm = helper.getNode('alarm');
-        const anyZoneOpen = helper.getNode('anyZoneOpen');
+        const out = helper.getNode('out');
 
         let hasSeenTrue = false;
 
-        anyZoneOpen.on('input', (msg) => {
+        out.on('input', (msg) => {
           try {
+            if (!msg || msg.topic !== 'alarm/anyZoneOpen') return;
             if (msg.payload === true) {
               hasSeenTrue = true;
               return;
@@ -431,22 +384,21 @@ describe('AlarmSystemUltimate node', function () {
           null,
           2
         ),
-        wires: [['events'], ['siren'], [], [], [], [], [], [], ['openZones']],
+        wires: [['out']],
       },
-      { id: 'events', type: 'helper', z: flowId },
-      { id: 'siren', type: 'helper', z: flowId },
-      { id: 'openZones', type: 'helper', z: flowId },
+      { id: 'out', type: 'helper', z: flowId },
     ];
 
     loadAlarm(flow)
       .then(() => {
         const alarm = helper.getNode('alarm');
-        const openZones = helper.getNode('openZones');
+        const out = helper.getNode('out');
 
         const receivedIds = new Set();
 
-        openZones.on('input', (msg) => {
+        out.on('input', (msg) => {
           try {
+            if (!msg || msg.topic !== 'alarm/openZone') return;
             expect(msg.event).to.equal('open_zone');
             expect(msg).to.have.nested.property('payload.zone.id');
             receivedIds.add(msg.payload.zone.id);
@@ -468,6 +420,62 @@ describe('AlarmSystemUltimate node', function () {
       .catch(done);
   });
 
+  it('cycles open zones at a fixed interval (any state)', function (done) {
+    const flowId = 'alarm-open-zones-cycle';
+    const flow = [
+      { id: flowId, type: 'tab', label: flowId },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm',
+        exitDelaySeconds: 0,
+        entryDelaySeconds: 0,
+        sirenDurationSeconds: 0,
+        requireCodeForDisarm: false,
+        emitOpenZonesCycle: true,
+        openZonesCycleIntervalSeconds: 0.03,
+        zones: JSON.stringify(
+          [
+            { id: 'front', topic: 'sensor/frontdoor', type: 'perimeter', entry: false },
+            { id: 'back', topic: 'sensor/backdoor', type: 'perimeter', entry: false },
+          ],
+          null,
+          2
+        ),
+        wires: [['out']],
+      },
+      { id: 'out', type: 'helper', z: flowId },
+    ];
+
+    loadAlarm(flow)
+      .then(() => {
+        const alarm = helper.getNode('alarm');
+        const out = helper.getNode('out');
+
+        const receivedIds = new Set();
+
+        out.on('input', (msg) => {
+          try {
+            if (!msg || msg.topic !== 'alarm/openZone') return;
+            if (msg.event !== 'open_zone') return;
+            if (!msg.payload || msg.payload.context !== 'cycle') return;
+            if (!msg.payload.zone || !msg.payload.zone.id) return;
+            receivedIds.add(msg.payload.zone.id);
+            if (receivedIds.has('front') && receivedIds.has('back')) {
+              done();
+            }
+          } catch (err) {
+            done(err);
+          }
+        });
+
+        alarm.receive({ topic: 'sensor/frontdoor', payload: true });
+        alarm.receive({ topic: 'sensor/backdoor', payload: true });
+      })
+      .catch(done);
+  });
+
   it('emits zone open/close events while disarmed', function (done) {
     const flowId = 'alarm-zone-events';
     const flow = [
@@ -479,19 +487,21 @@ describe('AlarmSystemUltimate node', function () {
         controlTopic: 'alarm',
         requireCodeForDisarm: false,
         zones: '{"id":"front","name":"Front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
-        wires: [[], [], [], [], ['zoneEvents']],
+        wires: [['out']],
       },
-      { id: 'zoneEvents', type: 'helper', z: flowId },
+      { id: 'out', type: 'helper', z: flowId },
     ];
 
     loadAlarm(flow)
       .then(() => {
         const alarm = helper.getNode('alarm');
-        const zoneEvents = helper.getNode('zoneEvents');
+        const out = helper.getNode('out');
 
         const seen = [];
-        zoneEvents.on('input', (msg) => {
-          seen.push(msg);
+        out.on('input', (msg) => {
+          if (msg && msg.topic === 'alarm/event') {
+            seen.push(msg);
+          }
         });
 
         // Default mode is disarmed. We should still see zone_open/zone_close.
@@ -515,6 +525,54 @@ describe('AlarmSystemUltimate node', function () {
             done(err);
           }
         }, 120);
+      })
+      .catch(done);
+  });
+
+  it('emits siren messages on the same output', function (done) {
+    const flowId = 'alarmSingle1';
+    const flow = [
+      { id: flowId, type: 'tab', label: 'alarmSingle1' },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm',
+        sirenDurationSeconds: 0.05,
+        sirenLatchUntilDisarm: false,
+        requireCodeForDisarm: false,
+        zones: '{"id":"front","name":"Front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
+        wires: [['out']],
+      },
+      { id: 'out', type: 'helper', z: flowId },
+    ];
+
+    loadAlarm(flow)
+      .then(() => {
+        const alarm = helper.getNode('alarm');
+        const out = helper.getNode('out');
+
+        const got = { event: false, siren: false };
+
+        function maybeDone() {
+          if (got.event && got.siren) done();
+        }
+
+        out.on('input', (msg) => {
+          try {
+            if (msg && msg.topic === 'alarm/event' && msg.event === 'siren_on') {
+              got.event = true;
+            }
+            if (msg && msg.topic === 'alarm/siren' && msg.event === 'siren_on') {
+              got.siren = true;
+            }
+            maybeDone();
+          } catch (err) {
+            done(err);
+          }
+        });
+
+        alarm.receive({ topic: 'alarm', command: 'siren_on' });
       })
       .catch(done);
   });

@@ -173,14 +173,17 @@ module.exports = function (RED) {
     const zoneConfigText = typeof config.zones === 'string' ? config.zones : '';
     let zones = parseZones(zoneConfigText);
 
-    const emitOpenZonesDuringArming = config.emitOpenZonesDuringArming === true;
-    const openZonesArmingIntervalMs = toMilliseconds(config.openZonesArmingIntervalSeconds, 1);
+	    const emitOpenZonesDuringArming = config.emitOpenZonesDuringArming === true;
+	    const openZonesArmingIntervalMs = toMilliseconds(config.openZonesArmingIntervalSeconds, 1);
 
-    const openZonesRequestTopic =
-      typeof config.openZonesRequestTopic === 'string' && config.openZonesRequestTopic.trim().length > 0
-        ? config.openZonesRequestTopic.trim()
-        : `${controlTopic}/listOpenZones`;
-    const openZonesRequestIntervalMs = toMilliseconds(config.openZonesRequestIntervalSeconds, 0);
+	    const openZonesRequestTopic =
+	      typeof config.openZonesRequestTopic === 'string' && config.openZonesRequestTopic.trim().length > 0
+	        ? config.openZonesRequestTopic.trim()
+	        : `${controlTopic}/listOpenZones`;
+	    const openZonesRequestIntervalMs = toMilliseconds(config.openZonesRequestIntervalSeconds, 0);
+
+	    const emitOpenZonesCycle = config.emitOpenZonesCycle === true;
+	    const openZonesCycleIntervalMs = toMilliseconds(config.openZonesCycleIntervalSeconds, 5);
 
     const stateKey = 'AlarmSystemUltimateState';
     let state = restoreState();
@@ -284,9 +287,10 @@ module.exports = function (RED) {
     const OUTPUT_ARMING_EVENTS = 3;
     const OUTPUT_ZONE_EVENTS = 4;
     const OUTPUT_ERROR_EVENTS = 5;
-    const OUTPUT_ANY_ZONE_OPEN = 6;
-    const OUTPUT_OPEN_ZONES_ARMING = 7;
-    const OUTPUT_OPEN_ZONES_ON_REQUEST = 8;
+	    const OUTPUT_ANY_ZONE_OPEN = 6;
+	    const OUTPUT_OPEN_ZONES_ARMING = 7;
+	    const OUTPUT_OPEN_ZONES_ON_REQUEST = 8;
+	    const OUTPUT_OPEN_ZONES_CYCLE = 9;
 
     const alarmEvents = new Set(['alarm']);
     const armingEvents = new Set([
@@ -318,15 +322,14 @@ module.exports = function (RED) {
     let lastAnyZoneOpen = null;
     let lastOpenZonesCount = null;
 
-    let openZonesArmingInterval = null;
-    let openZonesRequestInterval = null;
-    let openZonesArmingIndex = 0;
+	    let openZonesArmingInterval = null;
+	    let openZonesRequestInterval = null;
+	    let openZonesCycleInterval = null;
+	    let openZonesArmingIndex = 0;
+	    let openZonesCycleIndex = 0;
 
     function getOutputCount() {
-      if (Array.isArray(node.wires)) {
-        return Math.max(2, node.wires.length);
-      }
-      return 2;
+      return 1;
     }
 
     function createOutputsArray() {
@@ -352,8 +355,41 @@ module.exports = function (RED) {
       outputs[index] = msg;
     }
 
+    function safeEmitBus(kind, msg) {
+      if (!msg) return;
+      try {
+        alarmEmitter.emit('message', {
+          alarmId: node.id,
+          name: node.name || '',
+          controlTopic,
+          kind,
+          msg: REDUtil.cloneMessage(msg),
+          ts: now(),
+        });
+      } catch (_err) {
+        // Best-effort. Never crash runtime on listeners failures.
+      }
+    }
+
     function sendEventMessage(eventMsg, sirenMsg) {
       const outputs = createOutputsArray();
+
+      if (outputs.length === 1) {
+        if (eventMsg) safeEmitBus('event', eventMsg);
+        if (sirenMsg) safeEmitBus('siren', sirenMsg);
+
+        const merged = [];
+        if (eventMsg) merged.push(eventMsg);
+        if (sirenMsg) merged.push(sirenMsg);
+        if (merged.length === 1) {
+          outputs[0] = merged[0];
+        } else if (merged.length > 1) {
+          outputs[0] = merged;
+        }
+        safeSend(outputs);
+        return;
+      }
+
       safeSetOutput(outputs, OUTPUT_ALL_EVENTS, eventMsg);
       safeSetOutput(outputs, OUTPUT_SIREN, sirenMsg);
 
@@ -366,11 +402,24 @@ module.exports = function (RED) {
       safeSend(outputs);
     }
 
-    function sendSingleOutput(outputIndex, msg) {
-      const outputs = createOutputsArray();
-      safeSetOutput(outputs, outputIndex, msg);
-      safeSend(outputs);
-    }
+	    function sendSingleOutput(outputIndex, msg) {
+	      const outputs = createOutputsArray();
+	      if (outputs.length === 1) {
+	        const kind =
+	          outputIndex === OUTPUT_ANY_ZONE_OPEN
+	            ? 'any_zone_open'
+	            : outputIndex === OUTPUT_OPEN_ZONES_ARMING
+	              ? 'open_zones_arming'
+	              : outputIndex === OUTPUT_OPEN_ZONES_ON_REQUEST
+	                ? 'open_zones_request'
+	                : outputIndex === OUTPUT_OPEN_ZONES_CYCLE
+	                  ? 'open_zones_cycle'
+	                : 'message';
+	        safeEmitBus(kind, msg);
+	      }
+	      safeSetOutput(outputs, outputs.length === 1 ? OUTPUT_ALL_EVENTS : outputIndex, msg);
+	      safeSend(outputs);
+	    }
 
     function clampInt(value, defaultValue, min, max) {
       const parsed = Number(value);
@@ -895,18 +944,25 @@ module.exports = function (RED) {
       }
     }
 
-    function stopOpenZonesRequestListing() {
-      if (openZonesRequestInterval) {
-        timerBag.clearInterval(openZonesRequestInterval);
-        openZonesRequestInterval = null;
-      }
-    }
+	    function stopOpenZonesRequestListing() {
+	      if (openZonesRequestInterval) {
+	        timerBag.clearInterval(openZonesRequestInterval);
+	        openZonesRequestInterval = null;
+	      }
+	    }
 
-    function emitNextOpenZoneDuringArming(baseMsg) {
-      const snapshot = getOpenZonesSnapshot();
-      const openZones = snapshot.openZones || [];
-      if (openZones.length === 0) {
-        return;
+	    function stopOpenZonesCycle() {
+	      if (openZonesCycleInterval) {
+	        timerBag.clearInterval(openZonesCycleInterval);
+	        openZonesCycleInterval = null;
+	      }
+	    }
+
+	    function emitNextOpenZoneDuringArming(baseMsg) {
+	      const snapshot = getOpenZonesSnapshot();
+	      const openZones = snapshot.openZones || [];
+	      if (openZones.length === 0) {
+	        return;
       }
       openZonesArmingIndex += 1;
       const selected = openZones[(openZonesArmingIndex - 1) % openZones.length];
@@ -920,11 +976,11 @@ module.exports = function (RED) {
       sendSingleOutput(OUTPUT_OPEN_ZONES_ARMING, msg);
     }
 
-    function startOpenZonesDuringArming(baseMsg) {
-      stopOpenZonesDuringArming();
+	    function startOpenZonesDuringArming(baseMsg) {
+	      stopOpenZonesDuringArming();
 
-      if (!emitOpenZonesDuringArming || openZonesArmingIntervalMs <= 0) {
-        return;
+	      if (!emitOpenZonesDuringArming || openZonesArmingIntervalMs <= 0) {
+	        return;
       }
 
       openZonesArmingIndex = 0;
@@ -935,11 +991,41 @@ module.exports = function (RED) {
           return;
         }
         emitNextOpenZoneDuringArming(null);
-      }, openZonesArmingIntervalMs);
-    }
+	      }, openZonesArmingIntervalMs);
+	    }
 
-    function emitOpenZonesOnRequest(baseMsg) {
-      stopOpenZonesRequestListing();
+	    function emitNextOpenZoneCycle(baseMsg) {
+	      const snapshot = getOpenZonesSnapshot();
+	      const openZones = snapshot.openZones || [];
+	      if (openZones.length === 0) {
+	        return;
+	      }
+	      openZonesCycleIndex += 1;
+	      const selected = openZones[(openZonesCycleIndex - 1) % openZones.length];
+	      const msg = buildOpenZoneMessage(
+	        'cycle',
+	        selected,
+	        ((openZonesCycleIndex - 1) % openZones.length) + 1,
+	        openZones.length,
+	        baseMsg
+	      );
+	      sendSingleOutput(OUTPUT_OPEN_ZONES_CYCLE, msg);
+	    }
+
+	    function startOpenZonesCycle(baseMsg) {
+	      stopOpenZonesCycle();
+	      if (!emitOpenZonesCycle || openZonesCycleIntervalMs <= 0) {
+	        return;
+	      }
+	      openZonesCycleIndex = 0;
+	      emitNextOpenZoneCycle(baseMsg);
+	      openZonesCycleInterval = timerBag.setInterval(() => {
+	        emitNextOpenZoneCycle(null);
+	      }, openZonesCycleIntervalMs);
+	    }
+
+	    function emitOpenZonesOnRequest(baseMsg) {
+	      stopOpenZonesRequestListing();
 
       const snapshot = getOpenZonesSnapshot();
       if (snapshot.openZones.length === 0) {
@@ -1471,16 +1557,17 @@ module.exports = function (RED) {
       emitEvent(enabled ? 'bypassed' : 'unbypassed', { zone: buildZoneSummary(zone) }, baseMsg);
     }
 
-    function handleControlMessage(msg) {
-      const command = typeof msg.command === 'string' ? msg.command.toLowerCase().trim() : '';
-      if (msg.reset === true || command === 'reset') {
-        stopOpenZonesDuringArming();
-        stopOpenZonesRequestListing();
-        clearExitTimer();
-        clearEntryTimer();
-        clearSirenTimer();
-        state = createInitialState();
-        persist();
+	    function handleControlMessage(msg) {
+	      const command = typeof msg.command === 'string' ? msg.command.toLowerCase().trim() : '';
+	      if (msg.reset === true || command === 'reset') {
+	        stopOpenZonesDuringArming();
+	        stopOpenZonesRequestListing();
+	        openZonesCycleIndex = 0;
+	        clearExitTimer();
+	        clearEntryTimer();
+	        clearSirenTimer();
+	        state = createInitialState();
+	        persist();
         emitAnyZoneOpenIfChanged(msg);
         emitEvent('reset', {}, msg);
         return true;
@@ -1702,9 +1789,10 @@ module.exports = function (RED) {
       handleSensorMessage(msg);
     });
 
-    updateStatus();
-    emitAnyZoneOpenIfChanged();
-    bootstrapSupervision();
+	    updateStatus();
+	    emitAnyZoneOpenIfChanged();
+	    startOpenZonesCycle();
+	    bootstrapSupervision();
 
     const api = {
       id: node.id,
@@ -1748,12 +1836,13 @@ module.exports = function (RED) {
       },
     };
 
-    alarmInstances.set(node.id, api);
-    node.on('close', () => {
-      flushFileCache();
-      alarmInstances.delete(node.id);
-    });
-  }
+	    alarmInstances.set(node.id, api);
+	    node.on('close', () => {
+	      stopOpenZonesCycle();
+	      flushFileCache();
+	      alarmInstances.delete(node.id);
+	    });
+	  }
 
   RED.nodes.registerType('AlarmSystemUltimate', AlarmSystemUltimate);
 };

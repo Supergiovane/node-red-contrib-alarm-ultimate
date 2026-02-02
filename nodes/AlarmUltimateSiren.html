@@ -85,10 +85,16 @@
 <script type="text/markdown" data-help-name="AlarmUltimateSiren">
 Emits the siren state from a selected **Alarm System Ultimate** node.
 
+Quick start:
+
+1. Select the Alarm node.
+2. Connect this node to a **Debug** (or an automation).
+
 - `msg.payload`: `true` when the siren is on, otherwise `false`
 - `msg.reason`: `manual|timeout|arm|disarm|...`
 
 Notes:
 
+- No wiring from the Alarm node is required: select the Alarm node and this node subscribes internally.
 - Use the **Panel** button to open the Alarm Panel preselected on the chosen Alarm node.
 </script>

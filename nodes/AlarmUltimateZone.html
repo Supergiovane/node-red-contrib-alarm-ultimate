@@ -124,6 +124,12 @@
 <script type="text/markdown" data-help-name="AlarmUltimateZone">
 Emits the state of a single configured zone from a selected **Alarm System Ultimate** node.
 
+Quick start:
+
+1. Select the Alarm node.
+2. Select the Zone.
+3. Connect to a **Debug** (or use it as a boolean for automations).
+
 - `msg.payload`: `true` when the zone is open/active, otherwise `false`
 - `msg.zone`: `{ id, name?, type?, topic? }`
 - `msg.bypassed`: `true|false`
@@ -131,5 +137,6 @@ Emits the state of a single configured zone from a selected **Alarm System Ultim
 Notes:
 
 - The zone list is loaded from the selected Alarm node state (`/alarm-ultimate/alarm/:id/state`).
+- No wiring from the Alarm node is required: select the Alarm node and this node subscribes internally.
 - Use the **Panel** button to open the Alarm Panel preselected on the chosen Alarm node.
 </script>

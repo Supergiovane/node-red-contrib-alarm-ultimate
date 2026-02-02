@@ -13,7 +13,7 @@ function safeReadDir(dirPath) {
 }
 
 function loadBuiltinPresets() {
-  const presetsDir = path.join(__dirname, "presets", "input-adapter");
+  const presetsDir = path.join(__dirname, "presets", "output-adapter");
   const files = safeReadDir(presetsDir)
     .filter((f) => f.endsWith(".js"))
     .sort((a, b) => a.localeCompare(b));
@@ -64,20 +64,20 @@ function buildContextApi(node) {
 module.exports = function (RED) {
   const builtins = loadBuiltinPresets();
   const builtinById = new Map(builtins.map((p) => [p.id, p]));
-  const { alarmInstances } = require("./lib/alarm-registry.js");
+  const { alarmInstances, alarmEmitter } = require("./lib/alarm-registry.js");
 
   if (RED && RED.httpAdmin && typeof RED.httpAdmin.get === "function") {
     const needsRead =
       RED.auth && typeof RED.auth.needsPermission === "function"
-        ? RED.auth.needsPermission("AlarmUltimateInputAdapter.read")
+        ? RED.auth.needsPermission("AlarmUltimateOutputAdapter.read")
         : (req, res, next) => next();
 
-    RED.httpAdmin.get("/alarm-ultimate/input-adapter/presets", needsRead, (_req, res) => {
+    RED.httpAdmin.get("/alarm-ultimate/output-adapter/presets", needsRead, (_req, res) => {
       res.json({ presets: builtins });
     });
   }
 
-  function AlarmUltimateInputAdapter(config) {
+  function AlarmUltimateOutputAdapter(config) {
     RED.nodes.createNode(this, config);
     const node = this;
     const REDUtil = RED.util;
@@ -99,6 +99,7 @@ module.exports = function (RED) {
             code: userCode,
           }
         : builtinById.get(presetId);
+
     const sandbox = {
       msg: null,
       context: buildContextApi(node),
@@ -117,13 +118,12 @@ module.exports = function (RED) {
         `fn = (function (msg, context, log, warn, error) { "use strict";\n${body}\n});`,
       );
       fnScript.runInContext(vmContext, { timeout: 250 });
-      const callScript = new vm.Script(
-        `result = fn(msg, context, log, warn, error);`,
-      );
+      const callScript = new vm.Script("result = fn(msg, context, log, warn, error);");
       return { callScript };
     }
 
     let compiled = null;
+    let rxCount = 0;
     try {
       if (!preset || typeof preset.code !== "string" || preset.code.trim().length === 0) {
         node.status({
@@ -135,15 +135,13 @@ module.exports = function (RED) {
         compiled = compile(preset.code);
         const api = alarmId ? alarmInstances.get(alarmId) : null;
         node.status({
-          fill: alarmId ? (api ? "green" : "yellow") : "green",
+          fill: alarmId ? (api ? "green" : "yellow") : "yellow",
           shape: "dot",
           text: alarmId
             ? api
               ? `${presetSource === "user" ? "preset: custom" : `preset: ${preset.name}`}`
               : "waiting for alarm node"
-            : presetSource === "user"
-              ? "preset: custom"
-              : `preset: ${preset.name}`,
+            : "listening: any alarm",
         });
       }
     } catch (err) {
@@ -151,20 +149,7 @@ module.exports = function (RED) {
       node.error(err);
     }
 
-    function prepareInputMessage(msg) {
-      const next = msg ? REDUtil.cloneMessage(msg) : {};
-      if (!alarmId) return next;
-      if (typeof next.controlTopic === "string" && next.controlTopic.trim().length > 0) {
-        return next;
-      }
-      const api = alarmInstances.get(alarmId);
-      if (api && typeof api.controlTopic === "string" && api.controlTopic.trim().length > 0) {
-        next.controlTopic = api.controlTopic.trim();
-      }
-      return next;
-    }
-
-    node.on("input", (msg, send, done) => {
+    function handleMessage(msg, send, done) {
       const doSend = send || ((m) => node.send(m));
       if (!compiled) {
         if (done) done();
@@ -172,7 +157,7 @@ module.exports = function (RED) {
       }
 
       try {
-        sandbox.msg = prepareInputMessage(msg);
+        sandbox.msg = msg ? REDUtil.cloneMessage(msg) : {};
         sandbox.result = undefined;
         compiled.callScript.runInContext(vmContext, { timeout: 100 });
         const out = sandbox.result;
@@ -204,8 +189,27 @@ module.exports = function (RED) {
         node.error(err, msg);
         if (done) done(err);
       }
+    }
+
+    function onBusMessage(evt) {
+      if (!evt || typeof evt !== "object") return;
+      if (alarmId && evt.alarmId !== alarmId) return;
+      rxCount += 1;
+      if (rxCount === 1 || rxCount % 25 === 0) {
+        const summary =
+          evt && evt.msg && typeof evt.msg.event === "string"
+            ? evt.msg.event
+            : (evt && evt.kind) || "message";
+        node.status({ fill: "green", shape: "dot", text: `rx ${rxCount}: ${summary}` });
+      }
+      handleMessage(evt.msg, null, null);
+    }
+
+    alarmEmitter.on("message", onBusMessage);
+    node.on("close", () => {
+      alarmEmitter.off("message", onBusMessage);
     });
   }
 
-  RED.nodes.registerType("AlarmUltimateInputAdapter", AlarmUltimateInputAdapter);
+  RED.nodes.registerType("AlarmUltimateOutputAdapter", AlarmUltimateOutputAdapter);
 };

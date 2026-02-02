@@ -85,11 +85,17 @@
 <script type="text/markdown" data-help-name="AlarmUltimateState">
 Emits the alarm arming state from a selected **Alarm System Ultimate** node.
 
+Quick start:
+
+1. Select the Alarm node.
+2. Connect this node to a **Debug** (or MQTT out, Dashboard, ...).
+
 - `msg.payload`: `armed` or `disarmed`
 - `msg.topic`: configurable (default: `controlTopic + "/state"`)
 - `msg.alarmId`, `msg.name`
 
 Notes:
 
+- No wiring from the Alarm node is required: select the Alarm node and this node subscribes internally.
 - Use the **Panel** button to open the Alarm Panel preselected on the chosen Alarm node.
 </script>

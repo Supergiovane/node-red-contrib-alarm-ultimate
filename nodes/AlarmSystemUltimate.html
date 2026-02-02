@@ -21,10 +21,15 @@
         validate: RED.validators.number(),
       },
       openZonesRequestTopic: { value: "alarm/listOpenZones" },
-      openZonesRequestIntervalSeconds: {
-        value: 0,
-        validate: RED.validators.number(),
-      },
+	      openZonesRequestIntervalSeconds: {
+	        value: 0,
+	        validate: RED.validators.number(),
+	      },
+	      emitOpenZonesCycle: { value: false },
+	      openZonesCycleIntervalSeconds: {
+	        value: 5,
+	        validate: RED.validators.number(),
+	      },
       sirenDurationSeconds: { value: 180, validate: RED.validators.number() },
       sirenLatchUntilDisarm: { value: false },
       sirenTopic: { value: "siren" },
@@ -37,18 +42,8 @@
       zones: { value: "" },
     },
     inputs: 1,
-    outputs: 9,
-    outputLabels: [
-      "All Events",
-      "Siren",
-      "Alarm Triggered",
-      "Arm/Disarm Updates",
-      "Zone Activity",
-      "Errors/Denied",
-      "Any Zone Open",
-      "Open Zones (Arming)",
-      "Open Zones (On Request)",
-    ],
+    outputs: 1,
+    outputLabels: ["All Events"],
     icon: "alarm-ultimate.svg",
     label: function () {
       return this.name || "Alarm System (BETA)";
@@ -56,14 +51,28 @@
     paletteLabel: function () {
       return "Alarm System (BETA)";
     },
-    oneditprepare: function () {
-      const nodeId = this.id;
-      const origin = window.location.origin;
-      const openerOrigin = origin;
-      const bc =
-        typeof BroadcastChannel === "function"
-          ? new BroadcastChannel("alarm-ultimate-zones")
-          : null;
+	    oneditprepare: function () {
+	      const nodeId = this.id;
+	      const origin = window.location.origin;
+	      const openerOrigin = origin;
+	      const tabs = RED.tabs.create({
+	        id: "node-input-au-tabs",
+	        onchange: function (tab) {
+	          $("#node-input-au-tabs-content").children(".au-tab").hide();
+	          $("#" + tab.id).show();
+	        },
+	      });
+	      tabs.addTab({ id: "node-input-au-tab-zones", label: "Zones" });
+	      tabs.addTab({ id: "node-input-au-tab-general", label: "General" });
+	      tabs.addTab({ id: "node-input-au-tab-security", label: "Security" });
+	      tabs.addTab({ id: "node-input-au-tab-siren", label: "Siren" });
+	      tabs.addTab({ id: "node-input-au-tab-open-zones", label: "Open zones" });
+	      tabs.addTab({ id: "node-input-au-tab-advanced", label: "Advanced" });
+	      tabs.activateTab("node-input-au-tab-general");
+	      const bc =
+	        typeof BroadcastChannel === "function"
+	          ? new BroadcastChannel("alarm-ultimate-zones")
+	          : null;
       const payloadField = $("#node-input-payloadPropName");
       if (payloadField.val() === "") payloadField.val("payload");
       payloadField.typedInput({ default: "msg", types: ["msg"] });
@@ -393,13 +402,13 @@
   });
 </script>
 
-<script type="text/html" data-template-name="AlarmSystemUltimate">
-  <style>
-    .alarm-ultimate-editor .red-ui-button.au-btn {
-      border-radius: 8px;
-      font-weight: 600;
-      border-width: 1px;
-    }
+	<script type="text/html" data-template-name="AlarmSystemUltimate">
+	  <style>
+	    .alarm-ultimate-editor .red-ui-button.au-btn {
+	      border-radius: 8px;
+	      font-weight: 600;
+	      border-width: 1px;
+	    }
 
     .alarm-ultimate-editor .red-ui-button.au-btn i {
       margin-right: 4px;
@@ -419,14 +428,18 @@
       border-color: #15803d !important;
       color: #fff !important;
     }
-    .alarm-ultimate-editor .red-ui-button.au-btn-success:hover {
-      background: #15803d !important;
-    }
-  </style>
+	    .alarm-ultimate-editor .red-ui-button.au-btn-success:hover {
+	      background: #15803d !important;
+	    }
 
-	  <div class="alarm-ultimate-editor">
-	  <div class="form-row">
-	    <b>Alarm System Ultimate (BETA)</b>
+	    .alarm-ultimate-editor .au-tab {
+	      padding-top: 6px;
+	    }
+	  </style>
+
+		  <div class="alarm-ultimate-editor">
+		  <div class="form-row">
+		    <b>Alarm System Ultimate (BETA)</b>
 	    &nbsp;&nbsp;<span style="color:red"
 	      ><i class="fa fa-question-circle"></i>&nbsp;<a
 	        target="_blank"
@@ -440,100 +453,118 @@
 	        href="https://youtu.be/HUPzhVgObBE"
 	        ><u>YOUTUBE</u></a
 	      ></span
-	    >
-	  </div>
+		    >
+		  </div>
 
-  <div class="form-row">
-    <label>WEB PAGE</label>
-    <button type="button" class="red-ui-button au-btn au-btn-primary" id="node-input-zones-panel">
-      <i class="fa fa-keyboard-o"></i> Panel
-    </button>
-  </div>
+		  <div class="form-row">
+		    <ul style="min-width:600px; margin-bottom: 12px;" id="node-input-au-tabs"></ul>
+		  </div>
 
-  <div class="form-row">
-    <label><i class="fa fa-th-large"></i> Zones</label>
-    <button type="button" class="red-ui-button au-btn au-btn-success" id="node-input-zones-manage">
-      <i class="fa fa-list"></i> Manage zones
-    </button>
-    <span id="node-input-zones-summary" style="margin-left:8px; color:#777;"></span>
-  </div>
+		  <div id="node-input-au-tabs-content" style="min-height: 400px;">
+		    <div id="node-input-au-tab-zones" class="au-tab" style="display:none;">
+		      <div class="form-row">
+		        <label>WEB PAGE</label>
+		        <button
+		          type="button"
+		          class="red-ui-button au-btn au-btn-primary"
+		          id="node-input-zones-panel"
+		        >
+		          <i class="fa fa-keyboard-o"></i> Panel
+		        </button>
+		      </div>
 
-  <textarea id="node-input-zones" style="display:none;"></textarea>
+		      <div class="form-row">
+		        <label><i class="fa fa-th-large"></i> Zones</label>
+		        <button
+		          type="button"
+		          class="red-ui-button au-btn au-btn-success"
+		          id="node-input-zones-manage"
+		        >
+		          <i class="fa fa-list"></i> Manage zones
+		        </button>
+		        <span id="node-input-zones-summary" style="margin-left:8px; color:#777;"></span>
+		      </div>
 
-  <div class="form-row">
-    <label for="node-input-name"><i class="icon-tag"></i> Name</label>
-    <input type="text" id="node-input-name" placeholder="Name" />
-  </div>
+		      <textarea id="node-input-zones" style="display:none;"></textarea>
+		    </div>
 
-  <div class="form-row">
-    <label for="node-input-controlTopic"><i class="fa fa-tag"></i> Control topic</label>
-    <input type="text" id="node-input-controlTopic" />
-  </div>
+		    <div id="node-input-au-tab-general" class="au-tab" style="display:none;">
+		      <div class="form-row">
+		        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+		        <input type="text" id="node-input-name" placeholder="Name" />
+		      </div>
 
-  <div class="form-row">
-    <label for="node-input-payloadPropName"><i class="fa fa-ellipsis-h"></i> With Input</label>
-    <input type="text" id="node-input-payloadPropName" />
-  </div>
+		      <div class="form-row">
+		        <label for="node-input-controlTopic"
+		          ><i class="fa fa-tag"></i> Control topic</label
+		        >
+		        <input type="text" id="node-input-controlTopic" />
+		      </div>
 
-  <div class="form-row">
-    <label><i class="fa fa-random"></i> Sync other alarms</label>
-    <div style="width: 70%;">
-      <div class="form-tips" style="margin: 0 0 6px 0;">
-        When this Alarm is armed/disarmed, optionally arm/disarm other Alarm nodes in the workspace (codes are forwarded if present).
-      </div>
-      <div id="node-input-syncTargets-ui"></div>
-      <input type="hidden" id="node-input-syncTargets" />
-    </div>
-  </div>
+		      <div class="form-row">
+		        <label for="node-input-payloadPropName"
+		          ><i class="fa fa-ellipsis-h"></i> With Input</label
+		        >
+		        <input type="text" id="node-input-payloadPropName" />
+		      </div>
 
-    <div class="form-row">
-	    <label for="node-input-persistState"
-	        ><i class="fa fa-database"></i> Persist state</label
-	      >
-      <input
-        type="checkbox"
-        id="node-input-persistState"
-        style="width:auto; margin-top:7px;"
-      />
-    </div>
+		      <div class="form-row">
+		        <label><i class="fa fa-random"></i> Sync other alarms</label>
+		        <div style="width: 70%;">
+		          <div class="form-tips" style="margin: 0 0 6px 0;">
+		            When this Alarm is armed/disarmed, optionally arm/disarm other Alarm nodes in the workspace (codes are forwarded if present).
+		          </div>
+		          <div id="node-input-syncTargets-ui"></div>
+		          <input type="hidden" id="node-input-syncTargets" />
+		        </div>
+		      </div>
 
-    <hr />
+		      <div class="form-row">
+		        <label for="node-input-persistState"
+		          ><i class="fa fa-database"></i> Persist state</label
+		        >
+		        <input
+		          type="checkbox"
+		          id="node-input-persistState"
+		          style="width:auto; margin-top:7px;"
+		        />
+		      </div>
+		    </div>
 
-    <div class="form-row">
-	      <label
-	        for="node-input-requireCodeForArm"
-	        ><i class="fa fa-lock"></i> Require code for arm</label
-	      >
-      <input
-        type="checkbox"
-        id="node-input-requireCodeForArm"
-        style="width:auto; margin-top:7px;"
-      />
-    </div>
+		    <div id="node-input-au-tab-security" class="au-tab" style="display:none;">
+		      <div class="form-row">
+		        <label for="node-input-requireCodeForArm"
+		          ><i class="fa fa-lock"></i> Require code for arm</label
+		        >
+		        <input
+		          type="checkbox"
+		          id="node-input-requireCodeForArm"
+		          style="width:auto; margin-top:7px;"
+		        />
+		      </div>
 
-    <div class="form-row">
-	      <label
-	        for="node-input-requireCodeForDisarm"
-	        ><i class="fa fa-unlock"></i> Require code for disarm</label
-	      >
-      <input
-        type="checkbox"
-        id="node-input-requireCodeForDisarm"
-        style="width:auto; margin-top:7px;"
-      />
-    </div>
+		      <div class="form-row">
+		        <label for="node-input-requireCodeForDisarm"
+		          ><i class="fa fa-unlock"></i> Require code for disarm</label
+		        >
+		        <input
+		          type="checkbox"
+		          id="node-input-requireCodeForDisarm"
+		          style="width:auto; margin-top:7px;"
+		        />
+		      </div>
 
-    <div class="form-row">
-	    <label for="node-input-armCode"
-	        ><i class="fa fa-key"></i> Code</label
-	      >
-      <input type="password" id="node-input-armCode" placeholder="(optional)" />
-    </div>
+		      <div class="form-row">
+		        <label for="node-input-armCode"
+		          ><i class="fa fa-key"></i> Code</label
+		        >
+		        <input type="password" id="node-input-armCode" placeholder="(optional)" />
+		      </div>
 
-    <div class="form-row">
-	    <label for="node-input-duressCode"
-	        ><i class="fa fa-user-secret"></i> Duress code</label
-	      >
+	    <div class="form-row">
+		    <label for="node-input-duressCode"
+		        ><i class="fa fa-user-secret"></i> Duress code</label
+		      >
       <input
         type="password"
         id="node-input-duressCode"
@@ -549,11 +580,11 @@
       <input
         type="checkbox"
         id="node-input-blockArmOnViolations"
-        style="width:auto; margin-top:7px;"
-      />
-    </div>
+	        style="width:auto; margin-top:7px;"
+	      />
+	    </div>
 
-    <hr />
+	    <hr />
 
 	    <div class="form-row">
 	      <label
@@ -568,141 +599,175 @@
 	        for="node-input-entryDelaySeconds"
 	        ><i class="fa fa-sign-in"></i> Entry delay (s)</label
 	      >
-	      <input type="number" id="node-input-entryDelaySeconds" min="0" />
-	    </div>
+		      <input type="number" id="node-input-entryDelaySeconds" min="0" />
+		    </div>
 
-    <hr />
+		    </div>
 
-    <div class="form-row">
-      <label for="node-input-sirenTopic"
-        ><i class="fa fa-bullhorn"></i> Siren topic</label
-      >
-      <input type="text" id="node-input-sirenTopic" placeholder="siren" />
-    </div>
+		    <div id="node-input-au-tab-siren" class="au-tab" style="display:none;">
+		      <div class="form-row">
+		        <label for="node-input-sirenTopic"
+		          ><i class="fa fa-bullhorn"></i> Siren topic</label
+		        >
+		        <input type="text" id="node-input-sirenTopic" placeholder="siren" />
+		      </div>
 
-    <div class="form-row">
-      <label
-        for="node-input-sirenDurationSeconds"
-        ><i class="fa fa-clock-o"></i> Siren duration (s)</label
-      >
-      <input type="number" id="node-input-sirenDurationSeconds" min="0" />
-    </div>
+		      <div class="form-row">
+		        <label for="node-input-sirenDurationSeconds"
+		          ><i class="fa fa-clock-o"></i> Siren duration (s)</label
+		        >
+		        <input type="number" id="node-input-sirenDurationSeconds" min="0" />
+		      </div>
 
-    <div class="form-row">
-      <label
-        for="node-input-sirenLatchUntilDisarm"
-        ><i class="fa fa-link"></i> Latch siren until disarm</label
-      >
-      <input
-        type="checkbox"
-        id="node-input-sirenLatchUntilDisarm"
-        style="width:auto; margin-top:7px;"
-      />
-    </div>
+		      <div class="form-row">
+		        <label for="node-input-sirenLatchUntilDisarm"
+		          ><i class="fa fa-link"></i> Latch siren until disarm</label
+		        >
+		        <input
+		          type="checkbox"
+		          id="node-input-sirenLatchUntilDisarm"
+		          style="width:auto; margin-top:7px;"
+		        />
+		      </div>
 
-    <div class="form-row">
-      <label
-        for="node-input-sirenOnPayload"
-        ><i class="fa fa-play"></i> Siren ON payload</label
-      >
-      <input type="text" id="node-input-sirenOnPayload" />
-    </div>
+		      <div class="form-row">
+		        <label for="node-input-sirenOnPayload"
+		          ><i class="fa fa-play"></i> Siren ON payload</label
+		        >
+		        <input type="text" id="node-input-sirenOnPayload" />
+		      </div>
 
-    <div class="form-row">
-      <label
-        for="node-input-sirenOffPayload"
-        ><i class="fa fa-stop"></i> Siren OFF payload</label
-      >
-      <input type="text" id="node-input-sirenOffPayload" />
-    </div>
+		      <div class="form-row">
+		        <label for="node-input-sirenOffPayload"
+		          ><i class="fa fa-stop"></i> Siren OFF payload</label
+		        >
+		        <input type="text" id="node-input-sirenOffPayload" />
+		      </div>
+		    </div>
 
-    <hr />
+		    <div id="node-input-au-tab-open-zones" class="au-tab" style="display:none;">
+		      <div class="form-row">
+		        <b>Open zones listing</b>
+		      </div>
 
-    <div class="form-row">
-      <label
-        for="node-input-emitRestoreEvents"
-        ><i class="fa fa-undo"></i> Emit restore events</label
-      >
-      <input
-        type="checkbox"
-        id="node-input-emitRestoreEvents"
-        style="width:auto; margin-top:7px;"
-      />
-    </div>
+		      <div class="form-row">
+		        <label for="node-input-emitOpenZonesDuringArming"
+		          ><i class="fa fa-list"></i> Emit open zones while arming</label
+		        >
+		        <input
+		          type="checkbox"
+		          id="node-input-emitOpenZonesDuringArming"
+		          style="width:auto; margin-top:7px;"
+		        />
+		      </div>
 
-    <div class="form-row">
-      <label
-        for="node-input-maxLogEntries"
-        ><i class="fa fa-list"></i> Event log size</label
-      >
-      <input type="number" id="node-input-maxLogEntries" min="0" max="500" />
-    </div>
+		      <div class="form-row">
+		        <label for="node-input-openZonesArmingIntervalSeconds"
+		          ><i class="fa fa-clock-o"></i> Arming list interval (s)</label
+		        >
+		        <input
+		          type="number"
+		          id="node-input-openZonesArmingIntervalSeconds"
+		          min="0"
+		          step="0.1"
+		        />
+		      </div>
 
-	    <hr />
+		      <div class="form-row">
+		        <label for="node-input-openZonesRequestTopic"
+		          ><i class="fa fa-list"></i> Open zones request topic</label
+		        >
+		        <input
+		          type="text"
+		          id="node-input-openZonesRequestTopic"
+		          placeholder="alarm/listOpenZones"
+		        />
+		      </div>
 
-	    <div class="form-row">
-	      <b>Open zones listing</b>
-	    </div>
+		      <div class="form-row">
+		        <label for="node-input-openZonesRequestIntervalSeconds"
+		          ><i class="fa fa-clock-o"></i> Request list interval (s)</label
+		        >
+		        <input
+		          type="number"
+		          id="node-input-openZonesRequestIntervalSeconds"
+		          min="0"
+		          step="0.1"
+		        />
+		      </div>
 
-    <div class="form-row">
-      <label
-        for="node-input-emitOpenZonesDuringArming"
-        ><i class="fa fa-list"></i> Emit open zones while arming</label
-      >
-      <input
-        type="checkbox"
-        id="node-input-emitOpenZonesDuringArming"
-        style="width:auto; margin-top:7px;"
-      />
-    </div>
+		      <hr />
 
-    <div class="form-row">
-      <label
-        for="node-input-openZonesArmingIntervalSeconds"
-        ><i class="fa fa-clock-o"></i> Arming list interval (s)</label
-      >
-      <input
-        type="number"
-        id="node-input-openZonesArmingIntervalSeconds"
-        min="0"
-        step="0.1"
-      />
-    </div>
+		      <div class="form-row">
+		        <label for="node-input-emitOpenZonesCycle"
+		          ><i class="fa fa-refresh"></i> Cycle open zones (always)</label
+		        >
+		        <input
+		          type="checkbox"
+		          id="node-input-emitOpenZonesCycle"
+		          style="width:auto; margin-top:7px;"
+		        />
+		      </div>
 
-    <div class="form-row">
-      <label
-        for="node-input-openZonesRequestTopic"
-        ><i class="fa fa-list"></i> Open zones request topic</label
-      >
-      <input
-        type="text"
-        id="node-input-openZonesRequestTopic"
-        placeholder="alarm/listOpenZones"
-      />
-    </div>
+		      <div class="form-row">
+		        <label for="node-input-openZonesCycleIntervalSeconds"
+		          ><i class="fa fa-clock-o"></i> Cycle interval (s)</label
+		        >
+		        <input
+		          type="number"
+		          id="node-input-openZonesCycleIntervalSeconds"
+		          min="0"
+		          step="0.1"
+		        />
+		      </div>
+		    </div>
 
-    <div class="form-row">
-      <label
-        for="node-input-openZonesRequestIntervalSeconds"
-        ><i class="fa fa-clock-o"></i> Request list interval (s)</label
-      >
-      <input
-        type="number"
-        id="node-input-openZonesRequestIntervalSeconds"
-        min="0"
-        step="0.1"
-      />
-    </div>
-  </div>
-			</script>
+		    <div id="node-input-au-tab-advanced" class="au-tab" style="display:none;">
+		      <div class="form-row">
+		        <label for="node-input-emitRestoreEvents"
+		          ><i class="fa fa-undo"></i> Emit restore events</label
+		        >
+		        <input
+		          type="checkbox"
+		          id="node-input-emitRestoreEvents"
+		          style="width:auto; margin-top:7px;"
+		        />
+		      </div>
+
+		      <div class="form-row">
+		        <label for="node-input-maxLogEntries"
+		          ><i class="fa fa-list"></i> Event log size</label
+		        >
+		        <input type="number" id="node-input-maxLogEntries" min="0" max="500" />
+		      </div>
+		    </div>
+		  </div>
+	  </div>
+				</script>
 
 <script type="text/markdown" data-help-name="AlarmSystemUltimate">
   <p><b>BETA</b> – Alarm control panel node with a single armed/disarmed state, zones, entry/exit delays, bypass, chime, tamper/fire/24h zones, siren control, status and event log.</p>
+
+  ## Quick start (5 minutes)
+
+  1. Add an **Alarm System (BETA)** node to your flow.
+  2. Click **Manage zones** and create at least one zone (example topic: `sensor/frontdoor`).
+  3. Send sensor messages to the Alarm node:
+     - open: `msg.topic="sensor/frontdoor"` + `msg.payload=true` (also works: `"open"`, `"on"`, `1`)
+     - close: `msg.topic="sensor/frontdoor"` + `msg.payload=false` (also works: `"closed"`, `"off"`, `0`)
+  4. To arm/disarm, send a control message where `msg.topic` equals **Control topic** (default `alarm`):
+     - arm: `msg.command="arm"`
+     - disarm: `msg.command="disarm"`
+  5. Attach a **Debug** node to see what the Alarm outputs.
+
+  Tip (recommended): use **AlarmUltimateInputAdapter** to normalize incoming data (KNX/HomeKit/...) and **AlarmUltimateOutputAdapter** to filter/transform the Alarm output (HomeKit, MQTT, ...).
 
   The node has 2 inputs "in one":
 
   - **Control messages**: when `msg.topic` equals **Control topic**.
   - **Sensor messages**: any other message, matched to a zone by `msg.topic` and converted to boolean using **With Input** (default `payload`).
+
+  Tip: Use one or more **AlarmUltimateOutputAdapter** nodes to filter/transform the Alarm output (siren, zone activity, open zones, HomeKit, MQTT, ...).
 
   <br/>
 
@@ -727,12 +792,14 @@
   | Duress code                  | If provided and `msg.code` matches, the node raises a silent duress alarm while still executing the command.                         |
   | Block arm on violations      | Prevents arming if any active (true) zone would be armed (excluding bypassed zones). Checked both at arm start and after exit delay. |
   | Exit/Entry delay (s)         | Global exit/entry delays (each zone can override entry delay).                                                                       |
-  | Emit open zones while arming | Emits open zones one-by-one on the dedicated output while arming (during exit delay).                                                |
+  | Emit open zones while arming | Emits open zones one-by-one while arming (during exit delay).                                                                        |
   | Arming list interval (s)     | Interval between each open zone emitted while arming.                                                                                |
   | Open zones request topic     | When a message arrives with `msg.topic` equal to this topic, the node lists open zones even while disarmed.                          |
   | Request list interval (s)    | Interval between each open zone emitted on request (0 = send immediately).                                                           |
-  | Siren topic                  | Topic used on output 2 to turn the siren on/off (default: `controlTopic + "/siren"`).                                                |
-  | Siren ON/OFF payload         | Values emitted on output 2 for siren on/off (typed).                                                                                 |
+  | Cycle open zones (always)    | Cycles open zones one-by-one at a fixed interval, regardless of alarm state.                                                         |
+  | Cycle interval (s)           | Interval between each open zone emitted by the cycle (0 = disabled).                                                                 |
+  | Siren topic                  | Topic used to turn the siren on/off (default: `controlTopic + "/siren"`).                                                             |
+  | Siren ON/OFF payload         | Values emitted for siren on/off (typed).                                                                                             |
   | Siren duration (s)           | Auto stop duration (`0` = latch until disarm).                                                                                       |
   | Latch siren until disarm     | Forces siren to remain on until disarm (ignores duration).                                                                           |
   | Emit restore events          | Emits `zone_restore` when a zone returns to false.                                                                                   |
@@ -760,9 +827,11 @@
 
   <br/>
 
-  ## Outputs
+  ## Output
 
-  **Output 1 (All Events)**
+  The node has a **single output** and emits different message types on it.
+
+  **Event messages**
 
   - `msg.topic = controlTopic + "/event"`
   - `msg.event` (string) and `msg.payload` (object)
@@ -772,42 +841,24 @@
   - `event`: same as `msg.event`
   - `mode`: `disarmed|armed`
 
-  **Output 2 (Siren)**
+  **Siren messages**
 
-  - `msg.topic = sirenTopic`
+  - `msg.topic = sirenTopic` (default: `controlTopic + "/siren"`)
   - `msg.payload`: configured siren ON/OFF payload (typed)
   - `msg.event`: `siren_on` / `siren_off`
   - `msg.reason`: why it changed (`manual`, `panic`, `instant`, `entry_timeout`, `timeout`, `disarm`, ...)
 
-  **Output 3 (Alarm Triggered)**
-
-  - Same message as Output 1, only when `msg.event === "alarm"`.
-
-  **Output 4 (Arm/Disarm Updates)**
-
-  - Same message as Output 1, only for arming/state events (`arming`, `armed`, `disarmed`, `entry_delay`, `arm_blocked`, `already_armed`, `status`, `reset`, `siren_on`, `siren_off`).
-
-  **Output 5 (Zone Activity)**
-
-  - Same message as Output 1, only for zone events (`zone_open`, `zone_close`, `bypassed`, `unbypassed`, `chime`, `zone_ignored_exit`, `zone_bypassed_trigger`, `zone_restore`, `supervision_lost`, `supervision_restored`).
-
-  **Output 6 (Errors/Denied)**
-
-  - Same message as Output 1, only for `error` and `denied`.
-
-  **Output 7 (Any Zone Open)**
+  **Any zone open**
 
   - `msg.topic = controlTopic + "/anyZoneOpen"`
   - `msg.payload = true|false`
   - `msg.openZonesCount` and `msg.openZones` (array)
 
-  **Outputs 8..9 (Open Zones Listing)**
+  **Open zones listing**
 
-  - Output 8: while arming (optional)
-  - Output 9: on request topic / command
   - `msg.topic = controlTopic + "/openZone"`
   - `msg.event = "open_zone"`
-  - `msg.payload = { context, position, total, zone }`
+  - `msg.payload = { context, position, total, zone }` where `context` can be `arming`, `request` or `cycle`
 
   <br/>
 
@@ -860,7 +911,7 @@
 
   - `msg.command = "status"` or `msg.status = true`
 
-  List open zones (one message per zone on Output 9):
+	  List open zones (one message per zone on the node output):
 
   - `msg.command = "list_open_zones"` or `msg.listOpenZones = true`
   - or send a message with `msg.topic = <Open zones request topic>` (works even while disarmed)

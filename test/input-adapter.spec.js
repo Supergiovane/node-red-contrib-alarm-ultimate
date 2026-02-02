@@ -4,6 +4,7 @@ const { expect } = require('chai');
 const { helper } = require('./helpers');
 
 const adapterNode = require('../nodes/AlarmUltimateInputAdapter.js');
+const alarmNode = require('../nodes/AlarmSystemUltimate.js');
 
 function loadAdapter(flow, credentials) {
   const normalizedFlow = flow.map((node, index) => {
@@ -194,6 +195,96 @@ describe('AlarmUltimateInputAdapter node', function () {
           },
           _msgid: '5f34ea7333772aeb',
         });
+      })
+      .catch(done);
+  });
+
+  it('applies built-in preset (Apple HomeKit Security System)', function (done) {
+    const flowId = 'adapter5';
+    const flow = [
+      { id: flowId, type: 'tab', label: 'adapter5' },
+      {
+        id: 'adapter',
+        type: 'AlarmUltimateInputAdapter',
+        z: flowId,
+        presetSource: 'builtin',
+        presetId: 'apple_homekit_security_system',
+        wires: [['out']],
+      },
+      { id: 'out', type: 'helper', z: flowId },
+    ];
+
+    loadAdapter(flow)
+      .then(() => {
+        const adapter = helper.getNode('adapter');
+        const out = helper.getNode('out');
+
+        out.on('input', (msg) => {
+          try {
+            expect(msg).to.be.an('object');
+            expect(msg.topic).to.equal('alarm/control');
+            expect(msg.command).to.equal('arm_away');
+            expect(msg.homekit).to.be.an('object');
+            expect(msg.homekit.securitySystemState).to.equal(1);
+            done();
+          } catch (err) {
+            done(err);
+          }
+        });
+
+        adapter.receive({
+          controlTopic: 'alarm/control',
+          payload: { SecuritySystemTargetState: 1 },
+        });
+      })
+      .catch(done);
+  });
+
+  it('injects Alarm controlTopic when Alarm node is selected (HomeKit)', function (done) {
+    const flowId = 'adapter-homekit-controltopic';
+    const flow = [
+      { id: flowId, type: 'tab', label: flowId },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm/control',
+        requireCodeForDisarm: false,
+        sirenDurationSeconds: 0,
+        zones: '{"id":"front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
+        wires: [[]],
+      },
+      {
+        id: 'adapter',
+        type: 'AlarmUltimateInputAdapter',
+        z: flowId,
+        alarmId: 'alarm',
+        presetSource: 'builtin',
+        presetId: 'apple_homekit_security_system',
+        wires: [['out']],
+      },
+      { id: 'out', type: 'helper', z: flowId },
+    ];
+
+    helper
+      .load([alarmNode, adapterNode], flow, {})
+      .then(() => {
+        const adapter = helper.getNode('adapter');
+        const out = helper.getNode('out');
+
+        out.on('input', (msg) => {
+          try {
+            expect(msg).to.be.an('object');
+            expect(msg.topic).to.equal('alarm/control');
+            expect(msg.command).to.equal('arm_away');
+            done();
+          } catch (err) {
+            done(err);
+          }
+        });
+
+        // No topic/controlTopic in the incoming msg -> must come from selected Alarm node.
+        adapter.receive({ payload: { SecuritySystemTargetState: 1 } });
       })
       .catch(done);
   });
