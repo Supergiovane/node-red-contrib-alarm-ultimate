@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.18] - 2026-02-02
+
+### What's new
+
+- **Alarm node editor:** added **Export JSON** / **Import JSON** buttons in the Zones tab to backup/restore zone definitions from a file.
+
 ## [0.1.17] - 2026-02-02
 
 ### Breaking (BETA)

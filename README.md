@@ -56,7 +56,7 @@ npm i node-red-contrib-alarm-ultimate
 Beginner-friendly flow:
 
 1. Add an **AlarmSystemUltimate (BETA)** node.
-2. Click **Manage zones** and add at least one zone (example topic: `sensor/frontdoor`).
+2. Click **Manage zones** and add at least one zone (example topic: `sensor/frontdoor`). Use **Export JSON** / **Import JSON** in the Zones tab to backup/restore your zones.
 3. Send sensor messages to the Alarm node:
    - open: `msg.topic="sensor/frontdoor"`, `msg.payload=true`
    - close: `msg.topic="sensor/frontdoor"`, `msg.payload=false`

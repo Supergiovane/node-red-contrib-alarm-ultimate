@@ -53,6 +53,7 @@
     },
 	    oneditprepare: function () {
 	      const nodeId = this.id;
+      const initialNodeName = String(this.name || "");
 	      const origin = window.location.origin;
 	      const openerOrigin = origin;
 	      const tabs = RED.tabs.create({
@@ -97,6 +98,9 @@
 
       const zonesField = $("#node-input-zones");
       const zonesSummary = $("#node-input-zones-summary");
+      const zonesExportBtn = $("#node-input-zones-export");
+      const zonesImportBtn = $("#node-input-zones-import");
+      const zonesImportFile = $("#node-input-zones-import-file");
       const syncTargetsField = $("#node-input-syncTargets");
       const syncTargetsUi = $("#node-input-syncTargets-ui");
 
@@ -264,6 +268,99 @@
         }
       }
 
+      function sanitizeFilenamePart(text) {
+        return String(text || "")
+          .trim()
+          .replace(/[\\/:*?"<>|]+/g, "-")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 60);
+      }
+
+      function downloadTextFile(filename, text, mimeType) {
+        try {
+          const blob = new Blob([String(text || "")], {
+            type: mimeType || "application/octet-stream",
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 0);
+        } catch (err) {
+          try {
+            if (RED && typeof RED.notify === "function") {
+              RED.notify(`Unable to download file: ${escapeHtml(err && err.message ? err.message : err)}`, "error");
+            }
+          } catch (_err) { }
+        }
+      }
+
+      function markDirtyAndUpdateSummary() {
+        try {
+          zonesField.trigger("change");
+        } catch (_err) { }
+        try {
+          if (RED && RED.nodes && typeof RED.nodes.dirty === "function") {
+            RED.nodes.dirty(true);
+          }
+        } catch (_err) { }
+        updateZonesSummary();
+      }
+
+      function importZonesFromText(rawText) {
+        const text = String(rawText || "").trim();
+        if (!text) {
+          zonesField.val("");
+          markDirtyAndUpdateSummary();
+          return;
+        }
+
+        // Accept either a zones array, a single zone object, a wrapper like { zones: [...] },
+        // or raw JSON-per-line content.
+        let zonesTextToStore = text;
+        try {
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed)) {
+            zonesTextToStore = JSON.stringify(parsed, null, 2);
+          } else if (parsed && typeof parsed === "object") {
+            if (Array.isArray(parsed.zones)) {
+              zonesTextToStore = JSON.stringify(parsed.zones, null, 2);
+            } else if (typeof parsed.zonesJson === "string") {
+              zonesTextToStore = String(parsed.zonesJson || "");
+            } else {
+              zonesTextToStore = JSON.stringify(parsed, null, 2);
+            }
+          }
+        } catch (_err) {
+          // keep raw text (could be JSON-per-line)
+        }
+
+        // Validate imported content before saving it into the node.
+        const importedZones = parseZonesText(zonesTextToStore);
+        const existingZones = (() => {
+          try {
+            return parseZonesText(zonesField.val());
+          } catch (_err) {
+            return [];
+          }
+        })();
+
+        if (existingZones.length > 0 && importedZones.length > 0) {
+          const ok = window.confirm(
+            `Replace the current zones (${existingZones.length}) with the imported ones (${importedZones.length})?`,
+          );
+          if (!ok) return;
+        }
+
+        zonesField.val(zonesTextToStore);
+        markDirtyAndUpdateSummary();
+      }
+
       function openZonesManager() {
         const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
         const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
@@ -289,6 +386,77 @@
         evt.preventDefault();
         openZonesManager();
       });
+
+      if (zonesExportBtn && zonesExportBtn.length) {
+        zonesExportBtn.on("click", function (evt) {
+          evt.preventDefault();
+          let zones = [];
+          try {
+            zones = parseZonesText(zonesField.val());
+          } catch (err) {
+            try {
+              if (RED && typeof RED.notify === "function") {
+                RED.notify(`Zones JSON is invalid: ${escapeHtml(err && err.message ? err.message : err)}`, "error");
+              }
+            } catch (_err) { }
+            return;
+          }
+
+          const nodeName = String($("#node-input-name").val() || "").trim() || initialNodeName;
+          const safeName = sanitizeFilenamePart(nodeName);
+          const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+          const filename = `alarm-ultimate-zones${safeName ? `-${safeName}` : ""}-${stamp}.json`;
+          downloadTextFile(filename, JSON.stringify(zones, null, 2) + "\n", "application/json;charset=utf-8");
+        });
+      }
+
+      if (zonesImportBtn && zonesImportBtn.length && zonesImportFile && zonesImportFile.length) {
+        zonesImportBtn.on("click", function (evt) {
+          evt.preventDefault();
+          try {
+            zonesImportFile.val("");
+          } catch (_err) { }
+          zonesImportFile.trigger("click");
+        });
+
+        zonesImportFile.on("change", function () {
+          const file = this && this.files && this.files[0] ? this.files[0] : null;
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              importZonesFromText(reader.result);
+              try {
+                if (RED && typeof RED.notify === "function") {
+                  RED.notify(`Zones imported (${file.name})`, "success");
+                }
+              } catch (_err) { }
+            } catch (err) {
+              try {
+                if (RED && typeof RED.notify === "function") {
+                  RED.notify(`Unable to import zones: ${escapeHtml(err && err.message ? err.message : err)}`, "error");
+                }
+              } catch (_err) { }
+            } finally {
+              try {
+                zonesImportFile.val("");
+              } catch (_err) { }
+            }
+          };
+          reader.onerror = () => {
+            try {
+              if (RED && typeof RED.notify === "function") {
+                RED.notify(`Unable to read file: ${escapeHtml(file.name)}`, "error");
+              }
+            } catch (_err) { }
+            try {
+              zonesImportFile.val("");
+            } catch (_err) { }
+          };
+          reader.readAsText(file);
+        });
+      }
 
       const messageListener = (evt) => {
         if (!evt || evt.origin !== openerOrigin) return;
@@ -482,6 +650,28 @@
 		        >
 		          <i class="fa fa-list"></i> Manage zones
 		        </button>
+            <button
+              type="button"
+              class="red-ui-button au-btn"
+              id="node-input-zones-export"
+              style="margin-left:6px;"
+            >
+              <i class="fa fa-download"></i> Export JSON
+            </button>
+            <button
+              type="button"
+              class="red-ui-button au-btn"
+              id="node-input-zones-import"
+              style="margin-left:6px;"
+            >
+              <i class="fa fa-upload"></i> Import JSON
+            </button>
+            <input
+              type="file"
+              id="node-input-zones-import-file"
+              accept="application/json,.json"
+              style="display:none;"
+            />
 		        <span id="node-input-zones-summary" style="margin-left:8px; color:#777;"></span>
 		      </div>
 
@@ -751,7 +941,7 @@
   ## Quick start (5 minutes)
 
   1. Add an **Alarm System (BETA)** node to your flow.
-  2. Click **Manage zones** and create at least one zone (example topic: `sensor/frontdoor`).
+  2. Click **Manage zones** and create at least one zone (example topic: `sensor/frontdoor`). Use **Export JSON** / **Import JSON** in the Zones tab to backup/restore your zones.
   3. Send sensor messages to the Alarm node:
      - open: `msg.topic="sensor/frontdoor"` + `msg.payload=true` (also works: `"open"`, `"on"`, `1`)
      - close: `msg.topic="sensor/frontdoor"` + `msg.payload=false` (also works: `"closed"`, `"off"`, `0`)
@@ -774,7 +964,7 @@
   ### WEB PAGE
 
   - **Panel**: `/alarm-ultimate/alarm-panel` (supports `?id=<alarmNodeId>` and `?embed=1&id=<alarmNodeId>`).
-  - **Zones**: use **Manage zones** to open `/alarm-ultimate/alarm-json-mapper` and save the JSON back into the node.
+  - **Zones**: use **Manage zones** to open `/alarm-ultimate/alarm-json-mapper` and save the JSON back into the node. Use **Export JSON** / **Import JSON** to backup/restore zone definitions.
   - **Name**: optional label shown in the Alarm Panel.
   - **Control topic**: topic that receives commands (and is used as base for some outputs).
   - **With Input**: message property evaluated as sensor value (default `payload`). It must be convertible to boolean (`true/false`, `open/closed`, `on/off`, `1/0`, ...).
@@ -805,7 +995,7 @@
   | Emit restore events          | Emits `zone_restore` when a zone returns to false.                                                                                   |
   | Event log size               | Max stored log entries in node context (0 disables log).                                                                             |
   | Sync other alarms            | Optional: when this node is armed/disarmed, it can arm/disarm other Alarm nodes. The original `msg.code`/`msg.pin` are forwarded.    |
-  | Zones                        | Zone definitions. Use **Manage zones** to edit with the web tool (advanced JSON is available there, including optional supervision). |
+  | Zones                        | Zone definitions. Use **Manage zones** (web tool) to edit advanced JSON (including optional supervision). Use **Export JSON** / **Import JSON** to backup/restore. |
 
   <br/>
 
