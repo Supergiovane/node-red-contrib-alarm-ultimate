@@ -38,8 +38,8 @@ describe('Alarm Ultimate output-only nodes', function () {
         entryDelaySeconds: 0,
         sirenDurationSeconds: 0.2,
         requireCodeForDisarm: false,
-        zones: JSON.stringify([{ id: 'front', topic: 'sensor/frontdoor', type: 'perimeter', entry: false }]),
-        wires: [['events'], ['siren'], [], [], [], [], [], [], []],
+        zones: JSON.stringify([{ name: 'Front', topic: 'sensor/frontdoor', type: 'perimeter', entry: false }]),
+        wires: [['events'], ['siren'], [], [], [], [], [], [], [], []],
       },
       { id: 'events', type: 'helper', z: flowId, x: 280, y: 60 },
       { id: 'siren', type: 'helper', z: flowId, x: 280, y: 100 },
@@ -61,7 +61,7 @@ describe('Alarm Ultimate output-only nodes', function () {
         x: 100,
         y: 220,
         alarmId: 'alarm',
-        zoneId: 'front',
+        zoneTopic: 'sensor/frontdoor',
         outputInitialState: true,
         wires: [['zoneOut']],
       },
@@ -104,10 +104,17 @@ describe('Alarm Ultimate output-only nodes', function () {
 
         stateOut.on('input', (msg) => {
           try {
-            if (String(msg.reason || '').startsWith('init') && msg.payload === 'disarmed') {
+            expect(msg).to.be.an('object');
+            expect(msg.alarmUltimate).to.be.an('object');
+            expect(msg.alarmUltimate.v).to.equal(1);
+            expect(msg.alarmUltimate.kind).to.equal('event');
+            expect(msg.alarmUltimate.event).to.equal(msg.event);
+
+            const initReason = msg && msg.payload && msg.payload.reason;
+            if (String(initReason || '').startsWith('init') && msg.event === 'disarmed' && msg.payload.mode === 'disarmed') {
               seen.initialDisarmed = true;
             }
-            if (msg.payload === 'armed') {
+            if (msg.event === 'armed' && msg.payload && msg.payload.mode === 'armed') {
               seen.armed = true;
             }
             maybeDone();
@@ -118,13 +125,20 @@ describe('Alarm Ultimate output-only nodes', function () {
 
         zoneOut.on('input', (msg) => {
           try {
-            if (String(msg.reason || '').startsWith('init') && msg.payload === false) {
+            expect(msg).to.be.an('object');
+            expect(msg.alarmUltimate).to.be.an('object');
+            expect(msg.alarmUltimate.v).to.equal(1);
+            expect(msg.alarmUltimate.kind).to.equal('event');
+            expect(msg.alarmUltimate.event).to.equal(msg.event);
+
+            const initReason = msg && msg.payload && msg.payload.reason;
+            if (String(initReason || '').startsWith('init') && msg.event === 'zone_close' && msg.payload && msg.payload.open === false) {
               seen.initialZoneClosed = true;
-              expect(msg.topic).to.equal('alarm/zone/sensor/frontdoor');
+              expect(msg.topic).to.equal('alarm/event');
             }
-            if (msg.payload === true && msg.zone && msg.zone.id === 'front') {
+            if (msg.event === 'zone_open' && msg.payload && msg.payload.open === true && msg.payload.zone && msg.payload.zone.topic === 'sensor/frontdoor') {
               seen.zoneOpen = true;
-              expect(msg.topic).to.equal('alarm/zone/sensor/frontdoor');
+              expect(msg.topic).to.equal('alarm/event');
             }
             maybeDone();
           } catch (err) {
@@ -134,10 +148,17 @@ describe('Alarm Ultimate output-only nodes', function () {
 
         sirenOut.on('input', (msg) => {
           try {
-            if (String(msg.reason || '').startsWith('init') && msg.payload === false) {
+            expect(msg).to.be.an('object');
+            expect(msg.alarmUltimate).to.be.an('object');
+            expect(msg.alarmUltimate.v).to.equal(1);
+            expect(msg.alarmUltimate.kind).to.equal('siren');
+            expect(msg.alarmUltimate.event).to.equal(msg.event);
+            expect(msg.alarmUltimate.siren).to.deep.include({ active: Boolean(msg.payload) });
+
+            if (String(msg.reason || '').startsWith('init') && msg.event === 'siren_off' && msg.payload === false) {
               seen.initialSirenOff = true;
             }
-            if (msg.payload === true) {
+            if (msg.event === 'siren_on' && msg.payload === true) {
               seen.sirenOn = true;
             }
             maybeDone();

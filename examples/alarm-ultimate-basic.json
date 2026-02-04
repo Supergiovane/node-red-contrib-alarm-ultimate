@@ -44,7 +44,7 @@
     "sirenOffPayloadType": "bool",
     "emitRestoreEvents": false,
     "maxLogEntries": 50,
-    "zones": "[\n  {\n    \"id\": \"front_door\",\n    \"name\": \"Front door\",\n    \"topic\": \"sensor/frontdoor\",\n    \"type\": \"perimeter\",\n    \"entry\": true,\n    \"bypassable\": true,\n    \"chime\": true\n  },\n  {\n    \"id\": \"living_pir\",\n    \"name\": \"Living PIR\",\n    \"topic\": \"sensor/living_pir\",\n    \"type\": \"motion\",\n    \"entry\": false,\n    \"bypassable\": true,\n    \"cooldownSeconds\": 10\n  }\n]",
+    "zones": "[\n  {\n    \"name\": \"Front door\",\n    \"topic\": \"sensor/frontdoor\",\n    \"type\": \"perimeter\",\n    \"entry\": true,\n    \"bypassable\": true,\n    \"chime\": true\n  },\n  {\n    \"name\": \"Living PIR\",\n    \"topic\": \"sensor/living_pir\",\n    \"type\": \"motion\",\n    \"entry\": false,\n    \"bypassable\": true,\n    \"cooldownSeconds\": 10\n  }\n]",
     "x": 420,
     "y": 220,
     "wires": [
@@ -74,7 +74,8 @@
       ],
       [
         "02468ace13579bdf"
-      ]
+      ],
+      []
     ]
   },
   {
@@ -425,7 +426,7 @@
     "z": "f1c9d0f3d9b8a001",
     "name": "Front door zone",
     "alarmId": "a1b2c3d4e5f6a7b8",
-    "zoneId": "front_door",
+    "zoneTopic": "sensor/frontdoor",
     "topic": "",
     "outputInitialState": true,
     "x": 200,

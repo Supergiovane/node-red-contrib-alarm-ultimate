@@ -42,8 +42,19 @@
       zones: { value: "" },
     },
     inputs: 1,
-    outputs: 1,
-    outputLabels: ["All Events"],
+    outputs: 10,
+    outputLabels: [
+      "All messages",
+      "Siren",
+      "Alarm triggered",
+      "Arm/Disarm updates",
+      "Zone activity",
+      "Errors/Denied",
+      "Any zone open",
+      "Open zones (arming)",
+      "Open zones (on request)",
+      "Open zones (cycle)",
+    ],
     icon: "alarm-ultimate.svg",
     label: function () {
       return this.name || "Alarm System (BETA)";
@@ -950,14 +961,14 @@
      - disarm: `msg.command="disarm"`
   5. Attach a **Debug** node to see what the Alarm outputs.
 
-  Tip (recommended): use **AlarmUltimateInputAdapter** to normalize incoming data (KNX/HomeKit/...) and **AlarmUltimateOutputAdapter** to filter/transform the Alarm output (HomeKit, MQTT, ...).
+  Tip (recommended): use **Alarm Zone** / **Alarm State** in **Input** mode to normalize incoming data (KNX/HomeKit/...) and inject it into the selected Alarm node. Use **Alarm Zone** / **Alarm State** in **Output** mode with an **Adapter** to filter/transform Alarm outputs (HomeKit, KNX, AX Pro, ...).
 
   The node has 2 inputs "in one":
 
   - **Control messages**: when `msg.topic` equals **Control topic**.
   - **Sensor messages**: any other message, matched to a zone by `msg.topic` and converted to boolean using **With Input** (default `payload`).
 
-  Tip: Use one or more **AlarmUltimateOutputAdapter** nodes to filter/transform the Alarm output (siren, zone activity, open zones, HomeKit, MQTT, ...).
+  Tip: Use one or more **Alarm Zone** / **Alarm State** nodes (Output mode + Adapter) to filter/transform Alarm outputs (zone activity, HomeKit/KNX/AX Pro, ...).
 
   <br/>
 
@@ -1019,7 +1030,18 @@
 
   ## Output
 
-  The node has a **single output** and emits different message types on it.
+  The node has **10 outputs** (pins). Output **#1 (All messages)** is a superset and always emits everything.
+
+  1. **All messages** (superset)
+  2. **Siren**
+  3. **Alarm triggered**
+  4. **Arm/Disarm updates**
+  5. **Zone activity**
+  6. **Errors/Denied**
+  7. **Any zone open**
+  8. **Open zones (arming)**
+  9. **Open zones (on request)**
+  10. **Open zones (cycle)**
 
   **Event messages**
 
@@ -1091,7 +1113,6 @@
   - `msg.command = "arm"`
   - or `msg.arm = "armed"`
   - or `msg.mode = "armed"`
-  - legacy commands `arm_away` / `arm_home` / `arm_night` are accepted and map to `arm`
 
   Disarm:
 
@@ -1106,11 +1127,11 @@
   - `msg.command = "list_open_zones"` or `msg.listOpenZones = true`
   - or send a message with `msg.topic = <Open zones request topic>` (works even while disarmed)
 
-  Bypass / unbypass (zone id):
+	  Bypass / unbypass (zone topic/pattern):
 
   - `msg.command = "bypass"` / `msg.command = "unbypass"`
   - or `msg.bypass = true` / `msg.unbypass = true`
-  - pass the zone id in `msg.zone` (alias: `msg.zoneId`, `msg.zoneName` - still expects the zone `id`)
+	  - pass the zone **topic** in `msg.zoneTopic` (alias: `msg.zone`)
 
   Siren:
 
@@ -1139,16 +1160,14 @@
   - **Legacy**: one JSON object per line
   - **Formatted**: a JSON array of objects
 
-  Minimal fields:
+	  Minimal fields:
 
-  - `topic` (exact topic, or a prefix ending with `*`) OR `topicPattern` (regex string)
-  - `topicPattern` is evaluated as a JavaScript `RegExp` and tested against `msg.topic`
-  - `id` is optional (auto-generated if missing)
+	  - `topic` (exact topic, or a prefix ending with `*`)
 
-  Common fields:
+	  Common fields:
 
-  - `id`: unique identifier used for bypass (`msg.zone`)
-  - `name`: label used in events
+	  - `topic`: **unique identifier** of the zone (used for bypass via `msg.zoneTopic` or `msg.zone`)
+	  - `name`: label used in events (optional; defaults to `topic`)
   - `type`: `perimeter` (default), `motion`, `tamper`, `fire`, `24h`
   - `entry`: `true` to use entry delay, otherwise triggers instantly
   - `entryDelaySeconds`: overrides the global entry delay
@@ -1164,14 +1183,13 @@
 
   Example (formatted JSON array):
 
-  ```json
-  [
-    {
-      "id": "front_door",
-      "name": "Front door",
-      "topic": "house/door/front",
-      "type": "perimeter",
-      "entry": true,
+	  ```json
+	  [
+	    {
+	      "name": "Front door",
+	      "topic": "house/door/front",
+	      "type": "perimeter",
+	      "entry": true,
       "entryDelaySeconds": 30,
       "bypassable": true,
       "chime": true

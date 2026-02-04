@@ -67,7 +67,7 @@
     "sirenOffPayloadType": "bool",
     "emitRestoreEvents": false,
     "maxLogEntries": 200,
-    "zones": "[\n  {\n    \"id\": \"front_door\",\n    \"name\": \"Front door\",\n    \"topic\": \"binary_sensor.front_door_contact\",\n    \"type\": \"perimeter\",\n    \"entry\": true,\n    \"bypassable\": true,\n    \"chime\": true\n  },\n  {\n    \"id\": \"living_pir\",\n    \"name\": \"Living room motion\",\n    \"topic\": \"binary_sensor.living_room_motion\",\n    \"type\": \"motion\",\n    \"entry\": false,\n    \"bypassable\": true,\n    \"cooldownSeconds\": 10\n  }\n]",
+    "zones": "[\n  {\n    \"name\": \"Front door\",\n    \"topic\": \"binary_sensor.front_door_contact\",\n    \"type\": \"perimeter\",\n    \"entry\": true,\n    \"bypassable\": true,\n    \"chime\": true\n  },\n  {\n    \"name\": \"Living room motion\",\n    \"topic\": \"binary_sensor.living_room_motion\",\n    \"type\": \"motion\",\n    \"entry\": false,\n    \"bypassable\": true,\n    \"cooldownSeconds\": 10\n  }\n]",
     "x": 760,
     "y": 240,
     "wires": [
@@ -86,24 +86,26 @@
       ],
       [],
       [],
+      [],
       []
     ]
   },
   {
     "id": "c44ac2b6af1a1e2a",
-    "type": "AlarmUltimateInputAdapter",
+    "type": "AlarmUltimateZone",
     "z": "b3b0c2c1a9e7d001",
-    "name": "HA sensors on/off → boolean",
-    "presetSource": "builtin",
-    "presetId": "home_assistant_on_off",
-    "userCode": "return msg;",
+    "name": "HA sensors → Alarm (All zones)",
+    "alarmId": "d0c1b2a3f4e50617",
+    "zoneTopic": "__all__",
+    "io": "in",
+    "adapter": "default",
+    "topic": "",
+    "outputInitialState": false,
+    "inputs": 1,
+    "outputs": 0,
     "x": 500,
     "y": 240,
-    "wires": [
-      [
-        "d0c1b2a3f4e50617"
-      ]
-    ]
+    "wires": []
   },
   {
     "id": "c2b3a4d5e6f70819",
@@ -190,7 +192,7 @@
     "type": "function",
     "z": "b3b0c2c1a9e7d001",
     "name": "HA command → Alarm control msg",
-    "func": "const root = msg && typeof msg === \"object\" ? msg : {};\nconst eventData = root.payload && typeof root.payload === \"object\" ? root.payload : {};\nconst ev = eventData.event && typeof eventData.event === \"object\" ? eventData.event : {};\n\nconst action = String(ev.action || ev.command || \"\").trim().toLowerCase();\nconst mode = String(ev.mode || \"\").trim().toLowerCase();\nconst code = typeof ev.code === \"string\" ? ev.code.trim() : \"\";\n\nif (!action) return null;\n\nconst out = { topic: \"alarm\" };\n\nif (action === \"disarm\") {\n  out.command = \"disarm\";\n} else if (action === \"trigger\" || action === \"panic\") {\n  out.command = \"panic\";\n} else if (action.startsWith(\"arm\")) {\n  out.command = \"arm\";\n} else {\n  return null;\n}\n\nif (code) out.code = code;\nif (mode) {\n  // AlarmSystemUltimate maps legacy modes to \"armed\".\n  out.mode = mode;\n}\n\n// Remember last requested arm mode to map HA state on \"armed\" events.\nif (out.command === \"arm\") {\n  const map = {\n    arm_home: \"armed_home\",\n    arm_away: \"armed_away\",\n    arm_night: \"armed_home\",\n    arm: \"armed_away\",\n  };\n  flow.set(\"alarmUltimate:lastArmMode\", map[action] || \"armed_away\");\n}\n\nreturn out;",
+    "func": "const root = msg && typeof msg === \"object\" ? msg : {};\nconst eventData = root.payload && typeof root.payload === \"object\" ? root.payload : {};\nconst ev = eventData.event && typeof eventData.event === \"object\" ? eventData.event : {};\n\nconst action = String(ev.action || ev.command || \"\").trim().toLowerCase();\nconst code = typeof ev.code === \"string\" ? ev.code.trim() : \"\";\n\nif (!action) return null;\n\nconst out = { topic: \"alarm\" };\n\nif (action === \"disarm\") {\n  out.command = \"disarm\";\n} else if (action === \"trigger\" || action === \"panic\") {\n  out.command = \"panic\";\n} else if (action.startsWith(\"arm\")) {\n  out.command = \"arm\";\n} else {\n  return null;\n}\n\nif (code) out.code = code;\n\n// Remember last requested arm mode to map HA state on \"armed\" events.\nif (out.command === \"arm\") {\n  const map = {\n    arm_home: \"armed_home\",\n    arm_away: \"armed_away\",\n    arm_night: \"armed_home\",\n    arm: \"armed_away\",\n  };\n  flow.set(\"alarmUltimate:lastArmMode\", map[action] || \"armed_away\");\n}\n\nreturn out;",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
@@ -332,4 +334,3 @@
     "wires": []
   }
 ]
-

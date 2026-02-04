@@ -12,7 +12,14 @@
     outputs: 1,
     icon: "alarm-ultimate-siren.svg",
     label: function () {
-      return this.name || "Alarm Siren";
+      const selfLabel = this.name || "Alarm Siren";
+      try {
+        const alarm = this.alarmId ? RED.nodes.node(this.alarmId) : null;
+        const alarmLabel = alarm ? (alarm.name || alarm.id || "") : "";
+        return alarmLabel ? `${alarmLabel} - ${selfLabel}` : selfLabel;
+      } catch (_err) {
+        return selfLabel;
+      }
     },
     paletteLabel: function () {
       return "Alarm Siren";
@@ -73,7 +80,7 @@
 
   <div class="form-row">
     <label for="node-input-topic"><i class="fa fa-tag"></i> Topic</label>
-    <input type="text" id="node-input-topic" placeholder="(default: &lt;controlTopic&gt;/sirenState)" />
+    <input type="text" id="node-input-topic" placeholder="(default: &lt;controlTopic&gt;/siren)" />
   </div>
 
   <div class="form-row">
@@ -90,8 +97,13 @@ Quick start:
 1. Select the Alarm node.
 2. Connect this node to a **Debug** (or an automation).
 
+Output message (same format as the Alarm node siren output):
+
+- `msg.topic`: configurable (default: `controlTopic + "/siren"`)
+- `msg.event`: `siren_on` or `siren_off`
 - `msg.payload`: `true` when the siren is on, otherwise `false`
 - `msg.reason`: `manual|timeout|arm|disarm|...`
+- `msg.alarmUltimate`: canonical, versioned envelope (stable fields for adapters)
 
 Notes:
 

@@ -2,6 +2,7 @@
 
 const helpers = require('./lib/node-helpers.js');
 const { alarmInstances, alarmEmitter } = require('./lib/alarm-registry.js');
+const { attachAlarmUltimateEnvelope } = require('./lib/alarm-ultimate-envelope.js');
 
 module.exports = function (RED) {
   function AlarmUltimateSiren(config) {
@@ -20,7 +21,7 @@ module.exports = function (RED) {
     function buildTopic(controlTopic) {
       if (configuredTopic) return configuredTopic;
       const base = typeof controlTopic === 'string' && controlTopic.trim().length > 0 ? controlTopic.trim() : 'alarm';
-      return `${base}/sirenState`;
+      return `${base}/siren`;
     }
 
     function emitSiren(active, evt, reason) {
@@ -37,11 +38,17 @@ module.exports = function (RED) {
       const msg = {
         topic: buildTopic(evt && evt.controlTopic),
         payload: active,
-        alarmId: evt ? evt.alarmId : alarmId,
-        name: evt ? evt.name || '' : '',
-        reason: evt && evt.reason ? evt.reason : reason,
-        ts: evt && evt.ts ? evt.ts : Date.now(),
       };
+      msg.event = active ? 'siren_on' : 'siren_off';
+      msg.reason = evt && evt.reason ? evt.reason : reason;
+      attachAlarmUltimateEnvelope(msg, {
+        ts: evt && typeof evt.ts === 'number' ? evt.ts : Date.now(),
+        kind: 'siren',
+        event: msg.event,
+        reason: msg.reason,
+        alarm: { id: alarmId, controlTopic: evt && evt.controlTopic ? evt.controlTopic : null },
+        siren: { active },
+      });
       node.send(msg);
     }
 

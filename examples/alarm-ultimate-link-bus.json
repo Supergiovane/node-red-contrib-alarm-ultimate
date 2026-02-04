@@ -1,0 +1,782 @@
+[
+  {
+    "id": "a0f1b2c3d4e5f601",
+    "type": "tab",
+    "label": "Alarm Ultimate - Link Hub",
+    "disabled": false,
+    "info": "Central \"hub\" tab.\n\n- Fan-in: any flow can send sensors/commands to the Alarm using a Link Out connected to \"AU → Alarm\".\n- Fan-out: the Alarm outputs are forwarded to Link Outs, so any flow can consume them via Link In nodes.\n\nTip: rename the Link nodes once and reuse them everywhere."
+  },
+  {
+    "id": "a0f1b2c3d4e5f602",
+    "type": "tab",
+    "label": "Alarm Ultimate - Producers",
+    "disabled": false,
+    "info": "Example producers (fan-in).\n\nWire any sensors/commands into \"Send to AU Alarm\" (Link Out)."
+  },
+  {
+    "id": "a0f1b2c3d4e5f603",
+    "type": "tab",
+    "label": "Alarm Ultimate - Consumers",
+    "disabled": false,
+    "info": "Example consumers (fan-out).\n\nUse the Link In nodes to receive specific Alarm outputs anywhere, without long wires."
+  },
+  {
+    "id": "b1c2d3e4f5061701",
+    "type": "comment",
+    "z": "a0f1b2c3d4e5f601",
+    "name": "HUB: Link-IN → Alarm, Alarm outputs → Link-OUT",
+    "info": "This tab is the only place where the Alarm is wired.\n\nElsewhere you only use Link In/Out.",
+    "x": 280,
+    "y": 60,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061702",
+    "type": "link in",
+    "z": "a0f1b2c3d4e5f601",
+    "name": "AU → Alarm (sensors+commands)",
+    "links": [
+      "b1c2d3e4f5061710"
+    ],
+    "x": 160,
+    "y": 160,
+    "wires": [
+      [
+        "b1c2d3e4f5061703"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061703",
+    "type": "AlarmSystemUltimate",
+    "z": "a0f1b2c3d4e5f601",
+    "name": "Home Alarm",
+    "controlTopic": "alarm",
+    "payloadPropName": "payload",
+    "persistState": true,
+    "syncTargets": "",
+    "requireCodeForArm": false,
+    "requireCodeForDisarm": false,
+    "armCode": "",
+    "duressCode": "",
+    "blockArmOnViolations": true,
+    "exitDelaySeconds": 10,
+    "entryDelaySeconds": 30,
+    "emitOpenZonesDuringArming": false,
+    "openZonesArmingIntervalSeconds": 1,
+    "openZonesRequestTopic": "alarm/listOpenZones",
+    "openZonesRequestIntervalSeconds": 0,
+    "emitOpenZonesCycle": false,
+    "openZonesCycleIntervalSeconds": 5,
+    "sirenDurationSeconds": 180,
+    "sirenLatchUntilDisarm": false,
+    "sirenTopic": "alarm/siren",
+    "sirenOnPayload": true,
+    "sirenOnPayloadType": "bool",
+    "sirenOffPayload": false,
+    "sirenOffPayloadType": "bool",
+    "emitRestoreEvents": false,
+    "maxLogEntries": 50,
+    "zones": "[\n  {\n    \"name\": \"Front door\",\n    \"topic\": \"sensor/frontdoor\",\n    \"type\": \"perimeter\",\n    \"entry\": true,\n    \"bypassable\": true,\n    \"chime\": true\n  },\n  {\n    \"name\": \"Living PIR\",\n    \"topic\": \"sensor/living_pir\",\n    \"type\": \"motion\",\n    \"entry\": false,\n    \"bypassable\": true,\n    \"cooldownSeconds\": 10\n  }\n]",
+    "x": 420,
+    "y": 160,
+    "wires": [
+      [
+        "b1c2d3e4f5061720"
+      ],
+      [
+        "b1c2d3e4f5061721"
+      ],
+      [
+        "b1c2d3e4f5061722"
+      ],
+      [
+        "b1c2d3e4f5061723"
+      ],
+      [
+        "b1c2d3e4f5061724"
+      ],
+      [
+        "b1c2d3e4f5061725"
+      ],
+      [
+        "b1c2d3e4f5061726"
+      ],
+      [
+        "b1c2d3e4f5061727"
+      ],
+      [
+        "b1c2d3e4f5061728"
+      ],
+      [
+        "b1c2d3e4f5061729"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061720",
+    "type": "link out",
+    "z": "a0f1b2c3d4e5f601",
+    "name": "AU ← All messages (out 1)",
+    "mode": "link",
+    "links": [
+      "b1c2d3e4f5061801"
+    ],
+    "x": 740,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061721",
+    "type": "link out",
+    "z": "a0f1b2c3d4e5f601",
+    "name": "AU ← Siren (out 2)",
+    "mode": "link",
+    "links": [
+      "b1c2d3e4f5061802"
+    ],
+    "x": 700,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061722",
+    "type": "link out",
+    "z": "a0f1b2c3d4e5f601",
+    "name": "AU ← Alarm triggered (out 3)",
+    "mode": "link",
+    "links": [
+      "b1c2d3e4f5061803"
+    ],
+    "x": 740,
+    "y": 200,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061723",
+    "type": "link out",
+    "z": "a0f1b2c3d4e5f601",
+    "name": "AU ← Arm/Disarm updates (out 4)",
+    "mode": "link",
+    "links": [
+      "b1c2d3e4f5061804"
+    ],
+    "x": 760,
+    "y": 240,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061724",
+    "type": "link out",
+    "z": "a0f1b2c3d4e5f601",
+    "name": "AU ← Zone activity (out 5)",
+    "mode": "link",
+    "links": [
+      "b1c2d3e4f5061805"
+    ],
+    "x": 730,
+    "y": 280,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061725",
+    "type": "link out",
+    "z": "a0f1b2c3d4e5f601",
+    "name": "AU ← Errors/Denied (out 6)",
+    "mode": "link",
+    "links": [
+      "b1c2d3e4f5061806"
+    ],
+    "x": 730,
+    "y": 320,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061726",
+    "type": "link out",
+    "z": "a0f1b2c3d4e5f601",
+    "name": "AU ← Any zone open (out 7)",
+    "mode": "link",
+    "links": [
+      "b1c2d3e4f5061807"
+    ],
+    "x": 730,
+    "y": 360,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061727",
+    "type": "link out",
+    "z": "a0f1b2c3d4e5f601",
+    "name": "AU ← Open zones (arming) (out 8)",
+    "mode": "link",
+    "links": [
+      "b1c2d3e4f5061808"
+    ],
+    "x": 760,
+    "y": 400,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061728",
+    "type": "link out",
+    "z": "a0f1b2c3d4e5f601",
+    "name": "AU ← Open zones (request) (out 9)",
+    "mode": "link",
+    "links": [
+      "b1c2d3e4f5061809"
+    ],
+    "x": 770,
+    "y": 440,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061729",
+    "type": "link out",
+    "z": "a0f1b2c3d4e5f601",
+    "name": "AU ← Open zones (cycle) (out 10)",
+    "mode": "link",
+    "links": [
+      "b1c2d3e4f5061810"
+    ],
+    "x": 760,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061710",
+    "type": "link out",
+    "z": "a0f1b2c3d4e5f602",
+    "name": "Send to AU Alarm",
+    "mode": "link",
+    "links": [
+      "b1c2d3e4f5061702"
+    ],
+    "x": 760,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061711",
+    "type": "comment",
+    "z": "a0f1b2c3d4e5f602",
+    "name": "PRODUCERS: inject → Link-OUT → HUB",
+    "info": "These Inject nodes simulate sensors and commands.\n\nIn your real flows:\n- Sensors/commands → Link Out \"Send to AU Alarm\" → (hub) → Alarm\n- If needed: devices → Alarm Zone (Input mode, Zone: All zones, Adapter: ...) → Link Out",
+    "x": 240,
+    "y": 60,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061712",
+    "type": "inject",
+    "z": "a0f1b2c3d4e5f602",
+    "name": "Arm",
+    "props": [
+      {
+        "p": "topic",
+        "v": "alarm",
+        "vt": "str"
+      },
+      {
+        "p": "command",
+        "v": "arm",
+        "vt": "str"
+      }
+    ],
+    "topic": "alarm",
+    "command": "arm",
+    "once": false,
+    "onceDelay": 0.1,
+    "x": 150,
+    "y": 120,
+    "wires": [
+      [
+        "b1c2d3e4f5061710"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061713",
+    "type": "inject",
+    "z": "a0f1b2c3d4e5f602",
+    "name": "Disarm",
+    "props": [
+      {
+        "p": "topic",
+        "v": "alarm",
+        "vt": "str"
+      },
+      {
+        "p": "command",
+        "v": "disarm",
+        "vt": "str"
+      }
+    ],
+    "topic": "alarm",
+    "command": "disarm",
+    "once": false,
+    "onceDelay": 0.1,
+    "x": 160,
+    "y": 160,
+    "wires": [
+      [
+        "b1c2d3e4f5061710"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061714",
+    "type": "inject",
+    "z": "a0f1b2c3d4e5f602",
+    "name": "List open zones",
+    "props": [
+      {
+        "p": "topic",
+        "v": "alarm/listOpenZones",
+        "vt": "str"
+      }
+    ],
+    "topic": "alarm/listOpenZones",
+    "once": false,
+    "onceDelay": 0.1,
+    "x": 190,
+    "y": 200,
+    "wires": [
+      [
+        "b1c2d3e4f5061710"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061715",
+    "type": "inject",
+    "z": "a0f1b2c3d4e5f602",
+    "name": "Front door open",
+    "props": [
+      {
+        "p": "topic",
+        "v": "sensor/frontdoor",
+        "vt": "str"
+      },
+      {
+        "p": "payload",
+        "v": "true",
+        "vt": "bool"
+      }
+    ],
+    "topic": "sensor/frontdoor",
+    "payload": true,
+    "payloadType": "bool",
+    "x": 190,
+    "y": 280,
+    "wires": [
+      [
+        "b1c2d3e4f5061710"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061716",
+    "type": "inject",
+    "z": "a0f1b2c3d4e5f602",
+    "name": "Front door close",
+    "props": [
+      {
+        "p": "topic",
+        "v": "sensor/frontdoor",
+        "vt": "str"
+      },
+      {
+        "p": "payload",
+        "v": "false",
+        "vt": "bool"
+      }
+    ],
+    "topic": "sensor/frontdoor",
+    "payload": false,
+    "payloadType": "bool",
+    "x": 190,
+    "y": 320,
+    "wires": [
+      [
+        "b1c2d3e4f5061710"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061717",
+    "type": "inject",
+    "z": "a0f1b2c3d4e5f602",
+    "name": "Living PIR motion",
+    "props": [
+      {
+        "p": "topic",
+        "v": "sensor/living_pir",
+        "vt": "str"
+      },
+      {
+        "p": "payload",
+        "v": "true",
+        "vt": "bool"
+      }
+    ],
+    "topic": "sensor/living_pir",
+    "payload": true,
+    "payloadType": "bool",
+    "x": 190,
+    "y": 360,
+    "wires": [
+      [
+        "b1c2d3e4f5061710"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061718",
+    "type": "inject",
+    "z": "a0f1b2c3d4e5f602",
+    "name": "Living PIR idle",
+    "props": [
+      {
+        "p": "topic",
+        "v": "sensor/living_pir",
+        "vt": "str"
+      },
+      {
+        "p": "payload",
+        "v": "false",
+        "vt": "bool"
+      }
+    ],
+    "topic": "sensor/living_pir",
+    "payload": false,
+    "payloadType": "bool",
+    "x": 180,
+    "y": 400,
+    "wires": [
+      [
+        "b1c2d3e4f5061710"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061800",
+    "type": "comment",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "CONSUMERS: Link-IN (from HUB) → your integrations",
+    "info": "Replace the Debug nodes with MQTT/HomeKit/Dashboard flows.\n\nYou can place these Link In nodes in any tab.",
+    "x": 280,
+    "y": 60,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061801",
+    "type": "link in",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "AU All messages",
+    "links": [
+      "b1c2d3e4f5061720"
+    ],
+    "x": 140,
+    "y": 120,
+    "wires": [
+      [
+        "b1c2d3e4f5061901"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061901",
+    "type": "debug",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "All messages",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 360,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061802",
+    "type": "link in",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "AU Siren",
+    "links": [
+      "b1c2d3e4f5061721"
+    ],
+    "x": 120,
+    "y": 160,
+    "wires": [
+      [
+        "b1c2d3e4f5061902"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061902",
+    "type": "debug",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "Siren",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 320,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061803",
+    "type": "link in",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "AU Alarm triggered",
+    "links": [
+      "b1c2d3e4f5061722"
+    ],
+    "x": 150,
+    "y": 200,
+    "wires": [
+      [
+        "b1c2d3e4f5061903"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061903",
+    "type": "debug",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "Alarm triggered",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 360,
+    "y": 200,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061804",
+    "type": "link in",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "AU Arm/Disarm updates",
+    "links": [
+      "b1c2d3e4f5061723"
+    ],
+    "x": 170,
+    "y": 240,
+    "wires": [
+      [
+        "b1c2d3e4f5061904"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061904",
+    "type": "debug",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "Arm/Disarm updates",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 390,
+    "y": 240,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061805",
+    "type": "link in",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "AU Zone activity",
+    "links": [
+      "b1c2d3e4f5061724"
+    ],
+    "x": 140,
+    "y": 280,
+    "wires": [
+      [
+        "b1c2d3e4f5061905"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061905",
+    "type": "debug",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "Zone activity",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 350,
+    "y": 280,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061806",
+    "type": "link in",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "AU Errors/Denied",
+    "links": [
+      "b1c2d3e4f5061725"
+    ],
+    "x": 150,
+    "y": 320,
+    "wires": [
+      [
+        "b1c2d3e4f5061906"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061906",
+    "type": "debug",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "Errors/Denied",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 350,
+    "y": 320,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061807",
+    "type": "link in",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "AU Any zone open",
+    "links": [
+      "b1c2d3e4f5061726"
+    ],
+    "x": 150,
+    "y": 360,
+    "wires": [
+      [
+        "b1c2d3e4f5061907"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061907",
+    "type": "debug",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "Any zone open",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 350,
+    "y": 360,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061808",
+    "type": "link in",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "AU Open zones (arming)",
+    "links": [
+      "b1c2d3e4f5061727"
+    ],
+    "x": 170,
+    "y": 400,
+    "wires": [
+      [
+        "b1c2d3e4f5061908"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061908",
+    "type": "debug",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "Open zones (arming)",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 390,
+    "y": 400,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061809",
+    "type": "link in",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "AU Open zones (request)",
+    "links": [
+      "b1c2d3e4f5061728"
+    ],
+    "x": 170,
+    "y": 440,
+    "wires": [
+      [
+        "b1c2d3e4f5061909"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061909",
+    "type": "debug",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "Open zones (request)",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 390,
+    "y": 440,
+    "wires": []
+  },
+  {
+    "id": "b1c2d3e4f5061810",
+    "type": "link in",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "AU Open zones (cycle)",
+    "links": [
+      "b1c2d3e4f5061729"
+    ],
+    "x": 160,
+    "y": 480,
+    "wires": [
+      [
+        "b1c2d3e4f5061910"
+      ]
+    ]
+  },
+  {
+    "id": "b1c2d3e4f5061910",
+    "type": "debug",
+    "z": "a0f1b2c3d4e5f603",
+    "name": "Open zones (cycle)",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "x": 380,
+    "y": 480,
+    "wires": []
+  }
+]

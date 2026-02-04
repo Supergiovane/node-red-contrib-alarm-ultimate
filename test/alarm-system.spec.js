@@ -53,8 +53,8 @@ describe('AlarmSystemUltimate node', function () {
         sirenLatchUntilDisarm: false,
         requireCodeForDisarm: false,
         blockArmOnViolations: true,
-        zones: '{"id":"front","name":"Front","topic":"sensor/frontdoor","type":"perimeter","entry":true}',
-        wires: [['out']],
+        zones: '{"name":"Front","topic":"sensor/frontdoor","type":"perimeter","entry":true}',
+        wires: [['out'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'out', type: 'helper', z: flowId },
     ];
@@ -102,8 +102,8 @@ describe('AlarmSystemUltimate node', function () {
         entryDelaySeconds: 0.1,
         sirenDurationSeconds: 0.2,
         requireCodeForDisarm: false,
-        zones: '{"id":"front","topic":"sensor/frontdoor","type":"perimeter","entry":true}',
-        wires: [['out']],
+        zones: '{"topic":"sensor/frontdoor","type":"perimeter","entry":true}',
+        wires: [['out'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'out', type: 'helper', z: flowId },
     ];
@@ -164,8 +164,8 @@ describe('AlarmSystemUltimate node', function () {
         entryDelaySeconds: 0.05,
         sirenDurationSeconds: 0.2,
         requireCodeForDisarm: false,
-        zones: '{"id":"front","topic":"sensor/frontdoor","type":"perimeter","entry":false,"bypassable":true}',
-        wires: [['out']],
+        zones: '{"topic":"sensor/frontdoor","type":"perimeter","entry":false,"bypassable":true}',
+        wires: [['out'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'out', type: 'helper', z: flowId },
     ];
@@ -186,7 +186,7 @@ describe('AlarmSystemUltimate node', function () {
         }
       });
 
-      alarm.receive({ topic: 'alarm', command: 'bypass', zone: 'front' });
+      alarm.receive({ topic: 'alarm', command: 'bypass', zone: 'sensor/frontdoor' });
       alarm.receive({ topic: 'alarm', command: 'arm' });
       setTimeout(() => {
         alarm.receive({ topic: 'sensor/frontdoor', payload: 'open' });
@@ -223,7 +223,6 @@ describe('AlarmSystemUltimate node', function () {
         zones: JSON.stringify(
           [
             {
-              id: 'front',
               name: 'Front',
               topic: 'sensor/frontdoor',
               type: 'perimeter',
@@ -233,7 +232,7 @@ describe('AlarmSystemUltimate node', function () {
           null,
           2
         ),
-        wires: [['out']],
+        wires: [['out'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'out', type: 'helper', z: flowId },
     ];
@@ -281,8 +280,8 @@ describe('AlarmSystemUltimate node', function () {
         entryDelaySeconds: 0,
         sirenDurationSeconds: 0,
         requireCodeForDisarm: false,
-        zones: '{"id":"front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
-        wires: [['out']],
+        zones: '{"topic":"sensor/frontdoor","type":"perimeter","entry":false}',
+        wires: [['out'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'out', type: 'helper', z: flowId },
     ];
@@ -323,8 +322,8 @@ describe('AlarmSystemUltimate node', function () {
         entryDelaySeconds: 0,
         sirenDurationSeconds: 0,
         requireCodeForDisarm: false,
-        zones: '{"id":"front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
-        wires: [['out']],
+        zones: '{"topic":"sensor/frontdoor","type":"perimeter","entry":false}',
+        wires: [['out'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'out', type: 'helper', z: flowId },
     ];
@@ -378,13 +377,13 @@ describe('AlarmSystemUltimate node', function () {
         openZonesRequestIntervalSeconds: 0,
         zones: JSON.stringify(
           [
-            { id: 'front', topic: 'sensor/frontdoor', type: 'perimeter', entry: false },
-            { id: 'back', topic: 'sensor/backdoor', type: 'perimeter', entry: false },
+            { name: 'Front', topic: 'sensor/frontdoor', type: 'perimeter', entry: false },
+            { name: 'Back', topic: 'sensor/backdoor', type: 'perimeter', entry: false },
           ],
           null,
           2
         ),
-        wires: [['out']],
+        wires: [['out'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'out', type: 'helper', z: flowId },
     ];
@@ -394,15 +393,15 @@ describe('AlarmSystemUltimate node', function () {
         const alarm = helper.getNode('alarm');
         const out = helper.getNode('out');
 
-        const receivedIds = new Set();
+        const receivedTopics = new Set();
 
         out.on('input', (msg) => {
           try {
             if (!msg || msg.topic !== 'alarm/openZone') return;
             expect(msg.event).to.equal('open_zone');
-            expect(msg).to.have.nested.property('payload.zone.id');
-            receivedIds.add(msg.payload.zone.id);
-            if (receivedIds.has('front') && receivedIds.has('back')) {
+            expect(msg).to.have.nested.property('payload.zone.topic');
+            receivedTopics.add(msg.payload.zone.topic);
+            if (receivedTopics.has('sensor/frontdoor') && receivedTopics.has('sensor/backdoor')) {
               done();
             }
           } catch (err) {
@@ -437,13 +436,13 @@ describe('AlarmSystemUltimate node', function () {
         openZonesCycleIntervalSeconds: 0.03,
         zones: JSON.stringify(
           [
-            { id: 'front', topic: 'sensor/frontdoor', type: 'perimeter', entry: false },
-            { id: 'back', topic: 'sensor/backdoor', type: 'perimeter', entry: false },
+            { name: 'Front', topic: 'sensor/frontdoor', type: 'perimeter', entry: false },
+            { name: 'Back', topic: 'sensor/backdoor', type: 'perimeter', entry: false },
           ],
           null,
           2
         ),
-        wires: [['out']],
+        wires: [['out'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'out', type: 'helper', z: flowId },
     ];
@@ -453,16 +452,16 @@ describe('AlarmSystemUltimate node', function () {
         const alarm = helper.getNode('alarm');
         const out = helper.getNode('out');
 
-        const receivedIds = new Set();
+        const receivedTopics = new Set();
 
         out.on('input', (msg) => {
           try {
             if (!msg || msg.topic !== 'alarm/openZone') return;
             if (msg.event !== 'open_zone') return;
             if (!msg.payload || msg.payload.context !== 'cycle') return;
-            if (!msg.payload.zone || !msg.payload.zone.id) return;
-            receivedIds.add(msg.payload.zone.id);
-            if (receivedIds.has('front') && receivedIds.has('back')) {
+            if (!msg.payload.zone || !msg.payload.zone.topic) return;
+            receivedTopics.add(msg.payload.zone.topic);
+            if (receivedTopics.has('sensor/frontdoor') && receivedTopics.has('sensor/backdoor')) {
               done();
             }
           } catch (err) {
@@ -486,8 +485,8 @@ describe('AlarmSystemUltimate node', function () {
         z: flowId,
         controlTopic: 'alarm',
         requireCodeForDisarm: false,
-        zones: '{"id":"front","name":"Front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
-        wires: [['out']],
+        zones: '{"name":"Front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
+        wires: [['out'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'out', type: 'helper', z: flowId },
     ];
@@ -541,8 +540,8 @@ describe('AlarmSystemUltimate node', function () {
         sirenDurationSeconds: 0.05,
         sirenLatchUntilDisarm: false,
         requireCodeForDisarm: false,
-        zones: '{"id":"front","name":"Front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
-        wires: [['out']],
+        zones: '{"name":"Front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
+        wires: [['out'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'out', type: 'helper', z: flowId },
     ];
@@ -592,7 +591,7 @@ describe('AlarmSystemUltimate node', function () {
         syncTargets: JSON.stringify({
           alarmB: { onArm: 'arm', onDisarm: 'disarm' },
         }),
-        wires: [['aEvents']],
+        wires: [['aEvents'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'aEvents', type: 'helper', z: flowId },
       {
@@ -603,7 +602,7 @@ describe('AlarmSystemUltimate node', function () {
         controlTopic: 'alarmB',
         exitDelaySeconds: 0,
         requireCodeForDisarm: false,
-        wires: [['bEvents']],
+        wires: [['bEvents'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'bEvents', type: 'helper', z: flowId },
     ];
@@ -649,12 +648,11 @@ describe('AlarmSystemUltimate node', function () {
         controlTopic: 'alarm',
         requireCodeForDisarm: false,
         zones: JSON.stringify({
-          id: 'front',
           topic: 'sensor/frontdoor',
           type: 'perimeter',
           supervision: { enabled: true, timeoutSeconds: 0.05 },
         }),
-        wires: [['events']],
+        wires: [['events'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'events', type: 'helper', z: flowId },
     ];
@@ -713,12 +711,11 @@ describe('AlarmSystemUltimate node', function () {
         controlTopic: 'alarm',
         requireCodeForDisarm: false,
         zones: JSON.stringify({
-          id: 'front',
           topic: 'sensor/frontdoor',
           type: 'perimeter',
           supervision: { enabled: true, timeoutSeconds: 0.05 },
         }),
-        wires: [['events']],
+        wires: [['events'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'events', type: 'helper', z: flowId },
     ];
@@ -780,12 +777,11 @@ describe('AlarmSystemUltimate node', function () {
         requireCodeForDisarm: false,
         blockArmOnViolations: true,
         zones: JSON.stringify({
-          id: 'front',
           topic: 'sensor/frontdoor',
           type: 'perimeter',
           supervision: { enabled: true, timeoutSeconds: 0.05, blockArm: true },
         }),
-        wires: [['events']],
+        wires: [['events'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'events', type: 'helper', z: flowId },
     ];
@@ -815,7 +811,7 @@ describe('AlarmSystemUltimate node', function () {
             expect(blocked, 'arm_blocked not received').to.exist;
             const violations = blocked && blocked.payload ? blocked.payload.violations : null;
             expect(violations).to.be.an('array');
-            expect(violations[0]).to.include({ id: 'front' });
+            expect(violations[0]).to.include({ topic: 'sensor/frontdoor' });
             expect(Boolean(violations[0].supervisionLost)).to.equal(true);
             done();
           } catch (err) {

@@ -74,10 +74,11 @@
     "sirenOffPayloadType": "bool",
     "emitRestoreEvents": false,
     "maxLogEntries": 50,
-    "zones": "[\n  {\n    \"id\": \"front_door\",\n    \"name\": \"Front door\",\n    \"topic\": \"sensor/frontdoor\",\n    \"type\": \"perimeter\",\n    \"entry\": true,\n    \"bypassable\": true,\n    \"chime\": true\n  },\n  {\n    \"id\": \"living_pir\",\n    \"name\": \"Living PIR\",\n    \"topic\": \"sensor/living_pir\",\n    \"type\": \"motion\",\n    \"entry\": false,\n    \"bypassable\": true,\n    \"cooldownSeconds\": 10\n  }\n]",
+    "zones": "[\n  {\n    \"name\": \"Front door\",\n    \"topic\": \"sensor/frontdoor\",\n    \"type\": \"perimeter\",\n    \"entry\": true,\n    \"bypassable\": true,\n    \"chime\": true\n  },\n  {\n    \"name\": \"Living PIR\",\n    \"topic\": \"sensor/living_pir\",\n    \"type\": \"motion\",\n    \"entry\": false,\n    \"bypassable\": true,\n    \"cooldownSeconds\": 10\n  }\n]",
     "x": 230,
     "y": 160,
     "wires": [
+      [],
       [],
       [],
       [],

@@ -5,6 +5,8 @@
     defaults: {
       name: { value: "" },
       alarmId: { value: "", required: true },
+      io: { value: "out" },
+      adapter: { value: "default" },
       topic: { value: "" },
       outputInitialState: { value: true },
     },
@@ -12,7 +14,14 @@
     outputs: 1,
     icon: "alarm-ultimate-state.svg",
     label: function () {
-      return this.name || "Alarm State";
+      const selfLabel = this.name || "Alarm State";
+      try {
+        const alarm = this.alarmId ? RED.nodes.node(this.alarmId) : null;
+        const alarmLabel = alarm ? (alarm.name || alarm.id || "") : "";
+        return alarmLabel ? `${alarmLabel} - ${selfLabel}` : selfLabel;
+      } catch (_err) {
+        return selfLabel;
+      }
     },
     paletteLabel: function () {
       return "Alarm State";
@@ -23,6 +32,16 @@
       const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
       const url = `${root}alarm-ultimate/alarm/nodes`;
       const panelButton = $("#node-input-alarm-panel");
+      const ioSelect = $("#node-input-io");
+      const topicRow = $("#au-row-topic");
+      const initRow = $("#au-row-outputInitialState");
+
+      function refreshVisibility() {
+        const mode = String(ioSelect.val() || "out");
+        const isOut = mode === "out";
+        topicRow.toggle(isOut);
+        initRow.toggle(isOut);
+      }
 
       panelButton.off("click").on("click", (evt) => {
         evt.preventDefault();
@@ -49,6 +68,22 @@
           })
           .fail(() => {});
       } catch (err) {}
+
+      ioSelect.off("change").on("change", refreshVisibility);
+      refreshVisibility();
+    },
+    oneditsave: function () {
+      const io = String($("#node-input-io").val() || "out");
+      this.inputs = io === "in" ? 1 : 0;
+      this.outputs = io === "out" ? 1 : 0;
+      this.wires = Array.isArray(this.wires) ? this.wires : [];
+      if (this.outputs === 0) {
+        this.wires = [];
+      } else if (this.wires.length < this.outputs) {
+        while (this.wires.length < this.outputs) this.wires.push([]);
+      } else if (this.wires.length > this.outputs) {
+        this.wires = this.wires.slice(0, this.outputs);
+      }
     },
   });
 </script>
@@ -72,27 +107,52 @@
   </div>
 
   <div class="form-row">
-    <label for="node-input-topic"><i class="fa fa-tag"></i> Topic</label>
-    <input type="text" id="node-input-topic" placeholder="(default: &lt;controlTopic&gt;/state)" />
+    <label for="node-input-io"><i class="fa fa-exchange"></i> Mode</label>
+    <select id="node-input-io" style="width: 70%">
+      <option value="out">Output (events → flow)</option>
+      <option value="in">Input (flow → alarm)</option>
+    </select>
   </div>
 
   <div class="form-row">
+    <label for="node-input-adapter"><i class="fa fa-plug"></i> Adapter</label>
+    <select id="node-input-adapter" style="width: 70%">
+      <option value="default">Default</option>
+      <option value="homekit">Homekit</option>
+      <option value="axpro">Ax Pro (Hikvision Ultimate)</option>
+      <option value="knx">KNX-Ultimate</option>
+    </select>
+  </div>
+
+  <div class="form-row" id="au-row-topic">
+    <label for="node-input-topic"><i class="fa fa-tag"></i> Topic</label>
+    <input type="text" id="node-input-topic" placeholder="(default: &lt;controlTopic&gt;/event)" />
+  </div>
+
+  <div class="form-row" id="au-row-outputInitialState">
     <label for="node-input-outputInitialState"><i class="fa fa-bolt"></i> Emit on deploy</label>
     <input type="checkbox" id="node-input-outputInitialState" style="width:auto; margin-top:7px;" />
   </div>
 </script>
 
 <script type="text/markdown" data-help-name="AlarmUltimateState">
-Emits the alarm arming state from a selected **Alarm System Ultimate** node.
+Alarm State can work in two modes:
+
+- **Output**: emits alarm state-related events from a selected **Alarm System Ultimate** node.
+- **Input**: receives messages from the flow and injects alarm commands into the selected Alarm node.
 
 Quick start:
 
 1. Select the Alarm node.
-2. Connect this node to a **Debug** (or MQTT out, Dashboard, ...).
+2. Choose **Mode** and **Adapter**.
+3. Connect this node to a **Debug** (or to your integration nodes).
 
-- `msg.payload`: `armed` or `disarmed`
-- `msg.topic`: configurable (default: `controlTopic + "/state"`)
-- `msg.alarmId`, `msg.name`
+Output message (same format as the Alarm node `.../event` output):
+
+- `msg.topic`: configurable (default: `controlTopic + "/event"`)
+- `msg.event`: one of `arming`, `armed`, `disarmed`, `reset`, `entry_delay`, `alarm`
+- `msg.payload`: `{ event, mode, ...details }`
+- `msg.alarmUltimate`: canonical, versioned envelope (stable fields for adapters)
 
 Notes:
 

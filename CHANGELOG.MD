@@ -1,5 +1,40 @@
 # Changelog
 
+> **BETA (breaking changes):** this package is currently **BETA** and changes can be **breaking** at any release.
+> Backward compatibility is not guaranteed.
+
+## [0.3.0-beta.0] - 2026-02-04
+
+### Breaking (BETA)
+
+- **Removed adapter nodes:** `AlarmUltimateInputAdapter` and `AlarmUltimateOutputAdapter` have been removed.
+- **Alarm State / Alarm Zone I/O mode:** `AlarmUltimateState` and `AlarmUltimateZone` can now be configured as **Input** (flow → selected alarm) or **Output** (selected alarm → flow).
+- **Embedded adapters:** adapters are now selected directly on `AlarmUltimateState` / `AlarmUltimateZone` (no separate nodes). Current options: **Default**, **Homekit**, **Ax Pro (Hikvision Ultimate)**, **KNX-Ultimate**.
+- **Alarm Zone: All zones:** `AlarmUltimateZone` can now emit events for **All zones** (not only one zone).
+
+### Migration notes
+
+- Replace any `AlarmUltimateInputAdapter` nodes with:
+  - `AlarmUltimateZone` → **Mode: Input**, **Zone: All zones**, pick an **Adapter**, wire your devices into it.
+- Replace any `AlarmUltimateOutputAdapter` nodes with:
+  - `AlarmUltimateState` / `AlarmUltimateZone` → **Mode: Output**, pick an **Adapter**, wire their output to your integrations.
+
+## [0.2.0-beta.0] - 2026-02-03
+
+### Breaking (BETA)
+
+- **Canonical envelope:** all nodes now emit `msg.alarmUltimate` (versioned) as the stable, canonical representation of alarm messages.
+- **Output-only helper nodes:** `Alarm State`, `Alarm Zone`, `Alarm Siren` now emit the same “default telegrams” as `AlarmSystemUltimate`:
+  - events on `.../event` (`msg.event`, `msg.payload = { event, mode, ... }`)
+  - siren on `.../siren` (`msg.event = siren_on|siren_off`, `msg.payload = boolean`)
+- **Output Adapter:** preset-based dropdown (removed the old “mode” selector). Added preset **Homekit Alarm** (replaces the former *Homekit Alarm Status*) which handles both alarm state and siren outputs.
+- **Output Adapter presets:** added reverse (Alarm → flow) presets to format outputs for downstream systems (KNX/HA/Boolean/AX Pro). Presets are resilient: unknown inputs are passed through (not dropped).
+- **Input Adapter:** now adds `msg.alarmUltimate` (kind `command`) to its output messages.
+
+### Docs
+
+- Updated README and node help to reflect the new canonical envelope and output formats.
+
 ## [0.1.18] - 2026-02-02
 
 ### What's new
@@ -10,7 +45,7 @@
 
 ### Breaking (BETA)
 
-- **Output Adapter (HomeKit Security System - basic):** on `arming` the preset now keeps `SecuritySystemCurrentState` at the previous value (while updating `SecuritySystemTargetState`). If you relied on both being the same during arming, update your downstream flows.
+- **Output Adapter (Homekit Alarm Status):** on `arming` the node keeps `SecuritySystemCurrentState` at the previous value (while updating `SecuritySystemTargetState`). If you relied on both being the same during arming, update your downstream flows.
 
 ### Docs
 
@@ -48,6 +83,12 @@
 
 - **Output Adapter:** shows received message count in status and can listen to any Alarm node if none is selected (helps debugging).
 
+## [Unreleased]
+
+### Breaking (BETA)
+
+- TBD.
+
 ## [0.1.11] - 2026-02-02
 
 ### Maintenance
@@ -77,7 +118,7 @@
 
 ### What's new
 
-- **Input Adapter:** added built-in preset for Apple HomeKit Security System state messages (arm/disarm mapping).
+- **Input Adapter:** added built-in preset for HomeKit Security System state messages (arm/disarm mapping).
 - **Input Adapter:** HomeKit preset outputs `arm_home` / `arm_away` / `arm_night` / `disarm` to preserve arming semantics.
 
 ## [0.1.6] - 2026-02-01

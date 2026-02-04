@@ -14,7 +14,7 @@ This flow includes:
 
 Notes:
 
-- The old Alarm “Translator” option has been removed. If you need to translate incoming device messages, use the `AlarmUltimateInputAdapter` node.
+- The old Alarm “Translator” option has been removed. If you need to translate incoming device messages, use `AlarmUltimateZone` in **Input** mode (Zone: **All zones**) with an appropriate **Adapter**.
 - Zones can be edited from the Alarm node editor via the “Manage zones” button (opens the `alarm-json-mapper` tool).
 - Optional: you can enable **sensor supervision** per-zone (to detect devices that stop reporting). When a supervised zone is missing, the Alarm Panel shows `… • MISSING` and the node emits `supervision_lost` / `supervision_restored`.
 
@@ -61,7 +61,7 @@ If you run Node-RED as the Home Assistant Add-on and you want to use the standar
 
 This example:
 
-- Maps `binary_sensor.*` state changes (`"on"/"off"`) into Alarm zones using `AlarmUltimateInputAdapter` (built-in preset: **Home Assistant on/off**).
+- Maps `binary_sensor.*` state changes (`"on"/"off"`) into Alarm zones using `AlarmUltimateZone` in **Input** mode (Zone: **All zones**, Adapter: **Default**).
 - Receives arm/disarm commands from a Home Assistant Template Alarm Control Panel via the `alarm_ultimate_command` event.
 - Mirrors Alarm events back into Home Assistant by updating `input_select.alarm_ultimate_state`.
 
@@ -128,3 +128,12 @@ This example:
 
 Notes:
 - This integration uses a single Alarm “armed” state internally. The example maps `arm_home`/`arm_away` to HA states (`armed_home`/`armed_away`) for the UI by remembering the last requested arm mode.
+
+## Link Bus (fan-in + fan-out across tabs)
+
+Import `examples/alarm-ultimate-link-bus.json`.
+
+This example shows the recommended “distributed flows” pattern using Node-RED built-in `link in` / `link out` nodes:
+
+- **Fan-in:** sensors + commands from any tab → `link out` → `AU → Alarm (sensors+commands)` → Alarm input.
+- **Fan-out:** Alarm outputs → `link out` (named by output) → `link in` nodes anywhere for integrations (MQTT/HomeKit/Dashboard/etc.).

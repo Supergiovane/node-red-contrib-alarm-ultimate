@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { alarmInstances, alarmEmitter } = require('./lib/alarm-registry.js');
+const { attachAlarmUltimateEnvelope } = require('./lib/alarm-ultimate-envelope.js');
 
 function readJsonFileSync(filePath) {
   try {
@@ -191,8 +192,8 @@ module.exports = function (RED) {
     function buildFileCachePayload() {
       const zoneState = {};
       for (const zone of zones) {
-        if (!zone || !zone.id) continue;
-        const meta = state.zoneState[zone.id] || {
+        if (!zone || !zone.key) continue;
+        const meta = state.zoneState[zone.key] || {
           active: false,
           lastChangeAt: 0,
           lastTriggerAt: 0,
@@ -200,7 +201,7 @@ module.exports = function (RED) {
           supervisionLost: false,
           supervisionLostAt: 0,
         };
-        zoneState[zone.id] = {
+        zoneState[zone.key] = {
           active: meta.active === true,
           lastChangeAt: Number(meta.lastChangeAt) || 0,
           lastTriggerAt: Number(meta.lastTriggerAt) || 0,
@@ -248,10 +249,10 @@ module.exports = function (RED) {
       if (cached.zoneState && typeof cached.zoneState === 'object') {
         const nextZoneState = { ...(state.zoneState || {}) };
         for (const zone of zones) {
-          if (!zone || !zone.id) continue;
-          const meta = cached.zoneState[zone.id];
+          if (!zone || !zone.key) continue;
+          const meta = pickCachedZoneMeta(cached.zoneState, zone);
           if (!meta || typeof meta !== 'object') continue;
-          nextZoneState[zone.id] = {
+          nextZoneState[zone.key] = {
             active: meta.active === true,
             lastChangeAt: Number(meta.lastChangeAt) || 0,
             lastTriggerAt: Number(meta.lastTriggerAt) || 0,
@@ -268,7 +269,7 @@ module.exports = function (RED) {
           state.mode = normalizeMode(cached.mode) || state.mode;
         }
         if (cached.bypass && typeof cached.bypass === 'object') {
-          state.bypass = { ...cached.bypass };
+          state.bypass = migrateZoneRefMap(cached.bypass);
         }
       }
     }
@@ -329,7 +330,18 @@ module.exports = function (RED) {
 	    let openZonesCycleIndex = 0;
 
     function getOutputCount() {
-      return 1;
+      // Outputs (index):
+      // 0: All messages (superset)
+      // 1: Siren
+      // 2: Alarm triggered
+      // 3: Arm/Disarm updates
+      // 4: Zone activity
+      // 5: Errors/Denied
+      // 6: Any zone open
+      // 7: Open zones (arming)
+      // 8: Open zones (on request)
+      // 9: Open zones (cycle)
+      return 10;
     }
 
     function createOutputsArray() {
@@ -371,6 +383,25 @@ module.exports = function (RED) {
       }
     }
 
+    function pushToAllOutputs(outputs, msg, clone) {
+      if (!msg) return;
+      if (!outputs || outputs.length === 0) return;
+      if (outputs.length === 1) {
+        safeSetOutput(outputs, OUTPUT_ALL_EVENTS, msg);
+        return;
+      }
+      const m = clone ? REDUtil.cloneMessage(msg) : msg;
+      if (!outputs[OUTPUT_ALL_EVENTS]) {
+        outputs[OUTPUT_ALL_EVENTS] = m;
+        return;
+      }
+      if (Array.isArray(outputs[OUTPUT_ALL_EVENTS])) {
+        outputs[OUTPUT_ALL_EVENTS].push(m);
+        return;
+      }
+      outputs[OUTPUT_ALL_EVENTS] = [outputs[OUTPUT_ALL_EVENTS], m];
+    }
+
     function sendEventMessage(eventMsg, sirenMsg) {
       const outputs = createOutputsArray();
 
@@ -390,8 +421,15 @@ module.exports = function (RED) {
         return;
       }
 
-      safeSetOutput(outputs, OUTPUT_ALL_EVENTS, eventMsg);
-      safeSetOutput(outputs, OUTPUT_SIREN, sirenMsg);
+      if (eventMsg) {
+        safeSetOutput(outputs, OUTPUT_ALL_EVENTS, eventMsg);
+        safeEmitBus('event', eventMsg);
+      }
+      if (sirenMsg) {
+        safeSetOutput(outputs, OUTPUT_SIREN, sirenMsg);
+        safeEmitBus('siren', sirenMsg);
+        pushToAllOutputs(outputs, sirenMsg, true);
+      }
 
       if (eventMsg && typeof eventMsg.event === 'string') {
         const groupOutput = outputForEvent(eventMsg.event);
@@ -404,20 +442,23 @@ module.exports = function (RED) {
 
 	    function sendSingleOutput(outputIndex, msg) {
 	      const outputs = createOutputsArray();
-	      if (outputs.length === 1) {
-	        const kind =
-	          outputIndex === OUTPUT_ANY_ZONE_OPEN
-	            ? 'any_zone_open'
-	            : outputIndex === OUTPUT_OPEN_ZONES_ARMING
-	              ? 'open_zones_arming'
-	              : outputIndex === OUTPUT_OPEN_ZONES_ON_REQUEST
-	                ? 'open_zones_request'
-	                : outputIndex === OUTPUT_OPEN_ZONES_CYCLE
-	                  ? 'open_zones_cycle'
+	      const kind =
+	        outputIndex === OUTPUT_ANY_ZONE_OPEN
+	          ? 'any_zone_open'
+	          : outputIndex === OUTPUT_OPEN_ZONES_ARMING
+	            ? 'open_zones_arming'
+	            : outputIndex === OUTPUT_OPEN_ZONES_ON_REQUEST
+	              ? 'open_zones_request'
+	              : outputIndex === OUTPUT_OPEN_ZONES_CYCLE
+	                ? 'open_zones_cycle'
 	                : 'message';
-	        safeEmitBus(kind, msg);
+	      safeEmitBus(kind, msg);
+	      if (outputs.length === 1) {
+	        safeSetOutput(outputs, OUTPUT_ALL_EVENTS, msg);
+	      } else {
+	        safeSetOutput(outputs, outputIndex, msg);
+	        pushToAllOutputs(outputs, msg, outputIndex !== OUTPUT_ALL_EVENTS);
 	      }
-	      safeSetOutput(outputs, outputs.length === 1 ? OUTPUT_ALL_EVENTS : outputIndex, msg);
 	      safeSend(outputs);
 	    }
 
@@ -469,7 +510,7 @@ module.exports = function (RED) {
         next.mode = normalizeMode(saved.mode) || 'disarmed';
       }
       if (saved && typeof saved.bypass === 'object') {
-        next.bypass = { ...saved.bypass };
+        next.bypass = migrateZoneRefMap(saved.bypass);
       }
       if (Array.isArray(saved.log)) {
         next.log = saved.log.slice(-maxLogEntries);
@@ -496,12 +537,6 @@ module.exports = function (RED) {
       if (v === 'disarmed') return 'disarmed';
       if (v === 'armed') return 'armed';
 
-      // Backward compatibility: previously supported multi-mode arming.
-      // These legacy values now map to a single "armed" state.
-      if (['home', 'away', 'night', 'h24', '24h', '24'].includes(v)) {
-        return 'armed';
-      }
-
       return null;
     }
 
@@ -519,6 +554,10 @@ module.exports = function (RED) {
         }
         const zone = normalizeZone(raw, index);
         if (zone) {
+          if (results.some((z) => z && z.key === zone.key)) {
+            node.log(`AlarmSystemUltimate: duplicate zone topic/pattern skipped: ${zone.key}`);
+            return;
+          }
           results.push(zone);
         }
       }
@@ -556,35 +595,39 @@ module.exports = function (RED) {
 
     function normalizeZone(raw, index) {
       const zone = { ...raw };
-      zone.id = String(zone.id || zone.name || zone.topic || `zone${index + 1}`).trim();
-      if (!zone.id) {
-        return null;
-      }
-      zone.name = String(zone.name || zone.id).trim();
-
       if (typeof zone.topic === 'string') {
         zone.topic = zone.topic.trim();
       }
       if (typeof zone.topicPattern === 'string') {
         zone.topicPattern = zone.topicPattern.trim();
       }
-      if (!zone.topic && !zone.topicPattern) {
+      if (zone.topicPattern) {
+        if (!zone.topic) {
+          node.log('AlarmSystemUltimate: zone.topicPattern is no longer supported; treating it as topic.');
+          zone.topic = zone.topicPattern;
+        } else {
+          node.log('AlarmSystemUltimate: zone.topicPattern is no longer supported; ignoring it (topic is set).');
+        }
+        delete zone.topicPattern;
+      }
+      if (!zone.topic) {
         return null;
+      }
+
+      zone.key = String(zone.topic || '').trim();
+      if (!zone.key) {
+        return null;
+      }
+      zone.name = String(zone.name || zone.key).trim();
+
+      // Remove legacy id if present.
+      if (Object.prototype.hasOwnProperty.call(zone, 'id')) {
+        delete zone['id'];
       }
 
       zone.topicPrefix = null;
       if (zone.topic && zone.topic.endsWith('*')) {
         zone.topicPrefix = zone.topic.slice(0, -1);
-      }
-
-      zone.topicRegex = null;
-      if (zone.topicPattern) {
-        try {
-          zone.topicRegex = new RegExp(zone.topicPattern);
-        } catch (err) {
-          node.log(`AlarmSystemUltimate: invalid topicPattern for zone ${zone.id}`);
-          return null;
-        }
       }
 
       const type = typeof zone.type === 'string' ? zone.type.toLowerCase().trim() : 'perimeter';
@@ -636,6 +679,38 @@ module.exports = function (RED) {
       return zone;
     }
 
+    function normalizeZoneRef(value) {
+      const ref = String(value || '').trim();
+      if (!ref) return '';
+      const direct = zones.find((z) => z && z.key === ref);
+      if (direct) return direct.key;
+      const byName = zones.find((z) => z && z.name === ref);
+      if (byName) return byName.key;
+      return '';
+    }
+
+    function migrateZoneRefMap(obj) {
+      const source = obj && typeof obj === 'object' ? obj : {};
+      const out = {};
+      for (const [k, v] of Object.entries(source)) {
+        const resolved = normalizeZoneRef(k);
+        if (!resolved) continue;
+        out[resolved] = v;
+      }
+      return out;
+    }
+
+    function pickCachedZoneMeta(cachedZoneState, zone) {
+      const bag = cachedZoneState && typeof cachedZoneState === 'object' ? cachedZoneState : {};
+      if (!zone || !zone.key) return null;
+      return (
+        bag[zone.key] ||
+        (zone.topic ? bag[zone.topic] : null) ||
+        (zone.name ? bag[zone.name] : null) ||
+        null
+      );
+    }
+
     function findZone(topic) {
       if (!topic) {
         return null;
@@ -645,9 +720,6 @@ module.exports = function (RED) {
           return zone;
         }
         if (zone.topicPrefix && topic.startsWith(zone.topicPrefix)) {
-          return zone;
-        }
-        if (zone.topicRegex && zone.topicRegex.test(topic)) {
           return zone;
         }
       }
@@ -700,7 +772,7 @@ module.exports = function (RED) {
         } else {
           const troubleCount = zones.filter((z) => {
             if (!z || z.supervisionEnabled !== true) return false;
-            const meta = state.zoneState && state.zoneState[z.id];
+            const meta = state.zoneState && state.zoneState[z.key];
             return meta && meta.supervisionLost === true;
           }).length;
           if (troubleCount > 0) {
@@ -763,9 +835,28 @@ module.exports = function (RED) {
         mode: state.mode,
         ...(details || {}),
       };
+      const auUpdate = {
+        kind: 'event',
+        event,
+        mode: state.mode,
+        details: details || {},
+      };
+      if (details && typeof details.reason === 'string' && details.reason) auUpdate.reason = details.reason;
+      if (details && details.zone) auUpdate.zone = details.zone;
+      if (details && typeof details.open === 'boolean') auUpdate.open = details.open;
+      if (details && typeof details.bypassed === 'boolean') auUpdate.bypassed = details.bypassed;
+      if (details && details.state) auUpdate.state = details.state;
+      if (typeof msg.homekitTargetState === 'number' && Number.isFinite(msg.homekitTargetState)) {
+        auUpdate.homekitTargetState = msg.homekitTargetState;
+      }
+      attachAU(msg, auUpdate);
       sendEventMessage(msg, null);
       pushLog({ event, ...(details || {}) });
       try {
+        const homekitTargetState =
+          typeof msg.homekitTargetState === 'number' && Number.isFinite(msg.homekitTargetState)
+            ? msg.homekitTargetState
+            : undefined;
         alarmEmitter.emit('event', {
           alarmId: node.id,
           name: node.name || '',
@@ -773,6 +864,7 @@ module.exports = function (RED) {
           event,
           details: details || {},
           state: snapshotState(),
+          homekitTargetState,
           ts: now(),
         });
       } catch (_err) {
@@ -799,7 +891,7 @@ module.exports = function (RED) {
           ? { active: true, target: 'armed', remaining: remainingSeconds(state.arming.until) }
           : { active: false },
         entry: state.entry
-          ? { active: true, zone: state.entry.zoneId, remaining: remainingSeconds(state.entry.until) }
+          ? { active: true, zoneTopic: state.entry.zoneTopic, remaining: remainingSeconds(state.entry.until) }
           : { active: false },
         alarmActive: state.alarmActive,
         silentAlarmActive: state.silentAlarmActive,
@@ -812,7 +904,7 @@ module.exports = function (RED) {
 
     function buildZoneStateSnapshot() {
       return zones.map((zone) => {
-        const meta = state.zoneState[zone.id] || {
+        const meta = state.zoneState[zone.key] || {
           active: false,
           lastChangeAt: 0,
           lastTriggerAt: 0,
@@ -821,14 +913,12 @@ module.exports = function (RED) {
           supervisionLostAt: 0,
         };
         return {
-          id: zone.id,
           name: zone.name,
           type: zone.type,
           topic: zone.topic || null,
-          topicPattern: zone.topicPattern || null,
           entry: Boolean(zone.entry),
           bypassable: zone.bypassable !== false,
-          bypassed: state.bypass[zone.id] === true,
+          bypassed: state.bypass[zone.key] === true,
           open: meta.active === true,
           lastChangeAt: meta.lastChangeAt || 0,
           lastTriggerAt: meta.lastTriggerAt || 0,
@@ -877,27 +967,42 @@ module.exports = function (RED) {
 
     function buildZoneSummary(zone) {
       return {
-        id: zone ? zone.id : null,
         name: zone ? zone.name : null,
         type: zone ? zone.type : null,
-        topic: zone ? zone.topic || zone.topicPattern || null : null,
+        topic: zone ? zone.topic || null : null,
       };
     }
 
+    function attachAU(msg, update) {
+      const baseUpdate = update && typeof update === 'object' ? update : {};
+      const alarmUpdate =
+        baseUpdate.alarm && typeof baseUpdate.alarm === 'object' ? baseUpdate.alarm : {};
+      attachAlarmUltimateEnvelope(msg, {
+        ...baseUpdate,
+        ts: now(),
+        alarm: {
+          id: node.id,
+          name: node.name || '',
+          controlTopic,
+          ...alarmUpdate,
+        },
+      });
+      return msg;
+    }
+
     function getOpenZonesSnapshot() {
-      const openZoneIds = Object.keys(state.zoneState || {}).filter((id) => {
-        const meta = state.zoneState[id];
+      const openZoneKeys = Object.keys(state.zoneState || {}).filter((key) => {
+        const meta = state.zoneState[key];
         return meta && meta.active === true;
       });
 
-      const openZones = openZoneIds.map((id) => {
-        const zone = zones.find((z) => z && z.id === id);
+      const openZones = openZoneKeys.map((key) => {
+        const zone = zones.find((z) => z && z.key === key);
         return {
-          id,
-          name: zone ? zone.name : id,
+          name: zone ? zone.name : key,
           type: zone ? zone.type : null,
-          topic: zone ? zone.topic || zone.topicPattern || null : null,
-          bypassed: state.bypass[id] === true,
+          topic: zone ? zone.topic || null : null,
+          bypassed: state.bypass[key] === true,
         };
       });
 
@@ -918,9 +1023,17 @@ module.exports = function (RED) {
 
       const msg = baseMsg ? REDUtil.cloneMessage(baseMsg) : {};
       msg.topic = `${controlTopic}/anyZoneOpen`;
+      msg.event = 'any_zone_open';
       msg.payload = snapshot.anyOpen;
       msg.openZonesCount = snapshot.openZonesCount;
       msg.openZones = snapshot.openZones;
+      attachAU(msg, {
+        kind: 'any_zone_open',
+        event: 'any_zone_open',
+        anyOpen: snapshot.anyOpen,
+        openZonesCount: snapshot.openZonesCount,
+        openZones: snapshot.openZones,
+      });
       sendSingleOutput(OUTPUT_ANY_ZONE_OPEN, msg);
     }
 
@@ -934,6 +1047,16 @@ module.exports = function (RED) {
         total,
         zone: zoneSummary,
       };
+      attachAU(msg, {
+        kind: 'open_zones',
+        event: 'open_zone',
+        openZone: {
+          context,
+          position,
+          total,
+          zone: zoneSummary,
+        },
+      });
       return msg;
     }
 
@@ -1033,6 +1156,12 @@ module.exports = function (RED) {
         msg.topic = `${controlTopic}/openZones`;
         msg.event = 'open_zones';
         msg.payload = { total: 0, zones: [] };
+        attachAU(msg, {
+          kind: 'open_zones',
+          event: 'open_zones',
+          total: 0,
+          zones: [],
+        });
         sendSingleOutput(OUTPUT_OPEN_ZONES_ON_REQUEST, msg);
         return;
       }
@@ -1072,6 +1201,12 @@ module.exports = function (RED) {
       msg.topic = topic;
       msg.event = active ? 'siren_on' : 'siren_off';
       msg.reason = reason;
+      attachAU(msg, {
+        kind: 'siren',
+        event: msg.event,
+        reason,
+        siren: { active: Boolean(active) },
+      });
       sendEventMessage(null, msg);
     }
 
@@ -1163,6 +1298,21 @@ module.exports = function (RED) {
         mode: state.mode,
         ...(details || {}),
       };
+      const auUpdate = {
+        kind: 'event',
+        event,
+        mode: state.mode,
+        details: details || {},
+      };
+      if (details && typeof details.reason === 'string' && details.reason) auUpdate.reason = details.reason;
+      if (details && details.zone) auUpdate.zone = details.zone;
+      if (details && typeof details.open === 'boolean') auUpdate.open = details.open;
+      if (details && typeof details.bypassed === 'boolean') auUpdate.bypassed = details.bypassed;
+      if (details && details.state) auUpdate.state = details.state;
+      if (typeof msg.homekitTargetState === 'number' && Number.isFinite(msg.homekitTargetState)) {
+        auUpdate.homekitTargetState = msg.homekitTargetState;
+      }
+      attachAU(msg, auUpdate);
       return msg;
     }
 
@@ -1174,6 +1324,12 @@ module.exports = function (RED) {
       msg.topic = topic;
       msg.event = active ? 'siren_on' : 'siren_off';
       msg.reason = reason;
+      attachAU(msg, {
+        kind: 'siren',
+        event: msg.event,
+        reason,
+        siren: { active: Boolean(active) },
+      });
       return msg;
     }
 
@@ -1184,7 +1340,7 @@ module.exports = function (RED) {
       stopOpenZonesDuringArming();
       stopOpenZonesRequestListing();
       state.alarmActive = true;
-      state.alarmZone = zone ? zone.id : null;
+      state.alarmZone = zone ? zone.key : null;
       state.silentAlarmActive = Boolean(silent);
       clearExitTimer();
       clearEntryTimer();
@@ -1192,11 +1348,15 @@ module.exports = function (RED) {
       state.entry = null;
       startStatusInterval();
 
-      const eventMsg = buildEventMessage('alarm', {
-        kind,
-        zone: zone ? { id: zone.id, name: zone.name, type: zone.type, topic: zone.topic || zone.topicPattern } : null,
-        silent: Boolean(silent),
-      }, baseMsg);
+      const eventMsg = buildEventMessage(
+        'alarm',
+        {
+          kind,
+          zone: zone ? buildZoneSummary(zone) : null,
+          silent: Boolean(silent),
+        },
+        baseMsg,
+      );
 
       let sirenMsg = null;
       if (!silent || (zone && zone.type === 'fire')) {
@@ -1229,7 +1389,7 @@ module.exports = function (RED) {
         event: 'alarm',
         kind,
         silent: Boolean(silent),
-        zone: zone ? { id: zone.id, name: zone.name, type: zone.type } : null,
+        zone: zone ? buildZoneSummary(zone) : null,
       });
       updateStatus();
     }
@@ -1259,18 +1419,18 @@ module.exports = function (RED) {
         if (!zone || zone.alwaysActive) {
           continue;
         }
-        if (state.bypass[zone.id] === true) {
+        if (state.bypass[zone.key] === true) {
           continue;
         }
-        const zoneState = state.zoneState[zone.id];
+        const zoneState = state.zoneState[zone.key];
         if (
           (zoneState && zoneState.active === true) ||
           (zone.supervisionEnabled === true && zone.supervisionBlockArm !== false && zoneState && zoneState.supervisionLost === true)
         ) {
           violations.push({
-            id: zone.id,
             name: zone.name,
             type: zone.type,
+            topic: zone.topic || null,
             open: zoneState && zoneState.active === true,
             supervisionLost: zoneState && zoneState.supervisionLost === true,
           });
@@ -1279,12 +1439,12 @@ module.exports = function (RED) {
       return violations;
     }
 
-    function clearSupervisionTimer(zoneId) {
-      const existing = supervisionTimers.get(zoneId);
+    function clearSupervisionTimer(zoneKey) {
+      const existing = supervisionTimers.get(zoneKey);
       if (existing) {
         timerBag.clearTimeout(existing);
       }
-      supervisionTimers.delete(zoneId);
+      supervisionTimers.delete(zoneKey);
     }
 
     function scheduleSupervisionTimer(zone) {
@@ -1296,12 +1456,12 @@ module.exports = function (RED) {
         return;
       }
 
-      const zoneId = zone.id;
-      clearSupervisionTimer(zoneId);
+      const zoneKey = zone.key;
+      clearSupervisionTimer(zoneKey);
 
       const handle = timerBag.setTimeout(() => {
-        supervisionTimers.delete(zoneId);
-        const meta = state.zoneState && state.zoneState[zoneId];
+        supervisionTimers.delete(zoneKey);
+        const meta = state.zoneState && state.zoneState[zoneKey];
         if (!meta) return;
         const lastSeenAt = Number(meta.lastSeenAt) || 0;
         if (!lastSeenAt) return;
@@ -1315,7 +1475,7 @@ module.exports = function (RED) {
 
         meta.supervisionLost = true;
         meta.supervisionLostAt = now();
-        state.zoneState[zoneId] = meta;
+        state.zoneState[zoneKey] = meta;
         scheduleFileCacheWrite();
         emitEvent(
           'supervision_lost',
@@ -1324,11 +1484,11 @@ module.exports = function (RED) {
             timeoutSeconds: timeoutMs / 1000,
             lastSeenAt,
           },
-          { topic: controlTopic, _alarmUltimateSupervision: { zoneId } }
+          { topic: controlTopic, _alarmUltimateSupervision: { zoneTopic: zoneKey } }
         );
       }, timeoutMs);
 
-      supervisionTimers.set(zoneId, handle);
+      supervisionTimers.set(zoneKey, handle);
     }
 
     function bootstrapSupervision() {
@@ -1337,9 +1497,9 @@ module.exports = function (RED) {
         if (!zone || zone.supervisionEnabled !== true) continue;
         const timeoutMs = Number(zone.supervisionTimeoutMs) || 0;
         if (timeoutMs <= 0) continue;
-        const zoneId = zone.id;
-        if (!zoneId) continue;
-        const meta = state.zoneState && state.zoneState[zoneId] ? state.zoneState[zoneId] : null;
+        const zoneKey = zone.key;
+        if (!zoneKey) continue;
+        const meta = state.zoneState && state.zoneState[zoneKey] ? state.zoneState[zoneKey] : null;
         const next =
           meta && typeof meta === 'object'
             ? { ...meta }
@@ -1356,7 +1516,7 @@ module.exports = function (RED) {
         if (!Number(next.lastSeenAt)) {
           next.lastSeenAt = ts;
         }
-        state.zoneState[zoneId] = next;
+        state.zoneState[zoneKey] = next;
         if (next.supervisionLost !== true) {
           scheduleSupervisionTimer(zone);
         }
@@ -1483,12 +1643,12 @@ module.exports = function (RED) {
         return;
       }
       const until = now() + delay;
-      state.entry = { zoneId: zone.id, until };
+      state.entry = { zoneTopic: zone.key, until };
       emitEvent('entry_delay', { zone: buildZoneSummary(zone), seconds: remainingSeconds(until) }, baseMsg);
       startStatusInterval();
       clearEntryTimer();
       entryTimer = timerBag.setTimeout(() => {
-        if (!state.entry || state.entry.zoneId !== zone.id) {
+        if (!state.entry || state.entry.zoneTopic !== zone.key) {
           return;
         }
         state.entry = null;
@@ -1537,22 +1697,22 @@ module.exports = function (RED) {
       return { ok: false, duress: false };
     }
 
-    function setBypass(zoneId, enabled, baseMsg) {
-      const id = String(zoneId || '').trim();
-      if (!id) {
+    function setBypass(zoneRef, enabled, baseMsg) {
+      const ref = String(zoneRef || '').trim();
+      if (!ref) {
         emitEvent('error', { error: 'missing_zone' }, baseMsg);
         return;
       }
-      const zone = zones.find((z) => z && z.id === id);
+      const zone = zones.find((z) => z && z.key === ref) || null;
       if (!zone) {
-        emitEvent('error', { error: 'unknown_zone', zone: id }, baseMsg);
+        emitEvent('error', { error: 'unknown_zone', zone: ref }, baseMsg);
         return;
       }
       if (enabled && zone.bypassable === false) {
-        emitEvent('error', { error: 'zone_not_bypassable', zone: id }, baseMsg);
+        emitEvent('error', { error: 'zone_not_bypassable', zone: ref }, baseMsg);
         return;
       }
-      state.bypass[id] = Boolean(enabled);
+      state.bypass[zone.key] = Boolean(enabled);
       persist();
       emitEvent(enabled ? 'bypassed' : 'unbypassed', { zone: buildZoneSummary(zone) }, baseMsg);
     }
@@ -1584,11 +1744,11 @@ module.exports = function (RED) {
       }
 
       if (command === 'bypass' || msg.bypass === true) {
-        setBypass(msg.zone || msg.zoneId || msg.zoneName, true, msg);
+        setBypass(msg.zoneTopic || msg.zone, true, msg);
         return true;
       }
       if (command === 'unbypass' || msg.unbypass === true) {
-        setBypass(msg.zone || msg.zoneId || msg.zoneName, false, msg);
+        setBypass(msg.zoneTopic || msg.zone, false, msg);
         return true;
       }
 
@@ -1630,12 +1790,7 @@ module.exports = function (RED) {
       const requestedMode =
         normalizeMode(msg.arm) ||
         normalizeMode(msg.mode) ||
-        (command === 'arm' ? 'armed' : null) ||
-        (command === 'arm_away' ? 'armed' : null) ||
-        (command === 'arm_home' ? 'armed' : null) ||
-        (command === 'arm_night' ? 'armed' : null) ||
-        (command === 'arm_h24' ? 'armed' : null) ||
-        (command === 'arm_24h' ? 'armed' : null);
+        (command === 'arm' ? 'armed' : null);
 
       if (requestedMode && requestedMode !== 'disarmed') {
         const validation = validateCode(msg, 'arm');
@@ -1668,7 +1823,7 @@ module.exports = function (RED) {
       }
 
       const ts = now();
-      const zoneMeta = state.zoneState[zone.id] || {
+      const zoneMeta = state.zoneState[zone.key] || {
         active: false,
         lastChangeAt: 0,
         lastTriggerAt: 0,
@@ -1680,13 +1835,13 @@ module.exports = function (RED) {
       zoneMeta.active = value;
       zoneMeta.lastChangeAt = ts;
       zoneMeta.lastSeenAt = ts;
-      state.zoneState[zone.id] = zoneMeta;
+      state.zoneState[zone.key] = zoneMeta;
 
       if (zone.supervisionEnabled === true && (Number(zone.supervisionTimeoutMs) || 0) > 0) {
         if (zoneMeta.supervisionLost === true) {
           zoneMeta.supervisionLost = false;
           zoneMeta.supervisionLostAt = 0;
-          state.zoneState[zone.id] = zoneMeta;
+          state.zoneState[zone.key] = zoneMeta;
           scheduleFileCacheWrite();
           emitEvent(
             'supervision_restored',
@@ -1707,7 +1862,7 @@ module.exports = function (RED) {
           {
             zone: buildZoneSummary(zone),
             open: value === true,
-            bypassed: state.bypass[zone.id] === true,
+            bypassed: state.bypass[zone.key] === true,
           },
           msg
         );
@@ -1727,7 +1882,7 @@ module.exports = function (RED) {
             controlTopic,
             zone: buildZoneSummary(zone),
             open: value === true,
-            bypassed: state.bypass[zone.id] === true,
+            bypassed: state.bypass[zone.key] === true,
             ts: zoneMeta.lastChangeAt,
           });
         } catch (_err) {
@@ -1739,7 +1894,7 @@ module.exports = function (RED) {
         return;
       }
 
-      if (state.bypass[zone.id] === true && zone.bypassable !== false) {
+      if (state.bypass[zone.key] === true && zone.bypassable !== false) {
         emitEvent('zone_bypassed_trigger', { zone: buildZoneSummary(zone) }, msg);
         return;
       }
@@ -1749,7 +1904,7 @@ module.exports = function (RED) {
         return;
       }
       zoneMeta.lastTriggerAt = now();
-      state.zoneState[zone.id] = zoneMeta;
+      state.zoneState[zone.key] = zoneMeta;
       scheduleFileCacheWrite();
 
       if (zone.alwaysActive) {
@@ -1800,6 +1955,9 @@ module.exports = function (RED) {
       controlTopic,
       getState: getUiState,
       getLog: getLogSnapshot,
+      receive(msg) {
+        node.receive(msg);
+      },
       command(body) {
         const payload = body && typeof body === 'object' ? body : {};
         const msg = { topic: controlTopic };

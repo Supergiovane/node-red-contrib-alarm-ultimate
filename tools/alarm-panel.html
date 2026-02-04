@@ -828,12 +828,12 @@
 
 	        for (const z of filtered) {
 	          const tr = document.createElement("tr");
-	          const title = z.name ? `${z.name}` : z.id;
+	          const title = z && (z.name || z.topic) ? String(z.name || z.topic) : "";
             const missing = Boolean(z && z.supervision && z.supervision.lost);
             const baseText = z.bypassed ? "BYPASSED" : z.open ? "OPEN" : "CLOSED";
             const baseClass = z.bypassed ? "zone-bypassed" : z.open ? "zone-open" : "zone-closed";
             const stateHtml = `${missing ? `<span class="${baseClass}">${escapeHtml(baseText)}</span><span class="zone-missing"> • MISSING</span>` : `<span class="${baseClass}">${escapeHtml(baseText)}</span>`}`;
-	          const topic = z.topic || z.topicPattern || "";
+	          const topic = z.topic || "";
 	          const alarmLabel = z.__alarmName || z.__alarmId || "";
 
           tr.innerHTML = `
@@ -916,7 +916,7 @@
         if (e === "alarm") {
           const k = entry && entry.kind ? String(entry.kind) : "";
           const z = entry && entry.zone && typeof entry.zone === "object" ? entry.zone : null;
-          const zn = z && (z.name || z.id) ? String(z.name || z.id) : "";
+          const zn = z && (z.name || z.topic) ? String(z.name || z.topic) : "";
           const silent = entry && entry.silent === true ? "silent" : "";
           return [k ? `kind=${k}` : "", zn ? `zone=${zn}` : "", silent].filter(Boolean).join(" • ");
         }
@@ -938,7 +938,7 @@
           if (!v.length) return "violations";
           const top = v
             .slice(0, 3)
-            .map((x) => (x && typeof x === "object" ? x.id || x.name || x.zone || "" : ""))
+            .map((x) => (x && typeof x === "object" ? x.topic || x.name || x.zone || "" : ""))
             .filter(Boolean)
             .join(", ");
           return `violations=${v.length}${top ? ` (${top}${v.length > 3 ? ", …" : ""})` : ""}`;
@@ -947,7 +947,7 @@
         if (e === "arming" || e === "entry_delay") {
           const s = Number.isFinite(Number(entry && entry.seconds)) ? Number(entry.seconds) : null;
           const z = entry && entry.zone && typeof entry.zone === "object" ? entry.zone : null;
-          const zn = z && (z.name || z.id) ? String(z.name || z.id) : "";
+          const zn = z && (z.name || z.topic) ? String(z.name || z.topic) : "";
           return [s !== null ? `seconds=${s}` : "", zn ? `zone=${zn}` : ""].filter(Boolean).join(" • ");
         }
 
@@ -975,7 +975,7 @@
           e === "supervision_restored"
         ) {
           const z = entry && entry.zone && typeof entry.zone === "object" ? entry.zone : null;
-          const zn = z && (z.name || z.id) ? String(z.name || z.id) : "";
+          const zn = z && (z.name || z.topic) ? String(z.name || z.topic) : "";
           const b = entry && entry.bypassed === true ? "bypassed" : "";
           const t = Number.isFinite(Number(entry && entry.timeoutSeconds)) ? `timeout=${Number(entry.timeoutSeconds)}s` : "";
           return [zn ? `zone=${zn}` : "", b, t].filter(Boolean).join(" • ");

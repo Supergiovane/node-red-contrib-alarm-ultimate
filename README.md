@@ -24,9 +24,8 @@ Alarm System Ultimate nodes + web panel for Node-RED.
 Includes:
 
 - `AlarmSystemUltimate` (BETA): full alarm control panel node (zones, entry/exit delays, bypass, chime, 24h/fire/tamper, siren, event log, optional per-zone sensor supervision).
-- `AlarmUltimateInputAdapter`: translates incoming messages into zone messages for `AlarmSystemUltimate` using built-in or user-defined presets.
-- `AlarmUltimateOutputAdapter`: transforms alarm output/event messages to external systems (HomeKit, MQTT, ...), using built-in or user-defined presets.
-- Output-only helper nodes: `AlarmUltimateState`, `AlarmUltimateZone`, `AlarmUltimateSiren`.
+- Helper nodes: `AlarmUltimateState`, `AlarmUltimateZone`, `AlarmUltimateSiren`.
+  `AlarmUltimateState` and `AlarmUltimateZone` can be configured as **Input** or **Output** nodes and include embedded adapters (Default/Homekit/Ax Pro/KNX-Ultimate).
 - Web tools: Zones JSON mapper + web Alarm Panel (embeddable in Node-RED Dashboard).
 
 Note: `AlarmSystemUltimate` is currently **BETA**.
@@ -67,8 +66,10 @@ Beginner-friendly flow:
 
 Optional (recommended):
 
-- Use **AlarmUltimateInputAdapter** before the Alarm when your source payloads are not already boolean (KNX, HomeKit, ...).
-- Use one or more **AlarmUltimateOutputAdapter** nodes to split/filter/transform the single Alarm output to integrations (HomeKit, MQTT, ...).
+- Use `AlarmUltimateZone` in **Input** mode (Zone: **All zones**) to normalize sensor messages and inject them into the selected Alarm node.
+- Use `AlarmUltimateState` in **Input** mode to normalize arm/disarm commands (e.g. HomeKit) and inject them into the selected Alarm node.
+- Use `AlarmUltimateState` / `AlarmUltimateZone` in **Output** mode with an **Adapter** to format events for external systems (HomeKit / KNX / AX Pro / ...).
+- For distributed flows, use Node-RED built-in `link in` / `link out` to fan-in sensors/commands and fan-out Alarm outputs (see `examples/alarm-ultimate-link-bus.json`).
 
 ## Screenshots
 
@@ -93,9 +94,9 @@ Main node that:
 - Receives **control commands** on `msg.topic === controlTopic`
 - Receives **sensor messages** on any other topic and matches them to a configured zone
 
-It emits events and state updates on a **single output** (see the node help in the editor for full details).
+It emits events and state updates on **10 outputs** (see the node help in the editor for full details). Output #1 (**All messages**) is a superset and always emits everything.
 
-Use one or more `AlarmUltimateOutputAdapter` nodes to fan-out/massage events for your integrations.
+Use `AlarmUltimateState` / `AlarmUltimateZone` in **Output** mode with an **Adapter** to fan-out/massage events for your integrations.
 
 Open zones listing features:
 
@@ -126,43 +127,36 @@ Example zone:
 }
 ```
 
-### Output-only helper nodes
+### Helper nodes (I/O)
 
-These nodes have no input and emit the current Alarm state (and changes) for one configured `AlarmSystemUltimate`:
+`AlarmUltimateState` and `AlarmUltimateZone` can work in two modes:
 
-- `Alarm State` (`AlarmUltimateState`): `msg.payload = "armed"|"disarmed"`
-- `Alarm Zone` (`AlarmUltimateZone`): `msg.payload = true|false` for a selected zone
-- `Alarm Siren` (`AlarmUltimateSiren`): `msg.payload = true|false` when the siren is on/off
+- **Output**: emit Alarm events to the flow (no wiring from the Alarm node required).
+- **Input**: receive messages from the flow, apply an **Adapter**, and inject them into the selected Alarm node.
 
-### Input Adapter
+`AlarmUltimateSiren` remains output-only and emits siren telegrams.
 
-`AlarmUltimateInputAdapter` translates incoming messages (from arbitrary sources) into the format expected by the Alarm zones.
+- `Alarm State` (`AlarmUltimateState`): emits `.../event` telegrams (`msg.event`, `msg.payload = { event, mode, ... }`)
+- `Alarm Zone` (`AlarmUltimateZone`): emits `zone_open` / `zone_close` as `.../event` telegrams
+- `Alarm Siren` (`AlarmUltimateSiren`): emits siren telegrams (`msg.topic = <controlTopic>/siren`, `msg.event = siren_on|siren_off`, `msg.payload = true|false`)
 
-- Built-in presets are shipped with the package.
-- A single user preset (custom JavaScript) can be created/edited inside the node and is stored in the node configuration.
-- You can optionally select an **Alarm node** to let presets reuse its **Control topic** (useful for integrations like HomeKit).
+### Canonical envelope (`msg.alarmUltimate`)
 
-Built-in preset note:
+All nodes in this package add a stable, versioned object to every output message:
 
-- **Apple HomeKit Security System**: converts HomeKit state messages (e.g. `payload.SecuritySystemTargetState` 0..3) into `msg.command` (`arm_home` / `arm_away` / `arm_night` / `disarm`). To control the Alarm node, ensure the outgoing `msg.topic` equals the Alarm **Control topic**:
-  - easiest: select the Alarm node in the Input Adapter (it injects `msg.controlTopic` automatically)
-  - or: pass `msg.controlTopic` in your incoming messages
+```js
+msg.alarmUltimate = {
+  v: 1,
+  ts: 1700000000000,
+  kind: "event|siren|open_zones|any_zone_open|command|...",
+  alarm: { id, name, controlTopic },
+  event: "armed|disarmed|zone_open|siren_on|...",
+  mode: "armed|disarmed",
+  reason: "init|timeout|manual|...",
+};
+```
 
-### Output Adapter
-
-`AlarmUltimateOutputAdapter` transforms messages coming from a selected Alarm node using presets (no wiring from the Alarm node is required).
-
-Example use-cases:
-
-- Publish to MQTT topics (event/state).
-- Map arming state to HomeKit Security System.
-- Format “open zones” listings for dashboards / TTS.
-
-Tip: the built-in preset list also includes stream/filter presets that correspond to the former Alarm output groups (siren, zone activity, errors, open zones, ...), plus a dedicated `Open Zones (Cycle)` stream for the always-on open-zones cycling feature.
-
-HomeKit note:
-
-- HomeKit expects **TargetState** to change immediately, while **CurrentState** can stay on the previous state during `arming` (exit delay).
+Embedded adapters use `msg.alarmUltimate` as the canonical source, so they do not depend on user-configurable `msg.topic` / `msg.payload` formats.
 
 ## Web tools
 
@@ -188,7 +182,7 @@ The Zones JSON Mapper supports:
 - `examples/alarm-ultimate-dashboard.json`: Node-RED Dashboard example embedding the Alarm Panel in a `ui_template` iframe.
 - `examples/alarm-ultimate-dashboard-controls.json`: Node-RED Dashboard example with the embedded panel plus command buttons (and a small sensor simulator).
 - `examples/alarm-ultimate-dashboard-v2.json`: Dashboard 2.0 example for `@flowfuse/node-red-dashboard` (Alarm Panel + basic controls + status).
-- `examples/alarm-ultimate-home-assistant-alarm-panel.json`: Home Assistant Add-on example (no MQTT) using the HA Alarm Panel card + `AlarmUltimateInputAdapter`.
+- `examples/alarm-ultimate-home-assistant-alarm-panel.json`: Home Assistant Add-on example (no MQTT) using the HA Alarm Panel card.
 
 See `examples/README.md`.
 
@@ -206,16 +200,12 @@ When Node-RED authentication is enabled, the admin endpoints use these permissio
 
 - `AlarmSystemUltimate.read`
 - `AlarmSystemUltimate.write`
-- `AlarmUltimateInputAdapter.read`
-- `AlarmUltimateOutputAdapter.read`
 
 HTTP admin endpoints:
 
 - `GET /alarm-ultimate/alarm/nodes`
 - `GET /alarm-ultimate/alarm/:id/state`
 - `GET /alarm-ultimate/alarm/:id/log`
-- `GET /alarm-ultimate/input-adapter/presets`
-- `GET /alarm-ultimate/output-adapter/presets`
 - `POST /alarm-ultimate/alarm/:id/command`
 - `GET /alarm-ultimate/alarm-json-mapper`
 - `GET /alarm-ultimate/alarm-panel`
