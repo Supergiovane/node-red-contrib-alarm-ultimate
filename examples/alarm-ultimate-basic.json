@@ -198,7 +198,7 @@
     "id": "bypassfront000000",
     "type": "inject",
     "z": "f1c9d0f3d9b8a001",
-    "name": "Bypass front_door",
+    "name": "Bypass sensor/frontdoor",
     "props": [
       {
         "p": "topic",
@@ -211,14 +211,14 @@
         "vt": "str"
       },
       {
-        "p": "zone",
-        "v": "front_door",
+        "p": "zoneTopic",
+        "v": "sensor/frontdoor",
         "vt": "str"
       }
     ],
     "topic": "alarm",
     "command": "bypass",
-    "zone": "front_door",
+    "zoneTopic": "sensor/frontdoor",
     "once": false,
     "onceDelay": 0.1,
     "x": 180,
@@ -233,7 +233,7 @@
     "id": "unbypassfront0000",
     "type": "inject",
     "z": "f1c9d0f3d9b8a001",
-    "name": "Unbypass front_door",
+    "name": "Unbypass sensor/frontdoor",
     "props": [
       {
         "p": "topic",
@@ -246,14 +246,14 @@
         "vt": "str"
       },
       {
-        "p": "zone",
-        "v": "front_door",
+        "p": "zoneTopic",
+        "v": "sensor/frontdoor",
         "vt": "str"
       }
     ],
     "topic": "alarm",
     "command": "unbypass",
-    "zone": "front_door",
+    "zoneTopic": "sensor/frontdoor",
     "once": false,
     "onceDelay": 0.1,
     "x": 190,

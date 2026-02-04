@@ -678,9 +678,10 @@
       const raw = String(text || "").trim();
       if (!raw) return [];
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed.filter((z) => z && typeof z === "object");
-      if (parsed && typeof parsed === "object") return [parsed];
-      return [];
+      if (!Array.isArray(parsed)) {
+        throw new Error("Zones JSON must be a JSON array of objects.");
+      }
+      return parsed.filter((z) => z && typeof z === "object");
     }
 
     function buildDefaultZone(index) {
@@ -715,10 +716,8 @@
 	    function cleanZoneForJson(zone, index) {
 	      const z = zone && typeof zone === "object" ? { ...zone } : {};
 	      const name = String(z.name || "").trim();
-	      delete z['id'];
 
 	      if (typeof z.topic === "string") z.topic = z.topic.trim();
-	      if (Object.prototype.hasOwnProperty.call(z, "topicPattern")) delete z.topicPattern;
 	      if (z.topic && !z.topic.trim()) delete z.topic;
 
 	      if (!z.topic) {

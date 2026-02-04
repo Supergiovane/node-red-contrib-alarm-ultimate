@@ -3,13 +3,43 @@
 > **BETA (breaking changes):** this package is currently **BETA** and changes can be **breaking** at any release.
 > Backward compatibility is not guaranteed.
 
+## [0.3.0-beta.2] - 2026-02-04
+
+### Changed
+
+- **Examples:** updated bypass/unbypass injects to use `msg.zoneTopic` (topic-only zones).
+- **Examples docs:** removed `id` from zone snippets and aligned zones snippets to JSON array format.
+- **Tools:** Zones JSON Mapper now accepts **JSON array only** (aligned with `AlarmSystemUltimate.zones`).
+- **UI:** refined AX Pro “match” option labels in `AlarmUltimateZone`.
+
+## [0.3.0-beta.1] - 2026-02-04
+
+### Breaking (BETA)
+
+- **Zones identifier:** removed the `id`/`zoneId` field from zones. Zones are identified only by `topic`.
+- **Zones format:** `AlarmSystemUltimate.zones` now accepts **JSON array only** (no single-object, no JSON-per-line).
+- **Bypass command:** bypass/unbypass now accepts only `msg.zoneTopic` (no `msg.zone` alias).
+- **Codes:** removed `msg.pin` support (use `msg.code` only). Sync forwarding no longer forwards `pin`.
+- **Commands API:** `/alarm-ultimate/alarm/:id/command` now accepts only `payload.command` (no `payload.action`) and `payload.zoneTopic` (no `payload.zone`).
+- **Topic matching:** removed regex matching (`topicPattern`). Only exact topics or `topic*` prefix matching are supported.
+- **Alarm Zone adapters:** removed **Homekit** adapter option from `AlarmUltimateZone` (both Input and Output).
+
+### Added / Changed
+
+- **Alarm Zone (Input + AX Pro):** added `AX Pro match` options (exact/starts/contains/ends) to match `payload.zoneUpdate.name` and inject zone updates correctly.
+- **Alarm Zone (AX Pro):** aligned parsing/formatting with `node-red-contrib-hikvision-ultimate` payloads (`zoneUpdate.status` support; output adds `status` field).
+- **Alarm State (Input + AX Pro):** added support for AX Pro `CIDEvent.code` to inject arm/disarm (`3401` Away, `3441` Stay, `1401` Disarmed).
+- **Tools:** Alarm JSON Mapper and Alarm Panel updated to reflect topic-only zones and the simplified zones format.
+
 ## [0.3.0-beta.0] - 2026-02-04
 
 ### Breaking (BETA)
 
 - **Removed adapter nodes:** `AlarmUltimateInputAdapter` and `AlarmUltimateOutputAdapter` have been removed.
 - **Alarm State / Alarm Zone I/O mode:** `AlarmUltimateState` and `AlarmUltimateZone` can now be configured as **Input** (flow → selected alarm) or **Output** (selected alarm → flow).
-- **Embedded adapters:** adapters are now selected directly on `AlarmUltimateState` / `AlarmUltimateZone` (no separate nodes). Current options: **Default**, **Homekit**, **Ax Pro (Hikvision Ultimate)**, **KNX-Ultimate**.
+- **Embedded adapters:** adapters are now selected directly on each node (no separate nodes).
+  - `AlarmUltimateState`: **Default**, **Homekit**, **Ax Pro (Hikvision Ultimate)**, **KNX-Ultimate**
+  - `AlarmUltimateZone`: **Default**, **KNX-Ultimate** (AX Pro is Input-only; Homekit removed)
 - **Alarm Zone: All zones:** `AlarmUltimateZone` can now emit events for **All zones** (not only one zone).
 
 ### Migration notes
@@ -142,7 +172,6 @@ In the zone definition, add for example:
 
 ```json
 {
-  "id": "frontdoor",
   "topic": "sensor/frontdoor",
   "supervision": { "enabled": true, "timeoutSeconds": 120, "blockArm": true }
 }

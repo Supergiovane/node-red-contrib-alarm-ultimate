@@ -25,7 +25,9 @@ Includes:
 
 - `AlarmSystemUltimate` (BETA): full alarm control panel node (zones, entry/exit delays, bypass, chime, 24h/fire/tamper, siren, event log, optional per-zone sensor supervision).
 - Helper nodes: `AlarmUltimateState`, `AlarmUltimateZone`, `AlarmUltimateSiren`.
-  `AlarmUltimateState` and `AlarmUltimateZone` can be configured as **Input** or **Output** nodes and include embedded adapters (Default/Homekit/Ax Pro/KNX-Ultimate).
+  `AlarmUltimateState` and `AlarmUltimateZone` can be configured as **Input** or **Output** nodes and include embedded adapters:
+  - `AlarmUltimateState`: Default / Homekit / Ax Pro / KNX-Ultimate
+  - `AlarmUltimateZone`: Default / Ax Pro / KNX-Ultimate (AX Pro is Input-only)
 - Web tools: Zones JSON mapper + web Alarm Panel (embeddable in Node-RED Dashboard).
 
 Note: `AlarmSystemUltimate` is currently **BETA**.
@@ -68,7 +70,8 @@ Optional (recommended):
 
 - Use `AlarmUltimateZone` in **Input** mode (Zone: **All zones**) to normalize sensor messages and inject them into the selected Alarm node.
 - Use `AlarmUltimateState` in **Input** mode to normalize arm/disarm commands (e.g. HomeKit) and inject them into the selected Alarm node.
-- Use `AlarmUltimateState` / `AlarmUltimateZone` in **Output** mode with an **Adapter** to format events for external systems (HomeKit / KNX / AX Pro / ...).
+- Use `AlarmUltimateState` in **Output** mode with an **Adapter** to format state events for external systems (HomeKit / KNX / AX Pro / ...).
+- Use `AlarmUltimateZone` in **Output** mode with an **Adapter** to format zone events for external systems (e.g. KNX).
 - For distributed flows, use Node-RED built-in `link in` / `link out` to fan-in sensors/commands and fan-out Alarm outputs (see `examples/alarm-ultimate-link-bus.json`).
 
 ## Screenshots
@@ -119,7 +122,6 @@ Example zone:
 
 ```json
 {
-  "id": "frontdoor",
   "name": "Front door",
   "topic": "sensor/frontdoor",
   "type": "perimeter",

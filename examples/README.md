@@ -21,11 +21,12 @@ Notes:
   Example zone snippet:
 
   ```json
-  {
-    "id": "frontdoor",
-    "topic": "sensor/frontdoor",
-    "supervision": { "enabled": true, "timeoutSeconds": 120, "blockArm": true }
-  }
+  [
+    {
+      "topic": "sensor/frontdoor",
+      "supervision": { "enabled": true, "timeoutSeconds": 120, "blockArm": true }
+    }
+  ]
   ```
 
 ## Dashboard (node-red-dashboard)

@@ -979,7 +979,6 @@
 
   ```json
   {
-    "id": "frontdoor",
     "name": "Front door",
     "topic": "sensor/frontdoor",
     "type": "perimeter",
@@ -1043,7 +1042,7 @@
   - `armed` → `{ reason }`
   - `disarmed` → `{ reason, duress }`
   - `already_armed` → `{ target }`
-  - `arm_blocked` → `{ target, violations:[{id,name,type,open,supervisionLost}] }`
+  - `arm_blocked` → `{ target, violations:[{name,type,topic,open,supervisionLost}] }`
   - `status` → `{ state: { mode, arming, entry, alarmActive, silentAlarmActive, sirenActive, alarmZone, bypassedZones, log } }`
   - `reset` → `{}`
   - `denied` → `{ action: "arm"|"disarm", target? }`
@@ -1051,16 +1050,16 @@
 
   Zones / alarm:
 
-  - `entry_delay` → `{ zone:{id,name,type,topic}, seconds }`
+  - `entry_delay` → `{ zone:{name,type,topic}, seconds }`
   - `alarm` → `{ kind, zone, silent }` where `kind` can be `instant|entry_timeout|panic|duress|fire|tamper|24h|...`
-  - `chime` → `{ zone:{id,name,type} }` (while disarmed)
-  - `zone_open` → `{ zone:{id,name,type,topic}, open:true, bypassed }` (always)
-  - `supervision_lost` → `{ zone:{id,name,type,topic}, timeoutSeconds, lastSeenAt }`
-  - `supervision_restored` → `{ zone:{id,name,type,topic}, timeoutSeconds, lastSeenAt }`
-  - `zone_close` → `{ zone:{id,name,type,topic}, open:false, bypassed }` (always)
-  - `zone_ignored_exit` → `{ zone:{id,name,type} }` (triggered during exit delay and not allowed)
-  - `zone_bypassed_trigger` → `{ zone:{id,name,type} }`
-  - `zone_restore` → `{ zone:{id,name,type} }` (when enabled)
+  - `chime` → `{ zone:{name,type,topic} }` (while disarmed)
+  - `zone_open` → `{ zone:{name,type,topic}, open:true, bypassed }` (always)
+  - `supervision_lost` → `{ zone:{name,type,topic}, timeoutSeconds, lastSeenAt }`
+  - `supervision_restored` → `{ zone:{name,type,topic}, timeoutSeconds, lastSeenAt }`
+  - `zone_close` → `{ zone:{name,type,topic}, open:false, bypassed }` (always)
+  - `zone_ignored_exit` → `{ zone:{name,type,topic} }` (triggered during exit delay and not allowed)
+  - `zone_bypassed_trigger` → `{ zone:{name,type,topic} }`
+  - `zone_restore` → `{ zone:{name,type,topic} }` (when enabled)
   - `siren_on` → `{ reason }` (manual `siren_on` command)
   - `siren_off` → `{ reason }` (manual stop, disarm, timeout, arm, ...)
   - `open_zone` → `{ context, position, total, zone }` (open zones listing outputs)

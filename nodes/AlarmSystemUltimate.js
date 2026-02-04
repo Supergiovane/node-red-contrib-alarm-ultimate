@@ -595,13 +595,12 @@ module.exports = function (RED) {
 	      if (typeof zone.topic === 'string') {
 	        zone.topic = zone.topic.trim();
 	      }
-	      if (typeof zone.topicPattern === 'string' && zone.topicPattern.trim()) {
-	        node.log('AlarmSystemUltimate: zone.topicPattern is not supported. Use topic (exact or prefix ending with *).');
+	      if (Object.prototype.hasOwnProperty.call(zone, 'topicPattern')) {
+	        node.log('AlarmSystemUltimate: invalid zone config (topicPattern is not supported). Use topic (exact or prefix ending with *).');
 	        return null;
 	      }
-	      if (Object.prototype.hasOwnProperty.call(zone, 'topicPattern')) delete zone.topicPattern;
 	      if (Object.prototype.hasOwnProperty.call(zone, 'id')) {
-	        node.log('AlarmSystemUltimate: zone.id is not supported. Use topic as the zone identifier.');
+	        node.log('AlarmSystemUltimate: invalid zone config (id field is not supported). Use topic as the zone identifier.');
 	        return null;
 	      }
 	      if (!zone.topic) {
@@ -628,25 +627,12 @@ module.exports = function (RED) {
       zone.instantDuringExit = zone.instantDuringExit === true;
 
       zone.entryDelayMs = toMilliseconds(zone.entryDelaySeconds, entryDelayMs / 1000);
-      zone.cooldownMs = toMilliseconds(zone.cooldownSeconds, 0);
-      zone.alwaysActive = zone.type === 'fire' || zone.type === 'tamper' || zone.type === '24h';
-	      if (Object.prototype.hasOwnProperty.call(zone, 'modes')) {
-	        delete zone.modes;
-	      }
+	      zone.cooldownMs = toMilliseconds(zone.cooldownSeconds, 0);
+	      zone.alwaysActive = zone.type === 'fire' || zone.type === 'tamper' || zone.type === '24h';
 
 	      // Optional sensor supervision (per-zone).
 	      // Starts after the first valid sensor message is received for that zone.
 	      const supervisionConfig = zone.supervision && typeof zone.supervision === 'object' ? zone.supervision : null;
-	      if (
-	        !supervisionConfig &&
-	        (Object.prototype.hasOwnProperty.call(zone, 'supervisionEnabled') ||
-	          Object.prototype.hasOwnProperty.call(zone, 'supervisionTimeoutSeconds') ||
-	          Object.prototype.hasOwnProperty.call(zone, 'supervisionSeconds') ||
-	          Object.prototype.hasOwnProperty.call(zone, 'supervisionBlockArm') ||
-	          zone.supervision === true)
-	      ) {
-	        node.log('AlarmSystemUltimate: legacy supervision fields are not supported. Use supervision: { enabled, timeoutSeconds, blockArm }.');
-	      }
 	      const enabledRaw =
 	        supervisionConfig && Object.prototype.hasOwnProperty.call(supervisionConfig, 'enabled') ? supervisionConfig.enabled : false;
 	      zone.supervisionEnabled = enabledRaw === true;
