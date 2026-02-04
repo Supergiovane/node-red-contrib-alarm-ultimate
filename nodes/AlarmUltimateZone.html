@@ -34,30 +34,35 @@
     paletteLabel: function () {
       return "Alarm Zone";
     },
-    oneditprepare: function () {
-      const alarmSelect = $("#node-input-alarmId");
-      const zoneSelect = $("#node-input-zoneTopic");
-      const ioSelect = $("#node-input-io");
-      const adapterSelect = $("#node-input-adapter");
-      const topicRow = $("#au-row-topic");
-      const initRow = $("#au-row-outputInitialState");
-      const axProMatchRow = $("#au-row-axProZoneNameMatch");
-      const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
-      const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
-      const panelButton = $("#node-input-alarm-panel");
+	    oneditprepare: function () {
+	      const alarmSelect = $("#node-input-alarmId");
+	      const zoneSelect = $("#node-input-zoneTopic");
+	      const ioSelect = $("#node-input-io");
+	      const adapterSelect = $("#node-input-adapter");
+	      const topicRow = $("#au-row-topic");
+	      const initRow = $("#au-row-outputInitialState");
+	      const axProMatchRow = $("#au-row-axProZoneNameMatch");
+	      const axProOption = adapterSelect.find('option[value="axpro"]');
+	      const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
+	      const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
+	      const panelButton = $("#node-input-alarm-panel");
 
       function apiUrl(path) {
         return `${root}${path.replace(/^\//, "")}`;
       }
 
-      function refreshVisibility() {
-        const mode = String(ioSelect.val() || "out");
-        const isOut = mode === "out";
-        topicRow.toggle(isOut);
-        initRow.toggle(isOut);
-        const adapter = String(adapterSelect.val() || "default");
-        axProMatchRow.toggle(mode === "in" && adapter === "axpro");
-      }
+	      function refreshVisibility() {
+	        const mode = String(ioSelect.val() || "out");
+	        const isOut = mode === "out";
+	        topicRow.toggle(isOut);
+	        initRow.toggle(isOut);
+	        const adapter = String(adapterSelect.val() || "default");
+	        axProOption.toggle(mode === "in");
+	        if (mode !== "in" && adapter === "axpro") {
+	          adapterSelect.val("default");
+	        }
+	        axProMatchRow.toggle(mode === "in" && adapter === "axpro");
+	      }
 
       panelButton.off("click").on("click", (evt) => {
         evt.preventDefault();
@@ -170,7 +175,6 @@
 	    <label for="node-input-adapter"><i class="fa fa-plug"></i> Adapter</label>
 	    <select id="node-input-adapter" style="width: 70%">
 	      <option value="default">Default</option>
-	      <option value="homekit">Homekit</option>
 	      <option value="axpro">Ax Pro (Hikvision Ultimate)</option>
 	      <option value="knx">KNX-Ultimate</option>
 	    </select>
@@ -222,6 +226,10 @@ Notes:
 - The zone list is loaded from the selected Alarm node state (`/alarm-ultimate/alarm/:id/state`).
 - No wiring from the Alarm node is required: select the Alarm node and this node subscribes internally.
 - Use the **Panel** button to open the Alarm Panel preselected on the chosen Alarm node.
+
+Adapter notes:
+
+- **Ax Pro (Hikvision Ultimate)** is available only in **Input** mode.
 
 ## Input mode details
 

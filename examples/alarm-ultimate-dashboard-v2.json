@@ -128,7 +128,7 @@
     "type": "function",
     "z": "c0a4b6d3e5f70819",
     "name": "Build control msg",
-    "func": "const payload = msg.payload;\n\nmsg.topic = \"alarm\";\n\nif (payload && typeof payload === \"object\") {\n  if (typeof payload.command === \"string\") msg.command = payload.command;\n  if (payload.zone != null) msg.zone = payload.zone;\n  if (payload.code != null) msg.code = payload.code;\n} else if (typeof payload === \"string\") {\n  msg.command = payload;\n}\n\nreturn msg;",
+    "func": "const payload = msg.payload;\n\nmsg.topic = \"alarm\";\n\nif (payload && typeof payload === \"object\") {\n  if (typeof payload.command === \"string\") msg.command = payload.command;\n  if (payload.zoneTopic != null) msg.zoneTopic = payload.zoneTopic;\n  if (payload.code != null) msg.code = payload.code;\n} else if (typeof payload === \"string\") {\n  msg.command = payload;\n}\n\nreturn msg;",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",

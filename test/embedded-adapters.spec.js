@@ -53,7 +53,7 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
         entryDelaySeconds: 0,
         sirenDurationSeconds: 0,
         requireCodeForDisarm: false,
-        zones: '{"id":"front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
+        zones: '[{"topic":"sensor/frontdoor","type":"perimeter","entry":false}]',
         wires: [[], [], [], [], [], [], [], [], [], []],
       },
       {
@@ -125,7 +125,7 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
         entryDelaySeconds: 0,
         sirenDurationSeconds: 0,
         requireCodeForDisarm: false,
-        zones: '{"id":"front","topic":"sensor/frontdoor","type":"perimeter","entry":false}',
+        zones: '[{"topic":"sensor/frontdoor","type":"perimeter","entry":false}]',
         wires: [['alarmOut'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'alarmOut', type: 'helper', z: flowId },
@@ -166,6 +166,69 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
       .catch(done);
   });
 
+  it('AlarmUltimateState (Input + AX Pro) injects arm/disarm commands into the selected alarm', function (done) {
+    const flowId = 'embedded-axpro-in';
+    const flow = [
+      { id: flowId, type: 'tab', label: flowId },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm',
+        exitDelaySeconds: 0,
+        entryDelaySeconds: 0,
+        sirenDurationSeconds: 0,
+        requireCodeForDisarm: false,
+        zones: '[{"topic":"sensor/frontdoor","type":"perimeter","entry":false}]',
+        wires: [['alarmOut'], [], [], [], [], [], [], [], [], []],
+      },
+      { id: 'alarmOut', type: 'helper', z: flowId },
+      {
+        id: 'stateIn',
+        type: 'AlarmUltimateState',
+        z: flowId,
+        alarmId: 'alarm',
+        io: 'in',
+        adapter: 'axpro',
+        outputInitialState: false,
+        wires: [[]],
+      },
+    ];
+
+    loadFlow([alarmNode, alarmStateNode], flow, {})
+      .then(() => {
+        const stateIn = helper.getNode('stateIn');
+        const alarmOut = helper.getNode('alarmOut');
+
+        const seen = [];
+        let finished = false;
+        alarmOut.on('input', (msg) => {
+          if (finished) return;
+          if (msg && typeof msg.event === 'string') {
+            seen.push(msg.event);
+          }
+        });
+
+        stateIn.receive({ payload: { CIDEvent: { code: 3401 } } });
+        setTimeout(() => {
+          stateIn.receive({ payload: { CIDEvent: { code: 1401 } } });
+        }, 60);
+
+        setTimeout(() => {
+          if (finished) return;
+          finished = true;
+          try {
+            expect(seen).to.include('armed');
+            expect(seen).to.include('disarmed');
+            done();
+          } catch (err) {
+            done(err);
+          }
+        }, 250);
+      })
+      .catch(done);
+  });
+
   it('AlarmUltimateZone (Input + KNX, All zones) injects zone sensor updates into the selected alarm', function (done) {
     const flowId = 'embedded-zone-knx-in';
     const flow = [
@@ -179,7 +242,7 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
         entryDelaySeconds: 0,
         sirenDurationSeconds: 0,
         requireCodeForDisarm: false,
-        zones: '{"topic":"0/1/2","type":"perimeter","entry":false}',
+        zones: '[{"topic":"0/1/2","type":"perimeter","entry":false}]',
         wires: [['alarmOut'], [], [], [], [], [], [], [], [], []],
       },
       { id: 'alarmOut', type: 'helper', z: flowId },
@@ -280,7 +343,7 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
           payload: {
             zoneUpdate: {
               name: 'My Front door Sensor',
-              magnetOpenStatus: true,
+              status: 'trigger',
             },
           },
         });

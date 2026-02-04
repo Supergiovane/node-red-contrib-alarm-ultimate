@@ -115,38 +115,16 @@
       const syncTargetsField = $("#node-input-syncTargets");
       const syncTargetsUi = $("#node-input-syncTargets-ui");
 
-      function parseZonesText(text) {
-        const raw = String(text || "").trim();
-        if (!raw) return [];
+	      function parseZonesText(text) {
+	        const raw = String(text || "").trim();
+	        if (!raw) return [];
 
-        try {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            return parsed.filter((z) => z && typeof z === "object");
-          }
-          if (parsed && typeof parsed === "object") {
-            return [parsed];
-          }
-        } catch (err) {
-          // fallthrough to JSON-per-line
-        }
-
-        const zones = [];
-        const lines = raw.split("\n");
-        for (let index = 0; index < lines.length; index += 1) {
-          const line = String(lines[index] || "").trim();
-          if (!line) continue;
-          try {
-            const parsed = JSON.parse(line);
-            if (parsed && typeof parsed === "object") {
-              zones.push(parsed);
-            }
-          } catch (err) {
-            throw new Error(`Invalid JSON at line ${index + 1}`);
-          }
-        }
-        return zones;
-      }
+	        const parsed = JSON.parse(raw);
+	        if (!Array.isArray(parsed)) {
+	          throw new Error("Zones must be a JSON array.");
+	        }
+	        return parsed.filter((z) => z && typeof z === "object");
+	      }
 
       function parseSyncTargets(text) {
         const raw = String(text || "").trim();
@@ -323,37 +301,20 @@
         updateZonesSummary();
       }
 
-      function importZonesFromText(rawText) {
-        const text = String(rawText || "").trim();
-        if (!text) {
-          zonesField.val("");
-          markDirtyAndUpdateSummary();
-          return;
-        }
+	      function importZonesFromText(rawText) {
+	        const text = String(rawText || "").trim();
+	        if (!text) {
+	          zonesField.val("");
+	          markDirtyAndUpdateSummary();
+	          return;
+	        }
 
-        // Accept either a zones array, a single zone object, a wrapper like { zones: [...] },
-        // or raw JSON-per-line content.
-        let zonesTextToStore = text;
-        try {
-          const parsed = JSON.parse(text);
-          if (Array.isArray(parsed)) {
-            zonesTextToStore = JSON.stringify(parsed, null, 2);
-          } else if (parsed && typeof parsed === "object") {
-            if (Array.isArray(parsed.zones)) {
-              zonesTextToStore = JSON.stringify(parsed.zones, null, 2);
-            } else if (typeof parsed.zonesJson === "string") {
-              zonesTextToStore = String(parsed.zonesJson || "");
-            } else {
-              zonesTextToStore = JSON.stringify(parsed, null, 2);
-            }
-          }
-        } catch (_err) {
-          // keep raw text (could be JSON-per-line)
-        }
+	        const parsedZones = parseZonesText(text);
+	        const zonesTextToStore = JSON.stringify(parsedZones, null, 2);
 
-        // Validate imported content before saving it into the node.
-        const importedZones = parseZonesText(zonesTextToStore);
-        const existingZones = (() => {
+	        // Validate imported content before saving it into the node.
+	        const importedZones = parseZonesText(zonesTextToStore);
+	        const existingZones = (() => {
           try {
             return parseZonesText(zonesField.val());
           } catch (_err) {
@@ -987,8 +948,8 @@
   | Property                     | Description                                                                                                                          |
   | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
   | Persist state                | Persists arming state, bypass list and event log across restarts.                                                                    |
-  | Require code for arm         | Requires a valid PIN for arming commands (via `msg.code` or `msg.pin`). If **Code** is empty, commands are allowed.                  |
-  | Require code for disarm      | Requires a valid PIN for disarming commands (via `msg.code` or `msg.pin`). If **Code** is empty, commands are allowed.               |
+  | Require code for arm         | Requires a valid PIN for arming commands (via `msg.code`). If **Code** is empty, commands are allowed.                               |
+  | Require code for disarm      | Requires a valid PIN for disarming commands (via `msg.code`). If **Code** is empty, commands are allowed.                            |
   | Code                         | PIN required to arm/disarm when enabled.                                                                                             |
   | Duress code                  | If provided and `msg.code` matches, the node raises a silent duress alarm while still executing the command.                         |
   | Block arm on violations      | Prevents arming if any active (true) zone would be armed (excluding bypassed zones). Checked both at arm start and after exit delay. |
@@ -1005,7 +966,7 @@
   | Latch siren until disarm     | Forces siren to remain on until disarm (ignores duration).                                                                           |
   | Emit restore events          | Emits `zone_restore` when a zone returns to false.                                                                                   |
   | Event log size               | Max stored log entries in node context (0 disables log).                                                                             |
-  | Sync other alarms            | Optional: when this node is armed/disarmed, it can arm/disarm other Alarm nodes. The original `msg.code`/`msg.pin` are forwarded.    |
+  | Sync other alarms            | Optional: when this node is armed/disarmed, it can arm/disarm other Alarm nodes. The original `msg.code` is forwarded.               |
   | Zones                        | Zone definitions. Use **Manage zones** (web tool) to edit advanced JSON (including optional supervision). Use **Export JSON** / **Import JSON** to backup/restore. |
 
   <br/>
@@ -1127,11 +1088,11 @@
   - `msg.command = "list_open_zones"` or `msg.listOpenZones = true`
   - or send a message with `msg.topic = <Open zones request topic>` (works even while disarmed)
 
-	  Bypass / unbypass (zone topic/pattern):
+	  Bypass / unbypass (zone topic):
 
   - `msg.command = "bypass"` / `msg.command = "unbypass"`
   - or `msg.bypass = true` / `msg.unbypass = true`
-	  - pass the zone **topic** in `msg.zoneTopic` (alias: `msg.zone`)
+		  - pass the zone **topic** in `msg.zoneTopic`
 
   Siren:
 
@@ -1148,17 +1109,14 @@
 
   Codes:
 
-  - pass `msg.code` (or `msg.pin`) when code checks are enabled
+  - pass `msg.code` when code checks are enabled
   - if `msg.code` equals **Duress code**, the node emits a silent duress alarm while still arming/disarming
 
   <br/>
 
   ## Zones
 
-  Zones can be configured as:
-
-  - **Legacy**: one JSON object per line
-  - **Formatted**: a JSON array of objects
+	  Zones must be configured as a JSON array of objects.
 
 	  Minimal fields:
 
@@ -1166,7 +1124,7 @@
 
 	  Common fields:
 
-	  - `topic`: **unique identifier** of the zone (used for bypass via `msg.zoneTopic` or `msg.zone`)
+		  - `topic`: **unique identifier** of the zone (used for bypass via `msg.zoneTopic`)
 	  - `name`: label used in events (optional; defaults to `topic`)
   - `type`: `perimeter` (default), `motion`, `tamper`, `fire`, `24h`
   - `entry`: `true` to use entry delay, otherwise triggers instantly

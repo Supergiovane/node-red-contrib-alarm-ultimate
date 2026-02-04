@@ -718,11 +718,7 @@
 	      delete z['id'];
 
 	      if (typeof z.topic === "string") z.topic = z.topic.trim();
-	      if (typeof z.topicPattern === "string" && z.topicPattern.trim() && !z.topic) {
-	        // Legacy: topicPattern is no longer supported; keep the value as a plain topic.
-	        z.topic = z.topicPattern.trim();
-	      }
-	      delete z.topicPattern;
+	      if (Object.prototype.hasOwnProperty.call(z, "topicPattern")) delete z.topicPattern;
 	      if (z.topic && !z.topic.trim()) delete z.topic;
 
 	      if (!z.topic) {
@@ -738,52 +734,26 @@
       z.bypassable = z.bypassable !== false;
       z.chime = z.chime === true;
 
-      // Normalize optional supervision config (keeps JSON clean and UI-friendly).
-      const supervisionConfig =
-        z.supervision && typeof z.supervision === "object"
-          ? { ...z.supervision }
-          : (z.supervisionEnabled === true ||
-            z.supervision === true ||
-            z.supervisionBlockArm !== undefined ||
-            z.supervisionTimeoutSeconds !== undefined ||
-            z.supervisionSeconds !== undefined)
-            ? {
-              enabled: z.supervisionEnabled === true || z.supervision === true,
-              timeoutSeconds:
-                z.supervisionTimeoutSeconds !== undefined
-                  ? z.supervisionTimeoutSeconds
-                  : z.supervisionSeconds !== undefined
-                    ? z.supervisionSeconds
-                    : undefined,
-              blockArm: z.supervisionBlockArm,
-            }
-            : null;
+	      // Normalize optional supervision config (keeps JSON clean and UI-friendly).
+	      const supervisionConfig = z.supervision && typeof z.supervision === "object" ? { ...z.supervision } : null;
 
-      if (supervisionConfig && supervisionConfig.enabled === true) {
-        const timeoutSeconds = Number(supervisionConfig.timeoutSeconds);
-        const blockArm = Object.prototype.hasOwnProperty.call(supervisionConfig, "blockArm")
-          ? supervisionConfig.blockArm !== false
-          : true;
-        z.supervision = {
-          enabled: true,
-          timeoutSeconds: Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? timeoutSeconds : null,
-          blockArm,
-        };
-        if (z.supervision.timeoutSeconds === null) delete z.supervision.timeoutSeconds;
-      } else {
-        delete z.supervision;
-      }
+	      if (supervisionConfig && supervisionConfig.enabled === true) {
+	        const timeoutSeconds = Number(supervisionConfig.timeoutSeconds);
+	        const blockArm = Object.prototype.hasOwnProperty.call(supervisionConfig, "blockArm") ? supervisionConfig.blockArm !== false : true;
+	        z.supervision = {
+	          enabled: true,
+	          timeoutSeconds: Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? timeoutSeconds : null,
+	          blockArm,
+	        };
+	        if (z.supervision.timeoutSeconds === null) delete z.supervision.timeoutSeconds;
+	      } else {
+	        delete z.supervision;
+	      }
 
-      // Drop legacy supervision fields (we keep only `supervision`).
-      delete z.supervisionEnabled;
-      delete z.supervisionTimeoutSeconds;
-      delete z.supervisionSeconds;
-      delete z.supervisionBlockArm;
-
-      // Drop UI-only fields if any.
-      delete z.__errors;
-      return z;
-    }
+	      // Drop UI-only fields if any.
+	      delete z.__errors;
+	      return z;
+	    }
 
     function syncJsonFromModel() {
       const payload = zonesModel
@@ -793,9 +763,9 @@
         })
         .filter((z) => z && typeof z === "object");
 
-      zonesJsonText = payload.length === 1 ? JSON.stringify(payload[0], null, 2) : JSON.stringify(payload, null, 2);
-      return payload;
-    }
+	      zonesJsonText = JSON.stringify(payload, null, 2);
+	      return payload;
+	    }
 
     function scheduleAutosave(errors) {
       if (isEditingZoneTable) {

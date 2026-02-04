@@ -234,6 +234,39 @@ function toHomekitAlarmCommandIn(msg) {
   return out;
 }
 
+function toAxProAlarmCommandIn(msg) {
+  if (!msg || typeof msg !== 'object') return null;
+  const payload = msg.payload && typeof msg.payload === 'object' ? msg.payload : null;
+  const cid = payload && payload.CIDEvent && typeof payload.CIDEvent === 'object' ? payload.CIDEvent : null;
+  const rawCode = cid && cid.code !== undefined && cid.code !== null ? cid.code : undefined;
+  const code = Number(rawCode);
+  if (!Number.isFinite(code)) return null;
+
+  // Known CID codes for arming/disarming (as reported by Hikvision AX Pro).
+  // - 3401: Away
+  // - 3441: Stay
+  // - 1401: Disarmed
+  let command = '';
+  let axProArmKind = '';
+  if (code === 3401) {
+    command = 'arm';
+    axProArmKind = 'away';
+  } else if (code === 3441) {
+    command = 'arm';
+    axProArmKind = 'stay';
+  } else if (code === 1401) {
+    command = 'disarm';
+    axProArmKind = 'disarmed';
+  } else {
+    return null;
+  }
+
+  const out = { ...(msg || {}) };
+  out.command = command;
+  out.axpro = { ...(out.axpro || {}), cid: { ...(cid || {}), code }, armKind: axProArmKind };
+  return out;
+}
+
 module.exports = function (RED) {
   function AlarmUltimateState(config) {
     RED.nodes.createNode(this, config);
@@ -372,6 +405,7 @@ module.exports = function (RED) {
       let transformed = null;
 
       if (adapter === 'homekit') transformed = toHomekitAlarmCommandIn(inMsg);
+      else if (adapter === 'axpro') transformed = toAxProAlarmCommandIn(inMsg);
       else if (adapter === 'knx') {
         const b = normalizeBoolean(inMsg && inMsg.payload);
         if (typeof b === 'boolean') {

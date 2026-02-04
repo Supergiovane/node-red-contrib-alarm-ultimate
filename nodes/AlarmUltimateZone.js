@@ -79,6 +79,7 @@ function toAxProZoneUpdateOut(msg) {
     name: zoneName,
     magnetOpenStatus: evt === 'zone_open',
     sensorStatus: evt === 'zone_open' ? 'open' : 'normal',
+    status: evt === 'zone_open' ? 'trigger' : 'normal',
   };
   return out;
 }
@@ -147,7 +148,7 @@ module.exports = function (RED) {
       const msg = baseMsg && typeof baseMsg === 'object' ? baseMsg : {};
       if (adapter === 'knx') return toKnxUltimateOut(msg);
       if (adapter === 'axpro') return toAxProZoneUpdateOut(msg);
-      // homekit/default: pass-through
+      // default: pass-through
       return msg;
     }
 
@@ -343,7 +344,8 @@ module.exports = function (RED) {
         const b = normalizeBoolean(payload);
         if (typeof b === 'boolean') payload = b;
       } else if (adapter === 'axpro') {
-        const zoneUpdate = inMsg && inMsg.payload && inMsg.payload.zoneUpdate ? inMsg.payload.zoneUpdate : null;
+        const zoneUpdate =
+          inMsg && inMsg.payload && typeof inMsg.payload === 'object' ? inMsg.payload.zoneUpdate || null : null;
         if (!zoneUpdate || typeof zoneUpdate !== 'object') {
           if (done) done();
           return;
@@ -383,6 +385,9 @@ module.exports = function (RED) {
         else if (typeof zoneUpdate.sensorStatus === 'string') {
           const v = zoneUpdate.sensorStatus.trim().toLowerCase();
           open = v !== 'normal' && v !== 'closed' && v !== 'ok';
+        } else if (typeof zoneUpdate.status === 'string') {
+          const v = zoneUpdate.status.trim().toLowerCase();
+          open = v !== 'normal' && v !== 'closed' && v !== 'ok' && v !== 'restore';
         } else {
           if (done) done();
           return;

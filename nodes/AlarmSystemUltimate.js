@@ -246,15 +246,15 @@ module.exports = function (RED) {
       const cached = readJsonFileSync(fileCachePath);
       if (!cached || typeof cached !== 'object') return;
 
-      if (cached.zoneState && typeof cached.zoneState === 'object') {
-        const nextZoneState = { ...(state.zoneState || {}) };
-        for (const zone of zones) {
-          if (!zone || !zone.key) continue;
-          const meta = pickCachedZoneMeta(cached.zoneState, zone);
-          if (!meta || typeof meta !== 'object') continue;
-          nextZoneState[zone.key] = {
-            active: meta.active === true,
-            lastChangeAt: Number(meta.lastChangeAt) || 0,
+	      if (cached.zoneState && typeof cached.zoneState === 'object') {
+	        const nextZoneState = { ...(state.zoneState || {}) };
+	        for (const zone of zones) {
+	          if (!zone || !zone.key) continue;
+	          const meta = cached.zoneState[zone.key];
+	          if (!meta || typeof meta !== 'object') continue;
+	          nextZoneState[zone.key] = {
+	            active: meta.active === true,
+	            lastChangeAt: Number(meta.lastChangeAt) || 0,
             lastTriggerAt: Number(meta.lastTriggerAt) || 0,
             lastSeenAt: Number(meta.lastSeenAt) || 0,
             supervisionLost: meta.supervisionLost === true,
@@ -264,15 +264,21 @@ module.exports = function (RED) {
         state.zoneState = nextZoneState;
       }
 
-      if (!persistState) {
-        if (typeof cached.mode === 'string') {
-          state.mode = normalizeMode(cached.mode) || state.mode;
-        }
-        if (cached.bypass && typeof cached.bypass === 'object') {
-          state.bypass = migrateZoneRefMap(cached.bypass);
-        }
-      }
-    }
+	      if (!persistState) {
+	        if (typeof cached.mode === 'string') {
+	          state.mode = normalizeMode(cached.mode) || state.mode;
+	        }
+	        if (cached.bypass && typeof cached.bypass === 'object') {
+	          const valid = new Set(zones.map((z) => z && z.key).filter(Boolean));
+	          const next = {};
+	          for (const [k, v] of Object.entries(cached.bypass)) {
+	            if (!valid.has(k)) continue;
+	            if (v === true) next[k] = true;
+	          }
+	          state.bypass = next;
+	        }
+	      }
+	    }
 
     loadFileCache();
 
@@ -497,26 +503,32 @@ module.exports = function (RED) {
       };
     }
 
-    function restoreState() {
-      if (!persistState) {
-        return createInitialState();
-      }
+	    function restoreState() {
+	      if (!persistState) {
+	        return createInitialState();
+	      }
       const saved = node.context().get(stateKey);
       if (!saved || typeof saved !== 'object') {
         return createInitialState();
       }
       const next = createInitialState();
-      if (typeof saved.mode === 'string') {
-        next.mode = normalizeMode(saved.mode) || 'disarmed';
-      }
-      if (saved && typeof saved.bypass === 'object') {
-        next.bypass = migrateZoneRefMap(saved.bypass);
-      }
-      if (Array.isArray(saved.log)) {
-        next.log = saved.log.slice(-maxLogEntries);
-      }
-      return next;
-    }
+	      if (typeof saved.mode === 'string') {
+	        next.mode = normalizeMode(saved.mode) || 'disarmed';
+	      }
+	      if (saved && typeof saved.bypass === 'object') {
+	        const valid = new Set(zones.map((z) => z && z.key).filter(Boolean));
+	        const nextBypass = {};
+	        for (const [k, v] of Object.entries(saved.bypass)) {
+	          if (!valid.has(k)) continue;
+	          if (v === true) nextBypass[k] = true;
+	        }
+	        next.bypass = nextBypass;
+	      }
+	      if (Array.isArray(saved.log)) {
+	        next.log = saved.log.slice(-maxLogEntries);
+	      }
+	      return next;
+	    }
 
     function persist() {
       if (persistState) {
@@ -541,94 +553,71 @@ module.exports = function (RED) {
     }
 
 
-    function parseZones(text) {
-      const results = [];
-      const rawText = String(text || '').trim();
-      if (!rawText) {
-        return results;
-      }
+	    function parseZones(text) {
+	      const results = [];
+	      const rawText = String(text || '').trim();
+	      if (!rawText) {
+	        return results;
+	      }
 
       function pushZone(raw, index) {
         if (!raw || typeof raw !== 'object') {
           return;
         }
         const zone = normalizeZone(raw, index);
-        if (zone) {
-          if (results.some((z) => z && z.key === zone.key)) {
-            node.log(`AlarmSystemUltimate: duplicate zone topic/pattern skipped: ${zone.key}`);
-            return;
-          }
-          results.push(zone);
-        }
-      }
+	        if (zone) {
+	          if (results.some((z) => z && z.key === zone.key)) {
+	            node.log(`AlarmSystemUltimate: duplicate zone topic skipped: ${zone.key}`);
+	            return;
+	          }
+	          results.push(zone);
+	        }
+	      }
 
-      try {
-        const parsed = JSON.parse(rawText);
-        if (Array.isArray(parsed)) {
-          parsed.forEach((item, index) => {
-            pushZone(item, index);
-          });
-          return results;
-        }
-        if (parsed && typeof parsed === 'object') {
-          pushZone(parsed, 0);
-          return results;
-        }
-      } catch (err) {
-        // fallback to JSON-per-line parsing
-      }
+	      try {
+	        const parsed = JSON.parse(rawText);
+	        if (Array.isArray(parsed)) {
+	          parsed.forEach((item, index) => {
+	            pushZone(item, index);
+	          });
+	          return results;
+	        }
+	        node.log('AlarmSystemUltimate: zones must be a JSON array.');
+	        return results;
+	      } catch (_err) {
+	        node.log('AlarmSystemUltimate: unable to parse zones JSON (expected a JSON array).');
+	        return results;
+	      }
+	    }
 
-      const lines = rawText
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean);
-      for (let index = 0; index < lines.length; index += 1) {
-        const line = lines[index];
-        try {
-          pushZone(JSON.parse(line), index);
-        } catch (err) {
-          node.log(`AlarmSystemUltimate: unable to parse zone line: ${line}`);
-        }
-      }
-      return results;
-    }
+	    function normalizeZone(raw, index) {
+	      const zone = { ...raw };
+	      if (typeof zone.topic === 'string') {
+	        zone.topic = zone.topic.trim();
+	      }
+	      if (typeof zone.topicPattern === 'string' && zone.topicPattern.trim()) {
+	        node.log('AlarmSystemUltimate: zone.topicPattern is not supported. Use topic (exact or prefix ending with *).');
+	        return null;
+	      }
+	      if (Object.prototype.hasOwnProperty.call(zone, 'topicPattern')) delete zone.topicPattern;
+	      if (Object.prototype.hasOwnProperty.call(zone, 'id')) {
+	        node.log('AlarmSystemUltimate: zone.id is not supported. Use topic as the zone identifier.');
+	        return null;
+	      }
+	      if (!zone.topic) {
+	        return null;
+	      }
 
-    function normalizeZone(raw, index) {
-      const zone = { ...raw };
-      if (typeof zone.topic === 'string') {
-        zone.topic = zone.topic.trim();
-      }
-      if (typeof zone.topicPattern === 'string') {
-        zone.topicPattern = zone.topicPattern.trim();
-      }
-      if (zone.topicPattern) {
-        if (!zone.topic) {
-          node.log('AlarmSystemUltimate: zone.topicPattern is no longer supported; treating it as topic.');
-          zone.topic = zone.topicPattern;
-        } else {
-          node.log('AlarmSystemUltimate: zone.topicPattern is no longer supported; ignoring it (topic is set).');
-        }
-        delete zone.topicPattern;
-      }
-      if (!zone.topic) {
-        return null;
-      }
-
-      zone.key = String(zone.topic || '').trim();
+	      zone.key = String(zone.topic || '').trim();
       if (!zone.key) {
         return null;
       }
       zone.name = String(zone.name || zone.key).trim();
 
-      // Remove legacy id if present.
-      if (Object.prototype.hasOwnProperty.call(zone, 'id')) {
-        delete zone['id'];
-      }
-
-      zone.topicPrefix = null;
-      if (zone.topic && zone.topic.endsWith('*')) {
-        zone.topicPrefix = zone.topic.slice(0, -1);
-      }
+	      zone.topicPrefix = null;
+	      if (zone.topic && zone.topic.endsWith('*')) {
+	        zone.topicPrefix = zone.topic.slice(0, -1);
+	      }
 
       const type = typeof zone.type === 'string' ? zone.type.toLowerCase().trim() : 'perimeter';
       zone.type = type || 'perimeter';
@@ -641,80 +630,44 @@ module.exports = function (RED) {
       zone.entryDelayMs = toMilliseconds(zone.entryDelaySeconds, entryDelayMs / 1000);
       zone.cooldownMs = toMilliseconds(zone.cooldownSeconds, 0);
       zone.alwaysActive = zone.type === 'fire' || zone.type === 'tamper' || zone.type === '24h';
-      if (Object.prototype.hasOwnProperty.call(zone, 'modes')) {
-        delete zone.modes;
-      }
+	      if (Object.prototype.hasOwnProperty.call(zone, 'modes')) {
+	        delete zone.modes;
+	      }
 
-      // Optional sensor supervision (per-zone).
-      // Starts after the first valid sensor message is received for that zone.
-      const supervisionConfig = zone.supervision && typeof zone.supervision === 'object' ? zone.supervision : null;
-      const enabledRaw =
-        supervisionConfig && Object.prototype.hasOwnProperty.call(supervisionConfig, 'enabled')
-          ? supervisionConfig.enabled
-          : Object.prototype.hasOwnProperty.call(zone, 'supervisionEnabled')
-            ? zone.supervisionEnabled
-            : zone.supervision === true;
-      zone.supervisionEnabled = enabledRaw === true;
+	      // Optional sensor supervision (per-zone).
+	      // Starts after the first valid sensor message is received for that zone.
+	      const supervisionConfig = zone.supervision && typeof zone.supervision === 'object' ? zone.supervision : null;
+	      if (
+	        !supervisionConfig &&
+	        (Object.prototype.hasOwnProperty.call(zone, 'supervisionEnabled') ||
+	          Object.prototype.hasOwnProperty.call(zone, 'supervisionTimeoutSeconds') ||
+	          Object.prototype.hasOwnProperty.call(zone, 'supervisionSeconds') ||
+	          Object.prototype.hasOwnProperty.call(zone, 'supervisionBlockArm') ||
+	          zone.supervision === true)
+	      ) {
+	        node.log('AlarmSystemUltimate: legacy supervision fields are not supported. Use supervision: { enabled, timeoutSeconds, blockArm }.');
+	      }
+	      const enabledRaw =
+	        supervisionConfig && Object.prototype.hasOwnProperty.call(supervisionConfig, 'enabled') ? supervisionConfig.enabled : false;
+	      zone.supervisionEnabled = enabledRaw === true;
 
-      const timeoutSecondsRaw =
-        supervisionConfig && Object.prototype.hasOwnProperty.call(supervisionConfig, 'timeoutSeconds')
-          ? supervisionConfig.timeoutSeconds
-          : Object.prototype.hasOwnProperty.call(zone, 'supervisionTimeoutSeconds')
-            ? zone.supervisionTimeoutSeconds
-            : Object.prototype.hasOwnProperty.call(zone, 'supervisionSeconds')
-              ? zone.supervisionSeconds
-              : null;
-      const timeoutSeconds = Number(timeoutSecondsRaw);
-      zone.supervisionTimeoutMs =
-        zone.supervisionEnabled === true && Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? timeoutSeconds * 1000 : 0;
+	      const timeoutSecondsRaw =
+	        supervisionConfig && Object.prototype.hasOwnProperty.call(supervisionConfig, 'timeoutSeconds') ? supervisionConfig.timeoutSeconds : null;
+	      const timeoutSeconds = Number(timeoutSecondsRaw);
+	      zone.supervisionTimeoutMs =
+	        zone.supervisionEnabled === true && Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? timeoutSeconds * 1000 : 0;
 
-      const blockArmRaw =
-        supervisionConfig && Object.prototype.hasOwnProperty.call(supervisionConfig, 'blockArm')
-          ? supervisionConfig.blockArm
-          : Object.prototype.hasOwnProperty.call(zone, 'supervisionBlockArm')
-            ? zone.supervisionBlockArm
-            : true;
-      zone.supervisionBlockArm = blockArmRaw !== false;
+	      const blockArmRaw =
+	        supervisionConfig && Object.prototype.hasOwnProperty.call(supervisionConfig, 'blockArm') ? supervisionConfig.blockArm : true;
+	      zone.supervisionBlockArm = blockArmRaw !== false;
 
-      return zone;
-    }
+	      return zone;
+	    }
 
-    function normalizeZoneRef(value) {
-      const ref = String(value || '').trim();
-      if (!ref) return '';
-      const direct = zones.find((z) => z && z.key === ref);
-      if (direct) return direct.key;
-      const byName = zones.find((z) => z && z.name === ref);
-      if (byName) return byName.key;
-      return '';
-    }
-
-    function migrateZoneRefMap(obj) {
-      const source = obj && typeof obj === 'object' ? obj : {};
-      const out = {};
-      for (const [k, v] of Object.entries(source)) {
-        const resolved = normalizeZoneRef(k);
-        if (!resolved) continue;
-        out[resolved] = v;
-      }
-      return out;
-    }
-
-    function pickCachedZoneMeta(cachedZoneState, zone) {
-      const bag = cachedZoneState && typeof cachedZoneState === 'object' ? cachedZoneState : {};
-      if (!zone || !zone.key) return null;
-      return (
-        bag[zone.key] ||
-        (zone.topic ? bag[zone.topic] : null) ||
-        (zone.name ? bag[zone.name] : null) ||
-        null
-      );
-    }
-
-    function findZone(topic) {
-      if (!topic) {
-        return null;
-      }
+	    function findZone(topic) {
+	      if (!topic) {
+	        return null;
+	      }
       for (const zone of zones) {
         if (zone.topic && zone.topic === topic) {
           return zone;
@@ -1615,19 +1568,18 @@ module.exports = function (RED) {
         const api = alarmInstances.get(targetId);
         if (!api || typeof api.command !== 'function') continue;
 
-        const payload = {
-          command: action,
-          _alarmUltimateSync: {
-            origin: node.id,
-            trigger,
-          },
-        };
-        if (typeof baseMsg.code === 'string') payload.code = baseMsg.code;
-        if (typeof baseMsg.pin === 'string') payload.pin = baseMsg.pin;
+	        const payload = {
+	          command: action,
+	          _alarmUltimateSync: {
+	            origin: node.id,
+	            trigger,
+	          },
+	        };
+	        if (typeof baseMsg.code === 'string') payload.code = baseMsg.code;
 
-        try {
-          api.command(payload);
-        } catch (_err) {
+	        try {
+	          api.command(payload);
+	        } catch (_err) {
           // ignore
         }
       }
@@ -1666,18 +1618,15 @@ module.exports = function (RED) {
       return true;
     }
 
-    function resolveCode(msg) {
-      if (!msg || typeof msg !== 'object') {
-        return '';
-      }
-      if (typeof msg.code === 'string') {
-        return msg.code;
-      }
-      if (typeof msg.pin === 'string') {
-        return msg.pin;
-      }
-      return '';
-    }
+	    function resolveCode(msg) {
+	      if (!msg || typeof msg !== 'object') {
+	        return '';
+	      }
+	      if (typeof msg.code === 'string') {
+	        return msg.code;
+	      }
+	      return '';
+	    }
 
     function validateCode(msg, action) {
       const provided = resolveCode(msg).trim();
@@ -1743,14 +1692,14 @@ module.exports = function (RED) {
         return true;
       }
 
-      if (command === 'bypass' || msg.bypass === true) {
-        setBypass(msg.zoneTopic || msg.zone, true, msg);
-        return true;
-      }
-      if (command === 'unbypass' || msg.unbypass === true) {
-        setBypass(msg.zoneTopic || msg.zone, false, msg);
-        return true;
-      }
+	      if (command === 'bypass' || msg.bypass === true) {
+	        setBypass(msg.zoneTopic, true, msg);
+	        return true;
+	      }
+	      if (command === 'unbypass' || msg.unbypass === true) {
+	        setBypass(msg.zoneTopic, false, msg);
+	        return true;
+	      }
 
       if (command === 'siren_on') {
         startSiren(msg, 'manual');
@@ -1962,11 +1911,9 @@ module.exports = function (RED) {
         const payload = body && typeof body === 'object' ? body : {};
         const msg = { topic: controlTopic };
 
-        if (typeof payload.command === 'string' && payload.command.trim().length > 0) {
-          msg.command = payload.command;
-        } else if (typeof payload.action === 'string' && payload.action.trim().length > 0) {
-          msg.command = payload.action;
-        }
+	        if (typeof payload.command === 'string' && payload.command.trim().length > 0) {
+	          msg.command = payload.command;
+	        }
 
         if (typeof payload.arm === 'string') {
           msg.arm = payload.arm;
@@ -1977,15 +1924,12 @@ module.exports = function (RED) {
         if (payload.disarm === true) {
           msg.disarm = true;
         }
-        if (typeof payload.code === 'string') {
-          msg.code = payload.code;
-        }
-        if (typeof payload.pin === 'string') {
-          msg.pin = payload.pin;
-        }
-        if (typeof payload.zone === 'string') {
-          msg.zone = payload.zone;
-        }
+	        if (typeof payload.code === 'string') {
+	          msg.code = payload.code;
+	        }
+	        if (typeof payload.zoneTopic === 'string') {
+	          msg.zoneTopic = payload.zoneTopic;
+	        }
         if (payload._alarmUltimateSync && typeof payload._alarmUltimateSync === 'object') {
           msg._alarmUltimateSync = payload._alarmUltimateSync;
         }
