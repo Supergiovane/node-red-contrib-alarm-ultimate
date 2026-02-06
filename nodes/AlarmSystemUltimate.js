@@ -631,7 +631,7 @@ module.exports = function (RED) {
 	      zone.alwaysActive = zone.type === 'fire' || zone.type === 'tamper' || zone.type === '24h';
 
 	      // Optional sensor supervision (per-zone).
-	      // Starts after the first valid sensor message is received for that zone.
+	      // Starts immediately when the node runs (and is restored on the next valid sensor update).
 	      const supervisionConfig = zone.supervision && typeof zone.supervision === 'object' ? zone.supervision : null;
 	      const enabledRaw =
 	        supervisionConfig && Object.prototype.hasOwnProperty.call(supervisionConfig, 'enabled') ? supervisionConfig.enabled : false;

@@ -17,6 +17,8 @@
       --ok: #2fbf71;
       --warn: #ffcc66;
       --danger: #ff6b6b;
+      --tableHeadBg: rgba(99, 161, 252, 0.14);
+      --tableRowAltBg: rgba(255, 255, 255, 0.035);
       --mono:
         ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
         "Liberation Mono", "Courier New", monospace;
@@ -33,6 +35,8 @@
         --muted: #5b647a;
         --border: #d8deef;
         --accent: #2563eb;
+        --tableHeadBg: #f1f5ff;
+        --tableRowAltBg: #f7f8fb;
       }
     }
 
@@ -316,8 +320,13 @@
     th {
       color: var(--muted);
       font-weight: 600;
-      font-size: 11px;
+      font-size: 12px;
       letter-spacing: 0.2px;
+      background: var(--tableHeadBg);
+    }
+
+    tbody tr:nth-child(even) td {
+      background: var(--tableRowAltBg);
     }
 
     .th-wrap {
@@ -355,6 +364,43 @@
       padding: 4px 8px;
       font-size: 11px;
       border-radius: 7px;
+    }
+
+    .sortbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .sortbar label {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .sortbar select {
+      width: auto;
+      min-width: 220px;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+
+    .sortbar .dir {
+      width: auto;
+      min-width: 120px;
+    }
+
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .sort-indicator {
+      margin-left: 6px;
+      color: var(--muted);
+      font-weight: 600;
     }
 
     td input[type="text"],
@@ -426,6 +472,25 @@
         <button id="btn-zone-add">Add zone</button>
         <button class="primary" id="btn-wizard-toggle">Import zones wizard</button>
       </div>
+      <div class="sortbar">
+        <label for="sort-key">Sort zones</label>
+        <select id="sort-key">
+          <option value="topic">Topic</option>
+          <option value="name">Name</option>
+          <option value="kind">Kind</option>
+          <option value="sup_enabled">Supervision: On</option>
+          <option value="sup_timeout">Supervision: Timeout</option>
+          <option value="sup_blockArm">Supervision: Block arm</option>
+          <option value="entry">Entry</option>
+          <option value="bypassable">Bypassable</option>
+          <option value="chime">Chime</option>
+        </select>
+        <select id="sort-dir" class="dir">
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+        <button type="button" id="btn-sort-apply" class="mini">Apply</button>
+      </div>
       <p id="zone-context" class="hint"></p>
       <div id="zone-apply-reminder" class="callout" style="display:none;">
         <p class="title">Important / Importante — save your changes</p>
@@ -436,37 +501,43 @@
       </p>
       <p id="zone-autosave" class="hint" style="display:none;"></p>
       <div style="overflow:auto; border:1px solid var(--border); border-radius:10px;">
-	        <table>
-	          <thead>
-	            <tr>
-	              <th>Topic</th>
-	              <th style="width: 220px;">Name</th>
-	              <th style="width: 140px;">
-	                <div class="th-wrap">
-	                  <div>Kind</div>
-	                  <div class="bulk">
-	                    <select id="bulk-kind" aria-label="Apply kind to all zones">
-	                      <option value="">(apply to all…)</option>
-	                      <option value="perimeter">Perimeter</option>
-	                      <option value="entry">Entry</option>
-	                      <option value="24h">24h</option>
-	                      <option value="tamper">Tamper</option>
-	                      <option value="fire">Fire</option>
-	                    </select>
-	                    <button type="button" class="mini" id="btn-bulk-kind">Apply</button>
-	                  </div>
-	                </div>
-	              </th>
-	              <th style="width: 260px;">
-	                <div class="th-wrap">
-	                  <div>Supervision</div>
-	                  <div class="bulk">
-	                    <label><input type="checkbox" id="bulk-sup-enabled" /> On (all)</label>
-	                    <label><input type="checkbox" id="bulk-sup-blockArm" /> Block arm (all)</label>
-	                  </div>
-	                </div>
-	              </th>
-	              <th style="width: 90px;">Actions</th>
+        <table>
+          <thead>
+            <tr>
+              <th id="th-topic" class="sortable">Topic<span class="sort-indicator" id="sort-ind-topic"></span></th>
+              <th id="th-name" class="sortable" style="width: 220px;">Name<span class="sort-indicator"
+                  id="sort-ind-name"></span></th>
+              <th style="width: 140px;">
+                <div class="th-wrap">
+                  <div id="th-kind" class="sortable" title="Click to sort by Kind">
+                    Kind<span class="sort-indicator" id="sort-ind-kind"></span>
+                  </div>
+                  <div class="bulk">
+                    <select id="bulk-kind" aria-label="Apply kind to all zones">
+                      <option value="">(apply to all…)</option>
+                      <option value="perimeter">Perimeter</option>
+                      <option value="entry">Entry</option>
+                      <option value="24h">24h</option>
+                      <option value="tamper">Tamper</option>
+                      <option value="fire">Fire</option>
+                    </select>
+                    <button type="button" class="mini" id="btn-bulk-kind">Apply</button>
+                  </div>
+                </div>
+              </th>
+              <th style="width: 260px;">
+                <div class="th-wrap">
+                  <div id="th-sup" class="sortable"
+                    title="Click to sort by Supervision On. Shift-click: Timeout. Alt/Option-click: Block arm.">
+                    Supervision<span class="sort-indicator" id="sort-ind-sup"></span>
+                  </div>
+                  <div class="bulk">
+                    <label><input type="checkbox" id="bulk-sup-enabled" /> On (all)</label>
+                    <label><input type="checkbox" id="bulk-sup-blockArm" /> Block arm (all)</label>
+                  </div>
+                </div>
+              </th>
+              <th style="width: 90px;">Actions</th>
             </tr>
           </thead>
           <tbody id="zone-table-body"></tbody>
@@ -615,6 +686,17 @@
       zoneConnection: document.getElementById("zone-connection"),
       zoneTableBody: document.getElementById("zone-table-body"),
       zoneListStatus: document.getElementById("zone-list-status"),
+      sortKey: document.getElementById("sort-key"),
+      sortDir: document.getElementById("sort-dir"),
+      btnSortApply: document.getElementById("btn-sort-apply"),
+      thTopic: document.getElementById("th-topic"),
+      thName: document.getElementById("th-name"),
+      thKind: document.getElementById("th-kind"),
+      thSup: document.getElementById("th-sup"),
+      sortIndTopic: document.getElementById("sort-ind-topic"),
+      sortIndName: document.getElementById("sort-ind-name"),
+      sortIndKind: document.getElementById("sort-ind-kind"),
+      sortIndSup: document.getElementById("sort-ind-sup"),
       bulkKind: document.getElementById("bulk-kind"),
       btnBulkKind: document.getElementById("btn-bulk-kind"),
       bulkSupEnabled: document.getElementById("bulk-sup-enabled"),
@@ -858,58 +940,58 @@
       zone.entry = false;
     }
 
-	    function cleanZoneForJson(zone, index) {
-	      const z = zone && typeof zone === "object" ? { ...zone } : {};
-	      const name = String(z.name || "").trim();
+    function cleanZoneForJson(zone, index) {
+      const z = zone && typeof zone === "object" ? { ...zone } : {};
+      const name = String(z.name || "").trim();
 
-	      if (typeof z.topic === "string") z.topic = z.topic.trim();
-	      if (z.topic && !z.topic.trim()) delete z.topic;
+      if (typeof z.topic === "string") z.topic = z.topic.trim();
+      if (z.topic && !z.topic.trim()) delete z.topic;
 
-	      if (!z.topic) {
-	        z.topic = "";
-	      }
+      if (!z.topic) {
+        z.topic = "";
+      }
 
-	      z.name = name || String(z.topic || "").trim();
+      z.name = name || String(z.topic || "").trim();
 
       const type = typeof z.type === "string" ? z.type.trim().toLowerCase() : "perimeter";
       z.type = type || "perimeter";
 
       z.entry = z.entry === true;
       z.bypassable = z.bypassable !== false;
-	      z.chime = z.chime === true;
+      z.chime = z.chime === true;
 
-	      // Normalize optional supervision config (keeps JSON clean and UI-friendly).
-	      const supervisionConfig = z.supervision && typeof z.supervision === "object" ? { ...z.supervision } : null;
+      // Normalize optional supervision config (keeps JSON clean and UI-friendly).
+      const supervisionConfig = z.supervision && typeof z.supervision === "object" ? { ...z.supervision } : null;
 
-	      if (supervisionConfig) {
-	        const enabled = supervisionConfig.enabled === true;
-	        const timeoutSeconds = Number(supervisionConfig.timeoutSeconds);
-	        const blockArm = Object.prototype.hasOwnProperty.call(supervisionConfig, "blockArm")
-	          ? supervisionConfig.blockArm !== false
-	          : true;
+      if (supervisionConfig) {
+        const enabled = supervisionConfig.enabled === true;
+        const timeoutSeconds = Number(supervisionConfig.timeoutSeconds);
+        const blockArm = Object.prototype.hasOwnProperty.call(supervisionConfig, "blockArm")
+          ? supervisionConfig.blockArm !== false
+          : true;
 
-	        if (enabled) {
-	          z.supervision = {
-	            enabled: true,
-	            timeoutSeconds: Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? timeoutSeconds : null,
-	            blockArm,
-	          };
-	          if (z.supervision.timeoutSeconds === null) delete z.supervision.timeoutSeconds;
-	        } else if (blockArm === false) {
-	          // Allow configuring "Block arm" independently of supervision enablement.
-	          // Only keep it when explicitly set to false (default is true).
-	          z.supervision = { enabled: false, blockArm: false };
-	        } else {
-	          delete z.supervision;
-	        }
-	      } else {
-	        delete z.supervision;
-	      }
+        if (enabled) {
+          z.supervision = {
+            enabled: true,
+            timeoutSeconds: Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? timeoutSeconds : null,
+            blockArm,
+          };
+          if (z.supervision.timeoutSeconds === null) delete z.supervision.timeoutSeconds;
+        } else if (blockArm === false) {
+          // Allow configuring "Block arm" independently of supervision enablement.
+          // Only keep it when explicitly set to false (default is true).
+          z.supervision = { enabled: false, blockArm: false };
+        } else {
+          delete z.supervision;
+        }
+      } else {
+        delete z.supervision;
+      }
 
-	      // Drop UI-only fields if any.
-	      delete z.__errors;
-	      return z;
-	    }
+      // Drop UI-only fields if any.
+      delete z.__errors;
+      return z;
+    }
 
     function syncJsonFromModel() {
       const payload = zonesModel
@@ -919,9 +1001,9 @@
         })
         .filter((z) => z && typeof z === "object");
 
-	      zonesJsonText = JSON.stringify(payload, null, 2);
-	      return payload;
-	    }
+      zonesJsonText = JSON.stringify(payload, null, 2);
+      return payload;
+    }
 
     function scheduleAutosave(errors) {
       if (isEditingZoneTable) {
@@ -964,36 +1046,36 @@
       sendZonesToEditor(quiet !== false);
     }
 
-	    function validateModel() {
-	      const errors = [];
-	      zonesModel.forEach((zone, idx) => {
-	        zone.__errors = [];
-	        const topic = String(zone.topic || "").trim();
-	        if (!topic) zone.__errors.push("Missing topic.");
+    function validateModel() {
+      const errors = [];
+      zonesModel.forEach((zone, idx) => {
+        zone.__errors = [];
+        const topic = String(zone.topic || "").trim();
+        if (!topic) zone.__errors.push("Missing topic.");
 
-	        const sup = zone && zone.supervision && typeof zone.supervision === "object" ? zone.supervision : null;
-	        if (sup && sup.enabled === true) {
-	          const t = Number(sup.timeoutSeconds);
+        const sup = zone && zone.supervision && typeof zone.supervision === "object" ? zone.supervision : null;
+        if (sup && sup.enabled === true) {
+          const t = Number(sup.timeoutSeconds);
           if (!(Number.isFinite(t) && t > 0)) {
             zone.__errors.push("Supervision enabled but timeoutSeconds is missing/invalid.");
           }
         }
       });
 
-	      // Detect duplicates (same topic configured more than once).
-	      const seen = new Map();
-	      zonesModel.forEach((zone, idx) => {
-	        const key = String(zone.topic || "").trim();
-	        if (!key) return;
-	        if (!seen.has(key)) seen.set(key, []);
-	        seen.get(key).push(idx);
-	      });
-	      for (const [key, indexes] of seen.entries()) {
-	        if (indexes.length <= 1) continue;
-	        indexes.forEach((idx) => {
-	          zonesModel[idx].__errors.push(`Duplicate topic: ${key}`);
-	        });
-	      }
+      // Detect duplicates (same topic configured more than once).
+      const seen = new Map();
+      zonesModel.forEach((zone, idx) => {
+        const key = String(zone.topic || "").trim();
+        if (!key) return;
+        if (!seen.has(key)) seen.set(key, []);
+        seen.get(key).push(idx);
+      });
+      for (const [key, indexes] of seen.entries()) {
+        if (indexes.length <= 1) continue;
+        indexes.forEach((idx) => {
+          zonesModel[idx].__errors.push(`Duplicate topic: ${key}`);
+        });
+      }
 
       zonesModel.forEach((z) => {
         if (z.__errors && z.__errors.length) errors.push(...z.__errors);
@@ -1009,6 +1091,82 @@
     function effectiveSupBlockArm(zone) {
       const sup = zone && zone.supervision && typeof zone.supervision === "object" ? zone.supervision : null;
       return sup && Object.prototype.hasOwnProperty.call(sup, "blockArm") ? sup.blockArm !== false : true;
+    }
+
+    function effectiveSupTimeoutSeconds(zone) {
+      const sup = zone && zone.supervision && typeof zone.supervision === "object" ? zone.supervision : null;
+      if (!sup || sup.enabled !== true) return null;
+      const t = Number(sup.timeoutSeconds);
+      return Number.isFinite(t) && t > 0 ? t : null;
+    }
+
+    const sortState = { key: "", dir: "asc" };
+
+    function getSortValue(zone, key) {
+      const k = String(key || "").trim();
+      if (k === "topic") return String(zone && zone.topic ? zone.topic : "").toLowerCase();
+      if (k === "name") return String(zone && zone.name ? zone.name : "").toLowerCase();
+      if (k === "kind") return String(zoneKind(zone) || "").toLowerCase();
+      if (k === "sup_enabled") return effectiveSupEnabled(zone) ? 1 : 0;
+      if (k === "sup_blockArm") return effectiveSupBlockArm(zone) ? 1 : 0;
+      if (k === "sup_timeout") {
+        const t = effectiveSupTimeoutSeconds(zone);
+        return t === null ? Number.POSITIVE_INFINITY : t;
+      }
+      if (k === "entry") return zone && zone.entry === true ? 1 : 0;
+      if (k === "bypassable") return zone && zone.bypassable !== false ? 1 : 0;
+      if (k === "chime") return zone && zone.chime === true ? 1 : 0;
+      // Unknown key: sort by topic as a safe fallback.
+      return String(zone && zone.topic ? zone.topic : "").toLowerCase();
+    }
+
+    function applySort(opts) {
+      const options = opts && typeof opts === "object" ? opts : {};
+      const key = String(options.key || sortState.key || "topic").trim() || "topic";
+      const dir = String(options.dir || sortState.dir || "asc").trim().toLowerCase() === "desc" ? "desc" : "asc";
+      sortState.key = key;
+      sortState.dir = dir;
+      if (els.sortKey) els.sortKey.value = key;
+      if (els.sortDir) els.sortDir.value = dir;
+
+      const sign = dir === "desc" ? -1 : 1;
+      const mapped = zonesModel.map((z, idx) => ({
+        z,
+        idx,
+        v: getSortValue(z, key),
+      }));
+      mapped.sort((a, b) => {
+        if (a.v < b.v) return -1 * sign;
+        if (a.v > b.v) return 1 * sign;
+        return a.idx - b.idx;
+      });
+      zonesModel = mapped.map((m) => m.z);
+      renderZones();
+    }
+
+    function setSortIndicators() {
+      const key = sortState.key;
+      if (!key) {
+        if (els.sortIndTopic) els.sortIndTopic.textContent = "";
+        if (els.sortIndName) els.sortIndName.textContent = "";
+        if (els.sortIndKind) els.sortIndKind.textContent = "";
+        if (els.sortIndSup) els.sortIndSup.textContent = "";
+        return;
+      }
+      const dir = sortState.dir === "desc" ? "desc" : "asc";
+      const arrow = dir === "desc" ? "↓" : "↑";
+      const clear = (el) => {
+        if (!el) return;
+        el.textContent = "";
+      };
+      clear(els.sortIndTopic);
+      clear(els.sortIndName);
+      clear(els.sortIndKind);
+      clear(els.sortIndSup);
+      if (key === "topic" && els.sortIndTopic) els.sortIndTopic.textContent = arrow;
+      else if (key === "name" && els.sortIndName) els.sortIndName.textContent = arrow;
+      else if (key === "kind" && els.sortIndKind) els.sortIndKind.textContent = arrow;
+      else if (key.startsWith("sup_") && els.sortIndSup) els.sortIndSup.textContent = arrow;
     }
 
     function ensureSupervisionObject(zone) {
@@ -1110,20 +1268,20 @@
       scheduleAutosave(errors);
     }
 
-	    function renderZones() {
-	      els.zoneTableBody.innerHTML = "";
+    function renderZones() {
+      els.zoneTableBody.innerHTML = "";
 
-	      zonesModel.forEach((zone, index) => {
-	        const tr = document.createElement("tr");
-	        tr.dataset.index = String(index);
+      zonesModel.forEach((zone, index) => {
+        const tr = document.createElement("tr");
+        tr.dataset.index = String(index);
 
-	        const tdValue = document.createElement("td");
-	        const valueInput = document.createElement("input");
-	        valueInput.type = "text";
-	        valueInput.value = String(zone.topic || "");
-	        valueInput.placeholder = "sensor/frontdoor  or  0/1/*";
-	        valueInput.dataset.field = "topicValue";
-	        tdValue.appendChild(valueInput);
+        const tdValue = document.createElement("td");
+        const valueInput = document.createElement("input");
+        valueInput.type = "text";
+        valueInput.value = String(zone.topic || "");
+        valueInput.placeholder = "sensor/frontdoor  or  0/1/*";
+        valueInput.dataset.field = "topicValue";
+        tdValue.appendChild(valueInput);
 
         const tdName = document.createElement("td");
         const nameInput = document.createElement("input");
@@ -1206,17 +1364,18 @@
         delBtn.dataset.action = "delete";
         tdActions.appendChild(delBtn);
 
-		        tr.appendChild(tdValue);
-		        tr.appendChild(tdName);
-		        tr.appendChild(tdKind);
-		        tr.appendChild(tdSup);
-		        tr.appendChild(tdActions);
+        tr.appendChild(tdValue);
+        tr.appendChild(tdName);
+        tr.appendChild(tdKind);
+        tr.appendChild(tdSup);
+        tr.appendChild(tdActions);
 
         els.zoneTableBody.appendChild(tr);
       });
 
       refreshZonesMeta();
       refreshBulkControls();
+      setSortIndicators();
     }
 
     function setZonesFromJson(text) {
@@ -1824,6 +1983,33 @@
         return;
       }
       const append = els.appendZones ? els.appendZones.checked === true : true;
+      const existingTopics = new Set(
+        zonesModel
+          .map((z) => String(z && z.topic ? z.topic : "").trim())
+          .filter(Boolean),
+      );
+
+      function filterNewZonesByTopicUniqueness(newZones) {
+        const kept = [];
+        const added = new Set();
+        let skippedExisting = 0;
+        let skippedBatch = 0;
+        for (const z of newZones) {
+          const topic = String(z && z.topic ? z.topic : "").trim();
+          if (!topic) continue;
+          if (existingTopics.has(topic)) {
+            skippedExisting += 1;
+            continue;
+          }
+          if (added.has(topic)) {
+            skippedBatch += 1;
+            continue;
+          }
+          added.add(topic);
+          kept.push(z);
+        }
+        return { kept, skippedExisting, skippedBatch };
+      }
 
       if (
         parsedObject &&
@@ -1854,42 +2040,50 @@
           return true;
         });
 
-	        const zones = filteredRows.map((row) => {
-	          const address = String(row.address).trim();
-	          const topic = address;
-	          const nameCandidate =
-	            String(row.description || "").trim() ||
-	            String(row.groupName || "").trim();
-	          const name = nameCandidate || address;
-	          return {
-	            name,
-	            topic,
-	            type: "perimeter",
-	            entry: false,
-	            bypassable: true,
-	            chime: false,
-	          };
-	        });
+        const zones = filteredRows.map((row) => {
+          const address = String(row.address).trim();
+          const topic = address;
+          const nameCandidate =
+            String(row.description || "").trim() ||
+            String(row.groupName || "").trim();
+          const name = nameCandidate || address;
+          return {
+            name,
+            topic,
+            type: "perimeter",
+            entry: false,
+            bypassable: true,
+            chime: false,
+          };
+        });
 
-	        if (append) {
-	          const start = zonesModel.length;
-	          zonesModel = zonesModel.concat(
-	            zones.map((z, idx) => {
-	              return cleanZoneForJson(z, start + idx);
-	            }),
-	          );
-	          renderZones();
-	        } else {
-	          zonesModel = zones.map((z, idx) => cleanZoneForJson(z, idx));
-	          renderZones();
-	        }
+        let appended = zones.length;
+        let skippedExisting = 0;
+        let skippedBatch = 0;
+        if (append) {
+          const filtered = filterNewZonesByTopicUniqueness(zones);
+          appended = filtered.kept.length;
+          skippedExisting = filtered.skippedExisting;
+          skippedBatch = filtered.skippedBatch;
+          const start = zonesModel.length;
+          zonesModel = zonesModel.concat(
+            filtered.kept.map((z, idx) => cleanZoneForJson(z, start + idx)),
+          );
+          renderZones();
+        } else {
+          zonesModel = zones.map((z, idx) => cleanZoneForJson(z, idx));
+          renderZones();
+        }
         const skippedGroups = allRows.length - leafRows.length;
         const skippedNonBoolean = leafRows.length - booleanRows.length;
         const skippedByFilters = booleanRows.length - filteredRows.length;
         showStatus(
           els.genStatus,
-          zones.length ? "ok" : "warn",
-          `${append ? "Appended" : "Replaced with"} ${zones.length} zones from ETS (skipped ${skippedGroups} group rows, ${skippedNonBoolean} non-boolean datapoints, ${skippedByFilters} filtered out).`,
+          (append ? appended : zones.length) ? "ok" : "warn",
+          `${append ? "Appended" : "Replaced with"} ${append ? appended : zones.length} zones from ETS ` +
+          `(skipped ${skippedGroups} group rows, ${skippedNonBoolean} non-boolean datapoints, ${skippedByFilters} filtered out` +
+          `${append && (skippedExisting || skippedBatch) ? `, ${skippedExisting} duplicate topics already present, ${skippedBatch} duplicate topics in import` : ""}` +
+          ").",
         );
         return;
       }
@@ -1912,39 +2106,47 @@
           return true;
         });
 
-	        const zones = filtered.map((s) => {
-	          const entityId = String(s.entity_id).trim();
-	          const friendly = s.attributes && s.attributes.friendly_name ? String(s.attributes.friendly_name).trim() : "";
-	          const name = friendly || entityId;
-	          return {
-	            name,
-	            topic: entityId,
-	            type: "perimeter",
-	            entry: false,
-	            bypassable: true,
+        const zones = filtered.map((s) => {
+          const entityId = String(s.entity_id).trim();
+          const friendly = s.attributes && s.attributes.friendly_name ? String(s.attributes.friendly_name).trim() : "";
+          const name = friendly || entityId;
+          return {
+            name,
+            topic: entityId,
+            type: "perimeter",
+            entry: false,
+            bypassable: true,
             chime: false,
           };
         });
 
-	        if (append) {
-	          const start = zonesModel.length;
-	          zonesModel = zonesModel.concat(
-	            zones.map((z, idx) => {
-	              return cleanZoneForJson(z, start + idx);
-	            }),
-	          );
-	          renderZones();
-	        } else {
-	          zonesModel = zones.map((z, idx) => cleanZoneForJson(z, idx));
-	          renderZones();
-	        }
+        let appended = zones.length;
+        let skippedExisting = 0;
+        let skippedBatch = 0;
+        if (append) {
+          const filtered = filterNewZonesByTopicUniqueness(zones);
+          appended = filtered.kept.length;
+          skippedExisting = filtered.skippedExisting;
+          skippedBatch = filtered.skippedBatch;
+          const start = zonesModel.length;
+          zonesModel = zonesModel.concat(
+            filtered.kept.map((z, idx) => cleanZoneForJson(z, start + idx)),
+          );
+          renderZones();
+        } else {
+          zonesModel = zones.map((z, idx) => cleanZoneForJson(z, idx));
+          renderZones();
+        }
         const skippedNonEntity = states.length - eligible.length;
         const skippedDomain = eligible.length - domainFiltered.length;
         const skippedByFilters = domainFiltered.length - filtered.length;
         showStatus(
           els.genStatus,
-          zones.length ? "ok" : "warn",
-          `Generated ${zones.length} zones from HA (skipped ${skippedNonEntity} invalid rows, ${skippedDomain} domain filtered, ${skippedByFilters} filtered out).`,
+          (append ? appended : zones.length) ? "ok" : "warn",
+          `Generated ${append ? appended : zones.length} zones from HA ` +
+          `(skipped ${skippedNonEntity} invalid rows, ${skippedDomain} domain filtered, ${skippedByFilters} filtered out` +
+          `${append && (skippedExisting || skippedBatch) ? `, ${skippedExisting} duplicate topics already present, ${skippedBatch} duplicate topics in import` : ""}` +
+          ").",
         );
         return;
       }
@@ -1970,39 +2172,47 @@
           return true;
         });
 
-	        const zones = filtered.map((e) => {
-	          const entityId = String(e.entity_id).trim();
-	          const displayName = String(e.name || "").trim() || String(e.original_name || "").trim() || entityId;
-	          return {
-	            name: displayName,
-	            topic: entityId,
-	            type: "perimeter",
+        const zones = filtered.map((e) => {
+          const entityId = String(e.entity_id).trim();
+          const displayName = String(e.name || "").trim() || String(e.original_name || "").trim() || entityId;
+          return {
+            name: displayName,
+            topic: entityId,
+            type: "perimeter",
             entry: false,
             bypassable: true,
             chime: false,
           };
         });
 
-	        if (append) {
-	          const start = zonesModel.length;
-	          zonesModel = zonesModel.concat(
-	            zones.map((z, idx) => {
-	              return cleanZoneForJson(z, start + idx);
-	            }),
-	          );
-	          renderZones();
-	        } else {
-	          zonesModel = zones.map((z, idx) => cleanZoneForJson(z, idx));
-	          renderZones();
-	        }
+        let appended = zones.length;
+        let skippedExisting = 0;
+        let skippedBatch = 0;
+        if (append) {
+          const filtered = filterNewZonesByTopicUniqueness(zones);
+          appended = filtered.kept.length;
+          skippedExisting = filtered.skippedExisting;
+          skippedBatch = filtered.skippedBatch;
+          const start = zonesModel.length;
+          zonesModel = zonesModel.concat(
+            filtered.kept.map((z, idx) => cleanZoneForJson(z, start + idx)),
+          );
+          renderZones();
+        } else {
+          zonesModel = zones.map((z, idx) => cleanZoneForJson(z, idx));
+          renderZones();
+        }
         const skippedNonEntity = entities.length - eligible.length;
         const skippedDisabled = eligible.length - enabledOnly.length;
         const skippedDomain = enabledOnly.length - domainFiltered.length;
         const skippedByFilters = domainFiltered.length - filtered.length;
         showStatus(
           els.genStatus,
-          zones.length ? "ok" : "warn",
-          `Generated ${zones.length} zones from HA registry (skipped ${skippedNonEntity} invalid rows, ${skippedDisabled} disabled, ${skippedDomain} domain filtered, ${skippedByFilters} filtered out).`,
+          (append ? appended : zones.length) ? "ok" : "warn",
+          `Generated ${append ? appended : zones.length} zones from HA registry ` +
+          `(skipped ${skippedNonEntity} invalid rows, ${skippedDisabled} disabled, ${skippedDomain} domain filtered, ${skippedByFilters} filtered out` +
+          `${append && (skippedExisting || skippedBatch) ? `, ${skippedExisting} duplicate topics already present, ${skippedBatch} duplicate topics in import` : ""}` +
+          ").",
         );
         return;
       }
@@ -2031,12 +2241,21 @@
       };
       const zone = buildZoneTemplate(normalized, nameValue);
       if (append) {
+        const candidateTopic = String(zone && zone.topic ? zone.topic : "").trim();
+        if (!candidateTopic) {
+          showStatus(els.genStatus, "warn", "Skipped: zone topic is empty.");
+          return;
+        }
+        if (existingTopics.has(candidateTopic)) {
+          showStatus(els.genStatus, "warn", `Skipped: topic "${toOneLine(candidateTopic)}" already exists.`);
+          return;
+        }
         addZone(zone);
-	      } else {
-	        const cleaned = cleanZoneForJson(zone, 0);
-	        zonesModel = [cleaned];
-	        renderZones();
-	      }
+      } else {
+        const cleaned = cleanZoneForJson(zone, 0);
+        zonesModel = [cleaned];
+        renderZones();
+      }
 
       lastGenerated = { normalized, zone };
       showStatus(
@@ -2114,24 +2333,24 @@
       els.btnWizardToggle.addEventListener("click", () => toggleWizard());
     }
 
-	    // Use input for text fields, change for selects.
-	    els.zoneTableBody.addEventListener("input", (evt) => {
-	      const target = evt.target;
-	      if (!target) return;
+    // Use input for text fields, change for selects.
+    els.zoneTableBody.addEventListener("input", (evt) => {
+      const target = evt.target;
+      if (!target) return;
       const tr = target.closest("tr");
       if (!tr) return;
       const index = Number(tr.dataset.index);
       if (!Number.isInteger(index) || index < 0 || index >= zonesModel.length) return;
       const zone = zonesModel[index];
 
-	      const field = target.dataset.field;
-	      if (field === "name") {
-	        zone.name = String(target.value || "");
-	      } else if (field === "topicValue") {
-	        zone.topic = String(target.value || "");
-	      } else if (field === "kind") {
-	        applyZoneKind(zone, target.value);
-	      } else if (field === "supTimeout") {
+      const field = target.dataset.field;
+      if (field === "name") {
+        zone.name = String(target.value || "");
+      } else if (field === "topicValue") {
+        zone.topic = String(target.value || "");
+      } else if (field === "kind") {
+        applyZoneKind(zone, target.value);
+      } else if (field === "supTimeout") {
         if (!zone.supervision || typeof zone.supervision !== "object") {
           zone.supervision = { enabled: true };
         }
@@ -2147,8 +2366,8 @@
       refreshZonesMeta();
     });
 
-	    els.zoneTableBody.addEventListener("change", (evt) => {
-	      const target = evt.target;
+    els.zoneTableBody.addEventListener("change", (evt) => {
+      const target = evt.target;
       if (!target) return;
       const tr = target.closest("tr");
       if (!tr) return;
@@ -2157,10 +2376,10 @@
       const zone = zonesModel[index];
       const field = target.dataset.field;
 
-	      if (field === "kind") {
-	        applyZoneKind(zone, target.value);
-	        refreshZonesMeta();
-	      }
+      if (field === "kind") {
+        applyZoneKind(zone, target.value);
+        refreshZonesMeta();
+      }
 
       if (field === "supEnabled") {
         const enabled = target.checked === true;
@@ -2271,6 +2490,47 @@
       );
     }
     refreshBulkControls();
+    setSortIndicators();
+
+    // Sorting (reorders the zones list).
+    function nextSortDir(key) {
+      if (sortState.key === key) {
+        return sortState.dir === "asc" ? "desc" : "asc";
+      }
+      return "asc";
+    }
+
+    if (els.btnSortApply && els.sortKey && els.sortDir) {
+      els.btnSortApply.addEventListener("click", () =>
+        applySort({ key: els.sortKey.value, dir: els.sortDir.value }),
+      );
+    }
+
+    if (els.thTopic) {
+      els.thTopic.addEventListener("click", (evt) => {
+        if (evt && (evt.target && (evt.target.tagName === "INPUT" || evt.target.tagName === "SELECT" || evt.target.tagName === "BUTTON"))) return;
+        applySort({ key: "topic", dir: nextSortDir("topic") });
+      });
+    }
+    if (els.thName) {
+      els.thName.addEventListener("click", (evt) => {
+        if (evt && (evt.target && (evt.target.tagName === "INPUT" || evt.target.tagName === "SELECT" || evt.target.tagName === "BUTTON"))) return;
+        applySort({ key: "name", dir: nextSortDir("name") });
+      });
+    }
+    if (els.thKind) {
+      els.thKind.addEventListener("click", (evt) => {
+        if (evt && (evt.target && (evt.target.tagName === "INPUT" || evt.target.tagName === "SELECT" || evt.target.tagName === "BUTTON"))) return;
+        applySort({ key: "kind", dir: nextSortDir("kind") });
+      });
+    }
+    if (els.thSup) {
+      els.thSup.addEventListener("click", (evt) => {
+        if (evt && (evt.target && (evt.target.tagName === "INPUT" || evt.target.tagName === "SELECT" || evt.target.tagName === "BUTTON"))) return;
+        const key = evt && evt.shiftKey ? "sup_timeout" : evt && evt.altKey ? "sup_blockArm" : "sup_enabled";
+        applySort({ key, dir: nextSortDir(key) });
+      });
+    }
 
     if (canTalkToEditor()) {
       requestZonesFromEditor();

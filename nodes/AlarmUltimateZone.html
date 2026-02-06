@@ -42,7 +42,6 @@
       const topicRow = $("#au-row-topic");
       const initRow = $("#au-row-outputInitialState");
       const axProMatchRow = $("#au-row-axProZoneNameMatch");
-      const axProOption = adapterSelect.find('option[value="axpro"]');
       const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
       const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
       const panelButton = $("#node-input-alarm-panel");
@@ -57,10 +56,6 @@
         topicRow.toggle(isOut);
         initRow.toggle(isOut);
         const adapter = String(adapterSelect.val() || "default");
-        axProOption.toggle(mode === "in");
-        if (mode !== "in" && adapter === "axpro") {
-          adapterSelect.val("default");
-        }
         axProMatchRow.toggle(mode === "in" && adapter === "axpro");
       }
 
@@ -190,8 +185,9 @@
 	        <option value="ends">The zone name ends with the Topic</option>
 	      </select>
 	      <div class="form-tips" style="flex:1; min-width:260px; margin:0;">
-	        The Alarm zone is identified by <code>msg.topic</code>. Adjust <b>Zone topic</b> to match the zone name coming
-	        from AX Pro (<code>payload.zoneUpdate.name</code>), so it targets the correct zone topic going into the Alarm node.
+	        The Alarm zone is identified by <code>msg.topic</code>. With AX Pro, the incoming zone name is
+	        <code>payload.zoneUpdate.name</code> and it is matched against <b>Zone topic</b> using the rule above to decide
+	        which Alarm zone to inject.
 	      </div>
 	    </div>
 	  </div>
@@ -233,10 +229,6 @@ Notes:
 - No wiring from the Alarm node is required: select the Alarm node and this node subscribes internally.
 - Use the **Panel** button to open the Alarm Panel preselected on the chosen Alarm node.
 
-Adapter notes:
-
-- **Ax Pro (Hikvision Ultimate)** is available only in **Input** mode.
-
 ## Input mode details
 
 In **Input** mode this node injects a sensor update into the selected Alarm node (as if it was coming from the alarm bus).
@@ -261,9 +253,11 @@ This mode expects a payload like:
 }
 ```
 
-The Alarm node identifies the zone by `msg.topic`.
+The Alarm node identifies the zone by `msg.topic`. With AX Pro, the incoming zone is provided as `payload.zoneUpdate.name`.
+This node uses **AX Pro match** to map that name to an Alarm zone topic:
 
-`zoneUpdate.name` is matched against the configured **Zone topic** using **AX Pro match**:
+- If **Zone** is a specific zone: `zoneUpdate.name` is matched against the configured **Zone topic**.
+- If **Zone** is **All zones**: `zoneUpdate.name` is matched against **all** configured zones topics and the first match is injected.
 
 - **exact**: `name === topic`
 - **starts**: `name.startsWith(topic)`
@@ -271,4 +265,11 @@ The Alarm node identifies the zone by `msg.topic`.
 - **ends**: `name.endsWith(topic)`
 
 If the **Zone topic** ends with `*`, it is always treated as a prefix match (e.g. `Zone*` matches any `zoneUpdate.name` starting with `Zone`).
+
+## Output adapter notes
+
+In **Output** mode:
+
+- **KNX-Ultimate**: outputs a boolean `msg.payload` and sets `msg.destination` (defaults to `msg.topic`).
+- **Ax Pro**: zone open/close events are formatted to `msg.payload.zoneUpdate` (Hikvision Ultimate style).
 </script>

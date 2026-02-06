@@ -27,7 +27,7 @@ Includes:
 - Helper nodes: `AlarmUltimateState`, `AlarmUltimateZone`, `AlarmUltimateSiren`.
   `AlarmUltimateState` and `AlarmUltimateZone` can be configured as **Input** or **Output** nodes and include embedded adapters:
   - `AlarmUltimateState`: Default / Homekit / Ax Pro / KNX-Ultimate
-  - `AlarmUltimateZone`: Default / Ax Pro / KNX-Ultimate (AX Pro is Input-only)
+  - `AlarmUltimateZone`: Default / Ax Pro / KNX-Ultimate
 - Web tools: Zones JSON mapper + web Alarm Panel (embeddable in Node-RED Dashboard).
 
 Note: `AlarmSystemUltimate` is currently **BETA**.
@@ -58,6 +58,7 @@ Beginner-friendly flow:
 
 1. Add an **AlarmSystemUltimate (BETA)** node.
 2. Click **Manage zones** and add at least one zone (example topic: `sensor/frontdoor`). Use **Export JSON** / **Import JSON** in the Zones tab to backup/restore your zones.
+   **Important:** after editing zones, click **Done** in the Node-RED editor to save (if you click **Cancel**, changes are lost).
 3. Send sensor messages to the Alarm node:
    - open: `msg.topic="sensor/frontdoor"`, `msg.payload=true`
    - close: `msg.topic="sensor/frontdoor"`, `msg.payload=false`
@@ -71,7 +72,7 @@ Optional (recommended):
 - Use `AlarmUltimateZone` in **Input** mode (Zone: **All zones**) to normalize sensor messages and inject them into the selected Alarm node.
 - Use `AlarmUltimateState` in **Input** mode to normalize arm/disarm commands (e.g. HomeKit) and inject them into the selected Alarm node.
 - Use `AlarmUltimateState` in **Output** mode with an **Adapter** to format state events for external systems (HomeKit / KNX / AX Pro / ...).
-- Use `AlarmUltimateZone` in **Output** mode with an **Adapter** to format zone events for external systems (e.g. KNX).
+- Use `AlarmUltimateZone` in **Output** mode with an **Adapter** to format zone events for external systems (e.g. KNX / AX Pro).
 - For distributed flows, use Node-RED built-in `link in` / `link out` to fan-in sensors/commands and fan-out Alarm outputs (see `examples/alarm-ultimate-link-bus.json`).
 
 ## Screenshots
@@ -177,6 +178,7 @@ The Zones JSON Mapper supports:
 
 - Sample message mapping (e.g. KNX Ultimate): map `topic`/`payload` fields and generate a zone template.
 - ETS Group Addresses export (TSV): paste the exported table and generate zones in batch (boolean datapoints only).
+- Quality-of-life: bulk apply (Kind/Supervision), sorting, duplicate-topic skipping on import, persisted Step 1 input.
 
 ## Examples
 

@@ -913,7 +913,8 @@
   ## Quick start (5 minutes)
 
   1. Add an **Alarm System (BETA)** node to your flow.
-  2. Click **Manage zones** and create at least one zone (example topic: `sensor/frontdoor`). Use **Export JSON** / **Import JSON** in the Zones tab to backup/restore your zones.
+  2. Click **Manage zones** and create at least one zone (example topic: `sensor/frontdoor`). Use **Export JSON** / **Import JSON** in the Zones tab to backup/restore your zones.  
+     **Important:** after editing zones, click **Done** in the Node-RED editor to save (if you click **Cancel**, changes are lost).
   3. Send sensor messages to the Alarm node:
      - open: `msg.topic="sensor/frontdoor"` + `msg.payload=true` (also works: `"open"`, `"on"`, `1`)
      - close: `msg.topic="sensor/frontdoor"` + `msg.payload=false` (also works: `"closed"`, `"off"`, `0`)
@@ -936,7 +937,7 @@
   ### WEB PAGE
 
   - **Panel**: `/alarm-ultimate/alarm-panel` (supports `?id=<alarmNodeId>` and `?embed=1&id=<alarmNodeId>`).
-  - **Zones**: use **Manage zones** to open `/alarm-ultimate/alarm-json-mapper` and save the JSON back into the node. Use **Export JSON** / **Import JSON** to backup/restore zone definitions.
+  - **Zones**: use **Manage zones** to open `/alarm-ultimate/alarm-json-mapper` and sync the JSON back into the editor. Click **Done** in the editor to apply/save. Use **Export JSON** / **Import JSON** to backup/restore zone definitions.
   - **Name**: optional label shown in the Alarm Panel.
   - **Control topic**: topic that receives commands (and is used as base for some outputs).
   - **With Input**: message property evaluated as sensor value (default `payload`). It must be convertible to boolean (`true/false`, `open/closed`, `on/off`, `1/0`, ...).

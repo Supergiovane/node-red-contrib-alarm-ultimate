@@ -163,6 +163,19 @@ Notes:
 
 In **Input** mode this node injects an arm/disarm command into the selected Alarm node.
 
+### Homekit
+
+This adapter accepts typical HomeKit Security System payloads and converts them to `arm` / `disarm`.
+
+Examples:
+
+```json
+{ "payload": { "SecuritySystemTargetState": 1 } }
+```
+
+- `0|1|2` → `arm` (Stay/Away/Night)
+- `3` → `disarm`
+
 ### Default / KNX-Ultimate
 
 - Default adapter infers `arm`/`disarm` from `msg.payload` when it is a boolean/number/string.
@@ -187,4 +200,10 @@ Only arming/disarming CID codes are handled (other CID events are ignored):
 - `3401` → `arm` (Away)
 - `3441` → `arm` (Stay)
 - `1401` → `disarm`
+
+## Output adapter notes
+
+- **Default / Ax Pro**: pass-through (same format as the Alarm node `.../event` output).
+- **Homekit**: outputs `msg.payload.SecuritySystemTargetState` and `SecuritySystemCurrentState`.
+- **KNX-Ultimate**: outputs a boolean `msg.payload` and sets `msg.destination` (defaults to `msg.topic`).
 </script>

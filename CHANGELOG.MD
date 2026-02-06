@@ -3,12 +3,22 @@
 > **BETA (breaking changes):** this package is currently **BETA** and changes can be **breaking** at any release.
 > Backward compatibility is not guaranteed.
 
+## [0.3.0-beta.4] - 2026-02-06
+
+### Changed
+
+- **Tools (Zones JSON Mapper):** improved table readability (bigger header font, colored header background, zebra rows).
+- **UI:** `AlarmUltimateZone` now allows selecting the **Ax Pro** adapter also in **Output** mode.
+- **Docs:** refreshed node help and README for coherence (HomeKit input notes, Ax Pro mapping notes, "click Done" reminder).
+
 ## [0.3.0-beta.3] - 2026-02-06
 
 ### Changed
 
 - **Tools (Zones JSON Mapper):** "Block arm" is now independent from "Supervision" (they are distinct settings).
+- **Tools (Zones JSON Mapper):** import wizard now skips zones whose Topic already exists in the current zone list.
 - **Tools (Zones JSON Mapper):** added bulk controls to apply **Kind**, **Supervision**, and **Block arm** to all zones.
+- **Tools (Zones JSON Mapper):** zone list can now be sorted (Topic/Name/Kind/Supervision + advanced fields).
 - **Tools (Zones JSON Mapper):** Step 1 input is now persisted (browser localStorage) so pasted data is kept.
 - **Tools (Zones JSON Mapper):** improved visibility of the "click Done in Node-RED editor to apply" reminder.
 - **UI:** clarified AX Pro matching help text in `AlarmUltimateZone`.
