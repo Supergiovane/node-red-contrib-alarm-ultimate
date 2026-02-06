@@ -18,7 +18,7 @@
       topic: { value: "" },
       outputInitialState: { value: true },
     },
-    inputs: 0,
+    inputs: 1,
     outputs: 1,
     icon: "alarm-ultimate-zone.svg",
     label: function () {
@@ -34,35 +34,35 @@
     paletteLabel: function () {
       return "Alarm Zone";
     },
-	    oneditprepare: function () {
-	      const alarmSelect = $("#node-input-alarmId");
-	      const zoneSelect = $("#node-input-zoneTopic");
-	      const ioSelect = $("#node-input-io");
-	      const adapterSelect = $("#node-input-adapter");
-	      const topicRow = $("#au-row-topic");
-	      const initRow = $("#au-row-outputInitialState");
-	      const axProMatchRow = $("#au-row-axProZoneNameMatch");
-	      const axProOption = adapterSelect.find('option[value="axpro"]');
-	      const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
-	      const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
-	      const panelButton = $("#node-input-alarm-panel");
+    oneditprepare: function () {
+      const alarmSelect = $("#node-input-alarmId");
+      const zoneSelect = $("#node-input-zoneTopic");
+      const ioSelect = $("#node-input-io");
+      const adapterSelect = $("#node-input-adapter");
+      const topicRow = $("#au-row-topic");
+      const initRow = $("#au-row-outputInitialState");
+      const axProMatchRow = $("#au-row-axProZoneNameMatch");
+      const axProOption = adapterSelect.find('option[value="axpro"]');
+      const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
+      const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
+      const panelButton = $("#node-input-alarm-panel");
 
       function apiUrl(path) {
         return `${root}${path.replace(/^\//, "")}`;
       }
 
-	      function refreshVisibility() {
-	        const mode = String(ioSelect.val() || "out");
-	        const isOut = mode === "out";
-	        topicRow.toggle(isOut);
-	        initRow.toggle(isOut);
-	        const adapter = String(adapterSelect.val() || "default");
-	        axProOption.toggle(mode === "in");
-	        if (mode !== "in" && adapter === "axpro") {
-	          adapterSelect.val("default");
-	        }
-	        axProMatchRow.toggle(mode === "in" && adapter === "axpro");
-	      }
+      function refreshVisibility() {
+        const mode = String(ioSelect.val() || "out");
+        const isOut = mode === "out";
+        topicRow.toggle(isOut);
+        initRow.toggle(isOut);
+        const adapter = String(adapterSelect.val() || "default");
+        axProOption.toggle(mode === "in");
+        if (mode !== "in" && adapter === "axpro") {
+          adapterSelect.val("default");
+        }
+        axProMatchRow.toggle(mode === "in" && adapter === "axpro");
+      }
 
       panelButton.off("click").on("click", (evt) => {
         evt.preventDefault();
@@ -182,12 +182,18 @@
 
 	  <div class="form-row" id="au-row-axProZoneNameMatch">
 	    <label for="node-input-axProZoneNameMatch"><i class="fa fa-bullseye"></i> AX Pro match</label>
-	    <select id="node-input-axProZoneNameMatch" style="width: 70%">
-	      <option value="exact">The zone name matches exactly the Topic</option>
-	      <option value="starts">The zone name starts with the Topic</option>
-	      <option value="contains">The zone name contains the Topic</option>
-	      <option value="ends">The zone name ends with the Topic</option>
-	    </select>
+	    <div style="width:70%; display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+	      <select id="node-input-axProZoneNameMatch" style="flex: 0 1 280px;">
+	        <option value="exact">The zone name matches exactly the Topic</option>
+	        <option value="starts">The zone name starts with the Topic</option>
+	        <option value="contains">The zone name contains the Topic</option>
+	        <option value="ends">The zone name ends with the Topic</option>
+	      </select>
+	      <div class="form-tips" style="flex:1; min-width:260px; margin:0;">
+	        The Alarm zone is identified by <code>msg.topic</code>. Adjust <b>Zone topic</b> to match the zone name coming
+	        from AX Pro (<code>payload.zoneUpdate.name</code>), so it targets the correct zone topic going into the Alarm node.
+	      </div>
+	    </div>
 	  </div>
 
 	  <div class="form-row" id="au-row-topic">
@@ -254,6 +260,8 @@ This mode expects a payload like:
   }
 }
 ```
+
+The Alarm node identifies the zone by `msg.topic`.
 
 `zoneUpdate.name` is matched against the configured **Zone topic** using **AX Pro match**:
 

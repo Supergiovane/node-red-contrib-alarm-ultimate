@@ -10,7 +10,7 @@
       topic: { value: "" },
       outputInitialState: { value: true },
     },
-    inputs: 0,
+    inputs: 1,
     outputs: 1,
     icon: "alarm-ultimate-state.svg",
     label: function () {
@@ -66,8 +66,8 @@
             });
             if (this.alarmId) alarmSelect.val(this.alarmId);
           })
-          .fail(() => {});
-      } catch (err) {}
+          .fail(() => { });
+      } catch (err) { }
 
       ioSelect.off("change").on("change", refreshVisibility);
       refreshVisibility();

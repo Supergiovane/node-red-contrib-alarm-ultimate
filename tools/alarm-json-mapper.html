@@ -242,6 +242,38 @@
       color: var(--danger);
     }
 
+    .callout {
+      border: 1px solid rgba(255, 204, 102, 0.6);
+      background: rgba(255, 204, 102, 0.08);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-top: 10px;
+    }
+
+    .callout .title {
+      color: var(--warn);
+      font-weight: 700;
+      font-size: 13px;
+      margin: 0 0 6px 0;
+    }
+
+    .callout .text {
+      color: var(--text);
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .kbd {
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 1px 7px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.12);
+      color: var(--text);
+      white-space: nowrap;
+    }
+
     pre {
       margin: 0;
       white-space: pre-wrap;
@@ -286,6 +318,43 @@
       font-weight: 600;
       font-size: 11px;
       letter-spacing: 0.2px;
+    }
+
+    .th-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .bulk {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .bulk label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 400;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .bulk select {
+      width: auto;
+      min-width: 140px;
+      padding: 4px 6px;
+      font-size: 11px;
+    }
+
+    button.mini {
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 7px;
     }
 
     td input[type="text"],
@@ -358,6 +427,10 @@
         <button class="primary" id="btn-wizard-toggle">Import zones wizard</button>
       </div>
       <p id="zone-context" class="hint"></p>
+      <div id="zone-apply-reminder" class="callout" style="display:none;">
+        <p class="title">Important / Importante — save your changes</p>
+        <p class="text" id="zone-apply-text"></p>
+      </div>
       <p class="hint" style="margin-top:4px;">
         Connection: <span id="zone-connection" class="pill">Not connected</span>
       </p>
@@ -368,8 +441,31 @@
 	            <tr>
 	              <th>Topic</th>
 	              <th style="width: 220px;">Name</th>
-	              <th style="width: 140px;">Kind</th>
-	              <th style="width: 260px;">Supervision</th>
+	              <th style="width: 140px;">
+	                <div class="th-wrap">
+	                  <div>Kind</div>
+	                  <div class="bulk">
+	                    <select id="bulk-kind" aria-label="Apply kind to all zones">
+	                      <option value="">(apply to all…)</option>
+	                      <option value="perimeter">Perimeter</option>
+	                      <option value="entry">Entry</option>
+	                      <option value="24h">24h</option>
+	                      <option value="tamper">Tamper</option>
+	                      <option value="fire">Fire</option>
+	                    </select>
+	                    <button type="button" class="mini" id="btn-bulk-kind">Apply</button>
+	                  </div>
+	                </div>
+	              </th>
+	              <th style="width: 260px;">
+	                <div class="th-wrap">
+	                  <div>Supervision</div>
+	                  <div class="bulk">
+	                    <label><input type="checkbox" id="bulk-sup-enabled" /> On (all)</label>
+	                    <label><input type="checkbox" id="bulk-sup-blockArm" /> Block arm (all)</label>
+	                  </div>
+	                </div>
+	              </th>
 	              <th style="width: 90px;">Actions</th>
             </tr>
           </thead>
@@ -513,10 +609,16 @@
       btnZoneAdd: document.getElementById("btn-zone-add"),
       btnWizardToggle: document.getElementById("btn-wizard-toggle"),
       zoneContext: document.getElementById("zone-context"),
+      zoneApplyReminder: document.getElementById("zone-apply-reminder"),
+      zoneApplyText: document.getElementById("zone-apply-text"),
       zoneAutosave: document.getElementById("zone-autosave"),
       zoneConnection: document.getElementById("zone-connection"),
       zoneTableBody: document.getElementById("zone-table-body"),
       zoneListStatus: document.getElementById("zone-list-status"),
+      bulkKind: document.getElementById("bulk-kind"),
+      btnBulkKind: document.getElementById("btn-bulk-kind"),
+      bulkSupEnabled: document.getElementById("bulk-sup-enabled"),
+      bulkSupBlockArm: document.getElementById("bulk-sup-blockArm"),
       wizardStep2: document.getElementById("wizard-step2"),
       wizard: document.getElementById("wizard"),
     };
@@ -637,6 +739,49 @@
     let zonesJsonText = "[]";
     let editorConnected = false;
     let isEditingZoneTable = false;
+    const INPUT_STORAGE_KEY = "alarm-ultimate:json-mapper:step1";
+    let inputSaveTimer = null;
+
+    function saveStep1InputImmediate(text) {
+      try {
+        const value = String(text || "");
+        if (value.trim().length === 0) {
+          window.localStorage.removeItem(INPUT_STORAGE_KEY);
+          return;
+        }
+        window.localStorage.setItem(INPUT_STORAGE_KEY, value);
+      } catch (_err) {
+        // ignore
+      }
+    }
+
+    function scheduleSaveStep1Input() {
+      if (!els.input) return;
+      if (inputSaveTimer) window.clearTimeout(inputSaveTimer);
+      inputSaveTimer = window.setTimeout(() => {
+        inputSaveTimer = null;
+        saveStep1InputImmediate(els.input.value);
+      }, 250);
+    }
+
+    function restoreStep1Input() {
+      if (!els.input) return;
+      try {
+        if (String(els.input.value || "").trim().length > 0) return;
+        const saved = window.localStorage.getItem(INPUT_STORAGE_KEY);
+        if (typeof saved === "string" && saved.trim().length > 0) {
+          els.input.value = saved;
+        }
+      } catch (_err) {
+        // ignore
+      }
+    }
+
+    restoreStep1Input();
+    if (els.input) {
+      els.input.addEventListener("input", scheduleSaveStep1Input);
+      els.input.addEventListener("change", scheduleSaveStep1Input);
+    }
 
     function setAutosaveHint(message) {
       if (!els.zoneAutosave) return;
@@ -731,20 +876,32 @@
 
       z.entry = z.entry === true;
       z.bypassable = z.bypassable !== false;
-      z.chime = z.chime === true;
+	      z.chime = z.chime === true;
 
 	      // Normalize optional supervision config (keeps JSON clean and UI-friendly).
 	      const supervisionConfig = z.supervision && typeof z.supervision === "object" ? { ...z.supervision } : null;
 
-	      if (supervisionConfig && supervisionConfig.enabled === true) {
+	      if (supervisionConfig) {
+	        const enabled = supervisionConfig.enabled === true;
 	        const timeoutSeconds = Number(supervisionConfig.timeoutSeconds);
-	        const blockArm = Object.prototype.hasOwnProperty.call(supervisionConfig, "blockArm") ? supervisionConfig.blockArm !== false : true;
-	        z.supervision = {
-	          enabled: true,
-	          timeoutSeconds: Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? timeoutSeconds : null,
-	          blockArm,
-	        };
-	        if (z.supervision.timeoutSeconds === null) delete z.supervision.timeoutSeconds;
+	        const blockArm = Object.prototype.hasOwnProperty.call(supervisionConfig, "blockArm")
+	          ? supervisionConfig.blockArm !== false
+	          : true;
+
+	        if (enabled) {
+	          z.supervision = {
+	            enabled: true,
+	            timeoutSeconds: Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? timeoutSeconds : null,
+	            blockArm,
+	          };
+	          if (z.supervision.timeoutSeconds === null) delete z.supervision.timeoutSeconds;
+	        } else if (blockArm === false) {
+	          // Allow configuring "Block arm" independently of supervision enablement.
+	          // Only keep it when explicitly set to false (default is true).
+	          z.supervision = { enabled: false, blockArm: false };
+	        } else {
+	          delete z.supervision;
+	        }
 	      } else {
 	        delete z.supervision;
 	      }
@@ -844,6 +1001,100 @@
       return errors;
     }
 
+    function effectiveSupEnabled(zone) {
+      const sup = zone && zone.supervision && typeof zone.supervision === "object" ? zone.supervision : null;
+      return Boolean(sup && sup.enabled === true);
+    }
+
+    function effectiveSupBlockArm(zone) {
+      const sup = zone && zone.supervision && typeof zone.supervision === "object" ? zone.supervision : null;
+      return sup && Object.prototype.hasOwnProperty.call(sup, "blockArm") ? sup.blockArm !== false : true;
+    }
+
+    function ensureSupervisionObject(zone) {
+      if (!zone.supervision || typeof zone.supervision !== "object") {
+        zone.supervision = { enabled: false };
+      }
+      if (!Object.prototype.hasOwnProperty.call(zone.supervision, "enabled")) {
+        zone.supervision.enabled = false;
+      }
+      return zone.supervision;
+    }
+
+    function refreshBulkControls() {
+      const hasZones = Array.isArray(zonesModel) && zonesModel.length > 0;
+
+      if (els.bulkSupEnabled) {
+        els.bulkSupEnabled.disabled = !hasZones;
+        els.bulkSupEnabled.indeterminate = false;
+        if (hasZones) {
+          const values = zonesModel.map((z) => effectiveSupEnabled(z));
+          const allTrue = values.every((v) => v === true);
+          const allFalse = values.every((v) => v === false);
+          if (allTrue) els.bulkSupEnabled.checked = true;
+          else if (allFalse) els.bulkSupEnabled.checked = false;
+          else {
+            els.bulkSupEnabled.checked = false;
+            els.bulkSupEnabled.indeterminate = true;
+          }
+        } else {
+          els.bulkSupEnabled.checked = false;
+        }
+      }
+
+      if (els.bulkSupBlockArm) {
+        els.bulkSupBlockArm.disabled = !hasZones;
+        els.bulkSupBlockArm.indeterminate = false;
+        if (hasZones) {
+          const values = zonesModel.map((z) => effectiveSupBlockArm(z));
+          const allTrue = values.every((v) => v === true);
+          const allFalse = values.every((v) => v === false);
+          if (allTrue) els.bulkSupBlockArm.checked = true;
+          else if (allFalse) els.bulkSupBlockArm.checked = false;
+          else {
+            els.bulkSupBlockArm.checked = false;
+            els.bulkSupBlockArm.indeterminate = true;
+          }
+        } else {
+          els.bulkSupBlockArm.checked = false;
+        }
+      }
+
+      if (els.bulkKind) els.bulkKind.disabled = !hasZones;
+      if (els.btnBulkKind) els.btnBulkKind.disabled = !hasZones;
+    }
+
+    function applyBulkKind(kind) {
+      const k = String(kind || "").trim();
+      if (!k) return;
+      zonesModel.forEach((zone) => applyZoneKind(zone, k));
+      renderZones();
+    }
+
+    function applyBulkSupervisionEnabled(enabled) {
+      const next = enabled === true;
+      zonesModel.forEach((zone) => {
+        const sup = ensureSupervisionObject(zone);
+        if (next) {
+          sup.enabled = true;
+          if (!Object.prototype.hasOwnProperty.call(sup, "blockArm")) sup.blockArm = true;
+          return;
+        }
+        sup.enabled = false;
+        delete sup.timeoutSeconds;
+      });
+      renderZones();
+    }
+
+    function applyBulkSupervisionBlockArm(enabled) {
+      const next = enabled === true;
+      zonesModel.forEach((zone) => {
+        const sup = ensureSupervisionObject(zone);
+        sup.blockArm = next;
+      });
+      renderZones();
+    }
+
     function refreshZonesMeta() {
       const errors = validateModel();
       syncJsonFromModel();
@@ -906,7 +1157,7 @@
         const supTimeout =
           sup && sup.enabled === true && Number.isFinite(Number(sup.timeoutSeconds)) ? String(Number(sup.timeoutSeconds)) : "";
         const supBlockArm =
-          sup && sup.enabled === true && Object.prototype.hasOwnProperty.call(sup, "blockArm") ? sup.blockArm !== false : true;
+          sup && Object.prototype.hasOwnProperty.call(sup, "blockArm") ? sup.blockArm !== false : true;
 
         const supWrap = document.createElement("div");
         supWrap.className = "zone-sup";
@@ -937,9 +1188,8 @@
         const supBlockLabel = document.createElement("label");
         const supBlockCb = document.createElement("input");
         supBlockCb.type = "checkbox";
-        supBlockCb.checked = supEnabled ? supBlockArm : true;
+        supBlockCb.checked = supBlockArm;
         supBlockCb.dataset.field = "supBlockArm";
-        supBlockCb.disabled = !supEnabled;
         supBlockLabel.appendChild(supBlockCb);
         supBlockLabel.appendChild(document.createTextNode("Block arm"));
 
@@ -966,6 +1216,7 @@
       });
 
       refreshZonesMeta();
+      refreshBulkControls();
     }
 
     function setZonesFromJson(text) {
@@ -1799,6 +2050,7 @@
     els.btnGenerate.addEventListener("click", () => generate());
     els.btnClear.addEventListener("click", () => {
       els.input.value = "";
+      saveStep1InputImmediate("");
       parsedObject = null;
       lastGenerated = null;
       hideStatus(els.parseStatus);
@@ -1830,6 +2082,7 @@
       else if (k === "ha") els.input.value = HA_SAMPLE;
       else if (k === "ha_registry") els.input.value = HA_REGISTRY_SAMPLE;
       else return;
+      saveStep1InputImmediate(els.input.value);
       parseAndPopulate();
     }
 
@@ -1911,40 +2164,42 @@
 
       if (field === "supEnabled") {
         const enabled = target.checked === true;
+        const timeoutEl = tr.querySelector('input[data-field="supTimeout"]');
+        const blockEl = tr.querySelector('input[data-field="supBlockArm"]');
+        const blockChecked = blockEl ? blockEl.checked === true : true;
         if (enabled) {
           if (!zone.supervision || typeof zone.supervision !== "object") {
-            zone.supervision = { enabled: true, blockArm: true };
+            zone.supervision = { enabled: true };
           }
           zone.supervision.enabled = true;
-          if (!Object.prototype.hasOwnProperty.call(zone.supervision, "blockArm")) {
-            zone.supervision.blockArm = true;
-          }
-          const timeoutEl = tr.querySelector('input[data-field="supTimeout"]');
-          const blockEl = tr.querySelector('input[data-field="supBlockArm"]');
+          if (!Object.prototype.hasOwnProperty.call(zone.supervision, "blockArm")) zone.supervision.blockArm = true;
           if (timeoutEl) timeoutEl.disabled = false;
-          if (blockEl) blockEl.disabled = false;
         } else {
-          delete zone.supervision;
-          const timeoutEl = tr.querySelector('input[data-field="supTimeout"]');
-          const blockEl = tr.querySelector('input[data-field="supBlockArm"]');
+          if (zone.supervision && typeof zone.supervision === "object") {
+            zone.supervision.enabled = false;
+            zone.supervision.blockArm = blockChecked;
+            delete zone.supervision.timeoutSeconds;
+          } else if (blockChecked === false) {
+            zone.supervision = { enabled: false, blockArm: false };
+          }
           if (timeoutEl) {
             timeoutEl.disabled = true;
             timeoutEl.value = "";
-          }
-          if (blockEl) {
-            blockEl.disabled = true;
-            blockEl.checked = true;
           }
         }
         refreshZonesMeta();
       }
 
       if (field === "supBlockArm") {
+        const checked = target.checked === true;
         if (!zone.supervision || typeof zone.supervision !== "object") {
-          zone.supervision = { enabled: true };
+          zone.supervision = { enabled: false, blockArm: checked };
+        } else {
+          if (!Object.prototype.hasOwnProperty.call(zone.supervision, "enabled")) {
+            zone.supervision.enabled = false;
+          }
+          zone.supervision.blockArm = checked;
         }
-        zone.supervision.enabled = true;
-        zone.supervision.blockArm = target.checked === true;
         refreshZonesMeta();
       }
     });
@@ -1986,13 +2241,36 @@
       const name = String(nodeName || "").trim() || page.alarmNodeName;
       if (page.alarmNodeId) {
         const label = name ? `${name}` : "(unnamed Alarm)";
-        els.zoneContext.innerHTML = `Target Alarm: <span class="pill">${label}</span> • synced automatically (click Done in Node-RED editor to apply)`;
+        els.zoneContext.innerHTML = `Target Alarm: <span class="pill">${label}</span> • synced automatically`;
+        if (els.zoneApplyReminder && els.zoneApplyText) {
+          els.zoneApplyReminder.style.display = "";
+          els.zoneApplyText.innerHTML =
+            `Changes made here are synced into the Node-RED edit dialog, but they are <b>not saved</b> until you click <span class="kbd">Done</span> in the editor. ` +
+            `If you close the dialog or click <span class="kbd">Cancel</span>, your zone changes will be lost.`;
+        }
         return;
       }
       els.zoneContext.textContent =
         "Tip: open this page from the Alarm node editor to load/save zones automatically.";
+      if (els.zoneApplyReminder) els.zoneApplyReminder.style.display = "none";
     }
     renderZoneContext();
+
+    // Bulk controls (apply changes to all zones).
+    if (els.btnBulkKind && els.bulkKind) {
+      els.btnBulkKind.addEventListener("click", () => applyBulkKind(els.bulkKind.value));
+    }
+    if (els.bulkSupEnabled) {
+      els.bulkSupEnabled.addEventListener("change", () =>
+        applyBulkSupervisionEnabled(els.bulkSupEnabled.checked === true),
+      );
+    }
+    if (els.bulkSupBlockArm) {
+      els.bulkSupBlockArm.addEventListener("change", () =>
+        applyBulkSupervisionBlockArm(els.bulkSupBlockArm.checked === true),
+      );
+    }
+    refreshBulkControls();
 
     if (canTalkToEditor()) {
       requestZonesFromEditor();
