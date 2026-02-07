@@ -149,11 +149,11 @@ module.exports = function (RED) {
     const duressCode = typeof config.duressCode === 'string' ? config.duressCode : '';
     const duressEnabled = duressCode.trim().length > 0;
 
-    const blockArmOnViolations = config.blockArmOnViolations !== false;
     const emitRestoreEvents = config.emitRestoreEvents === true;
 
     const exitDelayMs = toMilliseconds(config.exitDelaySeconds, 30);
     const entryDelayMs = toMilliseconds(config.entryDelaySeconds, 30);
+    const waitZonesClosedBeforeExit = config.waitZonesClosedBeforeExit === true;
     const sirenDurationMs = toMilliseconds(config.sirenDurationSeconds, 180);
     const sirenLatchUntilDisarm = config.sirenLatchUntilDisarm === true || Number(config.sirenDurationSeconds) === 0;
 
@@ -210,46 +210,54 @@ module.exports = function (RED) {
           supervisionLostAt: Number(meta.supervisionLostAt) || 0,
         };
       }
-      return {
-        nodeType: 'AlarmSystemUltimate',
-        nodeId: node.id,
-        savedAt: Date.now(),
-        mode: state.mode,
-        bypass: state.bypass,
-        zoneState,
-      };
-    }
+	      return {
+	        nodeType: 'AlarmSystemUltimate',
+	        nodeId: node.id,
+	        savedAt: Date.now(),
+          persistedAt: Number(state.persistedAt) || 0,
+	        mode: state.mode,
+	        bypass: state.bypass,
+          log: maxLogEntries && Array.isArray(state.log) ? state.log.slice(-maxLogEntries) : [],
+	        zoneState,
+	      };
+	    }
 
-    function flushFileCache() {
-      if (!fileCachePath) return;
-      if (!fileCacheDirty) return;
-      fileCacheDirty = false;
-      try {
-        writeJsonFileAtomicSync(fileCachePath, buildFileCachePayload());
+	    function flushFileCache() {
+	      if (!persistState) return;
+	      if (!fileCachePath) return;
+	      if (!fileCacheDirty) return;
+	      fileCacheDirty = false;
+	      try {
+	        writeJsonFileAtomicSync(fileCachePath, buildFileCachePayload());
       } catch (err) {
         // Best-effort. Avoid crashing the runtime if filesystem is not writable.
       }
     }
 
-    function scheduleFileCacheWrite() {
-      if (!fileCachePath) return;
-      fileCacheDirty = true;
-      if (fileCacheWriteTimer) return;
-      fileCacheWriteTimer = timerBag.setTimeout(() => {
-        fileCacheWriteTimer = null;
-        flushFileCache();
+	    function scheduleFileCacheWrite() {
+	      if (!persistState) return;
+	      if (!fileCachePath) return;
+	      fileCacheDirty = true;
+	      if (fileCacheWriteTimer) return;
+	      fileCacheWriteTimer = timerBag.setTimeout(() => {
+	        fileCacheWriteTimer = null;
+	        flushFileCache();
       }, 250);
     }
 
-    function loadFileCache() {
-      if (!fileCachePath) return;
-      const cached = readJsonFileSync(fileCachePath);
-      if (!cached || typeof cached !== 'object') return;
+	    function loadFileCache() {
+	      if (!persistState) return;
+	      if (!fileCachePath) return;
+	      const cached = readJsonFileSync(fileCachePath);
+	      if (!cached || typeof cached !== 'object') return;
 
-	      if (cached.zoneState && typeof cached.zoneState === 'object') {
-	        const nextZoneState = { ...(state.zoneState || {}) };
-	        for (const zone of zones) {
-	          if (!zone || !zone.key) continue;
+        const cachedAt = Number(cached.persistedAt) || Number(cached.savedAt) || 0;
+        const stateAt = Number(state.persistedAt) || 0;
+
+		      if (cached.zoneState && typeof cached.zoneState === 'object') {
+		        const nextZoneState = { ...(state.zoneState || {}) };
+		        for (const zone of zones) {
+		          if (!zone || !zone.key) continue;
 	          const meta = cached.zoneState[zone.key];
 	          if (!meta || typeof meta !== 'object') continue;
 	          nextZoneState[zone.key] = {
@@ -261,24 +269,32 @@ module.exports = function (RED) {
             supervisionLostAt: Number(meta.supervisionLostAt) || 0,
           };
         }
-        state.zoneState = nextZoneState;
-      }
-
-	      if (!persistState) {
-	        if (typeof cached.mode === 'string') {
-	          state.mode = normalizeMode(cached.mode) || state.mode;
-	        }
-	        if (cached.bypass && typeof cached.bypass === 'object') {
-	          const valid = new Set(zones.map((z) => z && z.key).filter(Boolean));
-	          const next = {};
-	          for (const [k, v] of Object.entries(cached.bypass)) {
-	            if (!valid.has(k)) continue;
-	            if (v === true) next[k] = true;
-	          }
-	          state.bypass = next;
-	        }
+	        state.zoneState = nextZoneState;
 	      }
-	    }
+
+        // Restore from file cache as a fallback when context is missing (e.g. memory store on restart),
+        // or when the file cache is newer than the context snapshot.
+        if (cachedAt > stateAt) {
+          if (typeof cached.mode === 'string') {
+            state.mode = normalizeMode(cached.mode) || state.mode;
+          }
+          if (cached.bypass && typeof cached.bypass === 'object') {
+            const valid = new Set(zones.map((z) => z && z.key).filter(Boolean));
+            const next = {};
+            for (const [k, v] of Object.entries(cached.bypass)) {
+              if (!valid.has(k)) continue;
+              if (v === true) next[k] = true;
+            }
+            state.bypass = next;
+          }
+          if (maxLogEntries && Array.isArray(cached.log)) {
+            state.log = cached.log
+              .filter((e) => e && typeof e === 'object')
+              .slice(-maxLogEntries);
+          }
+          state.persistedAt = cachedAt;
+        }
+		    }
 
     loadFileCache();
 
@@ -484,12 +500,23 @@ module.exports = function (RED) {
       return defaultSeconds * 1000;
     }
 
+    function isFalseLike(value) {
+      if (value === false) return true;
+      if (value === 0) return true;
+      if (typeof value === 'string') {
+        const v = value.trim().toLowerCase();
+        if (v === 'false' || v === '0') return true;
+      }
+      return false;
+    }
+
     function now() {
       return Date.now();
     }
 
     function createInitialState() {
       return {
+        persistedAt: 0,
         mode: 'disarmed',
         arming: null,
         entry: null,
@@ -512,6 +539,7 @@ module.exports = function (RED) {
         return createInitialState();
       }
       const next = createInitialState();
+      next.persistedAt = Number(saved.persistedAt) || 0;
 	      if (typeof saved.mode === 'string') {
 	        next.mode = normalizeMode(saved.mode) || 'disarmed';
 	      }
@@ -531,8 +559,11 @@ module.exports = function (RED) {
 	    }
 
     function persist() {
+      const persistedAt = now();
+      state.persistedAt = persistedAt;
       if (persistState) {
         node.context().set(stateKey, {
+          persistedAt,
           mode: state.mode,
           bypass: state.bypass,
           log: state.log,
@@ -645,7 +676,7 @@ module.exports = function (RED) {
 
 	      const blockArmRaw =
 	        supervisionConfig && Object.prototype.hasOwnProperty.call(supervisionConfig, 'blockArm') ? supervisionConfig.blockArm : true;
-	      zone.supervisionBlockArm = blockArmRaw !== false;
+	      zone.supervisionBlockArm = !isFalseLike(blockArmRaw);
 
 	      return zone;
 	    }
@@ -733,7 +764,11 @@ module.exports = function (RED) {
       } else if (state.arming) {
         fill = 'yellow';
         shape = 'dot';
-        text = `ARMING ${remainingSeconds(state.arming.until)}s`;
+        if (state.arming.waitingForZones === true || !Number.isFinite(Number(state.arming.until))) {
+          text = 'ARMING (WAIT ZONES)';
+        } else {
+          text = `ARMING ${remainingSeconds(state.arming.until)}s`;
+        }
       } else if (state.mode === 'armed') {
         fill = 'green';
         shape = 'dot';
@@ -827,7 +862,9 @@ module.exports = function (RED) {
       return {
         mode: state.mode,
         arming: state.arming
-          ? { active: true, target: 'armed', remaining: remainingSeconds(state.arming.until) }
+          ? state.arming.waitingForZones === true || !Number.isFinite(Number(state.arming.until))
+            ? { active: true, target: 'armed', remaining: null, waitingForZones: true }
+            : { active: true, target: 'armed', remaining: remainingSeconds(state.arming.until) }
           : { active: false },
         entry: state.entry
           ? { active: true, zoneTopic: state.entry.zoneTopic, remaining: remainingSeconds(state.entry.until) }
@@ -1378,6 +1415,118 @@ module.exports = function (RED) {
       return violations;
     }
 
+    function splitArmViolations(violations) {
+      const open = [];
+      const other = [];
+      const list = Array.isArray(violations) ? violations : [];
+      for (const v of list) {
+        if (!v || typeof v !== 'object') continue;
+        if (v.open === true && v.supervisionLost !== true) {
+          open.push(v);
+        } else {
+          other.push(v);
+        }
+      }
+      return { open, other };
+    }
+
+    function prepareForArming(baseMsg) {
+      stopOpenZonesDuringArming();
+      stopOpenZonesRequestListing();
+      clearExitTimer();
+      clearEntryTimer();
+      state.entry = null;
+      state.alarmActive = false;
+      state.silentAlarmActive = false;
+      state.alarmZone = null;
+      if (state.sirenActive) {
+        stopSiren(baseMsg, 'arm');
+      }
+    }
+
+    function startWaitingForZonesToClose(baseMsg, reason, openViolations) {
+      state.arming = {
+        until: null,
+        waitingForZones: true,
+        reason: String(reason || ''),
+        openZonesCount: Array.isArray(openViolations) ? openViolations.length : 0,
+      };
+      persist();
+      emitEvent(
+        'arming',
+        {
+          target: 'armed',
+          seconds: null,
+          reason,
+          waitingForZones: true,
+          openZonesCount: Array.isArray(openViolations) ? openViolations.length : 0,
+        },
+        baseMsg
+      );
+      startStatusInterval();
+      startOpenZonesDuringArming(baseMsg);
+    }
+
+    function maybeStartExitDelayAfterZonesClosed(baseMsg) {
+      if (!state.arming || state.arming.waitingForZones !== true) {
+        return false;
+      }
+
+      const reason = typeof state.arming.reason === 'string' ? state.arming.reason : '';
+      const violations = violatedZonesForArm();
+      const split = splitArmViolations(violations);
+
+      if (split.other.length > 0) {
+        state.arming = null;
+        stopOpenZonesDuringArming();
+        persist();
+        emitEvent('arm_blocked', { target: 'armed', violations }, baseMsg);
+        return true;
+      }
+
+      if (split.open.length > 0) {
+        return false;
+      }
+
+      if (exitDelayMs <= 0) {
+        state.mode = 'armed';
+        state.arming = null;
+        stopOpenZonesDuringArming();
+        persist();
+        emitEvent('armed', { reason }, baseMsg);
+        return true;
+      }
+
+      const until = now() + exitDelayMs;
+      state.arming = { until, reason };
+      persist();
+      emitEvent('arming', { target: 'armed', seconds: remainingSeconds(until), reason }, baseMsg);
+      startStatusInterval();
+      startOpenZonesDuringArming(baseMsg);
+
+      clearExitTimer();
+      exitTimer = timerBag.setTimeout(() => {
+        const stillArming = state.arming && typeof state.arming.until === 'number';
+        if (!stillArming) {
+          return;
+        }
+        const followUpViolations = violatedZonesForArm();
+        if (followUpViolations.length > 0) {
+          state.arming = null;
+          stopOpenZonesDuringArming();
+          persist();
+          emitEvent('arm_blocked', { target: 'armed', violations: followUpViolations }, baseMsg);
+          return;
+        }
+        state.mode = 'armed';
+        state.arming = null;
+        stopOpenZonesDuringArming();
+        persist();
+        emitEvent('armed', { reason }, baseMsg);
+      }, exitDelayMs);
+      return true;
+    }
+
     function clearSupervisionTimer(zoneKey) {
       const existing = supervisionTimers.get(zoneKey);
       if (existing) {
@@ -1468,23 +1617,20 @@ module.exports = function (RED) {
         return true;
       }
 
-      const violations = blockArmOnViolations ? violatedZonesForArm() : [];
-      if (blockArmOnViolations && violations.length > 0) {
+      const violations = violatedZonesForArm();
+      if (violations.length > 0) {
+        const split = splitArmViolations(violations);
+        const canWait = waitZonesClosedBeforeExit && split.open.length > 0 && split.other.length === 0;
+        if (canWait) {
+          prepareForArming(baseMsg);
+          startWaitingForZonesToClose(baseMsg, reason, split.open);
+          return true;
+        }
         emitEvent('arm_blocked', { target: 'armed', violations }, baseMsg);
         return false;
       }
 
-      stopOpenZonesDuringArming();
-      stopOpenZonesRequestListing();
-      clearExitTimer();
-      clearEntryTimer();
-      state.entry = null;
-      state.alarmActive = false;
-      state.silentAlarmActive = false;
-      state.alarmZone = null;
-      if (state.sirenActive) {
-        stopSiren(baseMsg, 'arm');
-      }
+      prepareForArming(baseMsg);
 
       if (exitDelayMs <= 0) {
         state.mode = 'armed';
@@ -1496,7 +1642,7 @@ module.exports = function (RED) {
       }
 
       const until = now() + exitDelayMs;
-      state.arming = { until };
+      state.arming = { until, reason };
       persist();
       emitEvent('arming', { target: 'armed', seconds: remainingSeconds(until), reason }, baseMsg);
       startStatusInterval();
@@ -1507,8 +1653,8 @@ module.exports = function (RED) {
         if (!stillArming) {
           return;
         }
-        const followUpViolations = blockArmOnViolations ? violatedZonesForArm() : [];
-        if (blockArmOnViolations && followUpViolations.length > 0) {
+        const followUpViolations = violatedZonesForArm();
+        if (followUpViolations.length > 0) {
           state.arming = null;
           stopOpenZonesDuringArming();
           persist();
@@ -1650,6 +1796,7 @@ module.exports = function (RED) {
       state.bypass[zone.key] = Boolean(enabled);
       persist();
       emitEvent(enabled ? 'bypassed' : 'unbypassed', { zone: buildZoneSummary(zone) }, baseMsg);
+      maybeStartExitDelayAfterZonesClosed(baseMsg);
     }
 
 	    function handleControlMessage(msg) {
@@ -1826,6 +1973,7 @@ module.exports = function (RED) {
       }
 
       if (value !== true) {
+        maybeStartExitDelayAfterZonesClosed(msg);
         return;
       }
 

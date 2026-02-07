@@ -52,7 +52,6 @@ describe('AlarmSystemUltimate node', function () {
         sirenDurationSeconds: 0.05,
         sirenLatchUntilDisarm: false,
         requireCodeForDisarm: false,
-        blockArmOnViolations: true,
         zones: '[{"name":"Front","topic":"sensor/frontdoor","type":"perimeter","entry":true}]',
         wires: [['out'], [], [], [], [], [], [], [], [], []],
       },
@@ -219,7 +218,6 @@ describe('AlarmSystemUltimate node', function () {
         sirenDurationSeconds: 0.05,
         sirenLatchUntilDisarm: false,
         requireCodeForDisarm: false,
-        blockArmOnViolations: true,
         zones: JSON.stringify(
           [
             {
@@ -637,6 +635,80 @@ describe('AlarmSystemUltimate node', function () {
       .catch(done);
   });
 
+  it('waits for open zones to close before starting exit delay (waitZonesClosedBeforeExit)', function (done) {
+    const flowId = 'alarm-wait-zones1';
+    const flow = [
+      { id: flowId, type: 'tab', label: 'alarm-wait-zones1' },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm',
+        exitDelaySeconds: 0.1,
+        requireCodeForDisarm: false,
+        persistState: false,
+        waitZonesClosedBeforeExit: true,
+        zones: JSON.stringify([
+          { topic: 'sensor/frontdoor', type: 'perimeter' },
+        ]),
+        wires: [['out'], [], [], [], [], [], [], [], [], []],
+      },
+      { id: 'out', type: 'helper', z: flowId },
+    ];
+
+    loadAlarm(flow)
+      .then(() => {
+        const alarm = helper.getNode('alarm');
+        const out = helper.getNode('out');
+
+        const seen = [];
+        let firstArmingPayload = null;
+
+        out.on('input', (msg) => {
+          if (msg && typeof msg.event === 'string') {
+            seen.push(msg.event);
+          }
+          if (!firstArmingPayload && msg && msg.event === 'arming' && msg.payload && typeof msg.payload === 'object') {
+            firstArmingPayload = msg.payload;
+          }
+        });
+
+        // Zone is open before arming.
+        alarm.receive({ topic: 'sensor/frontdoor', payload: true });
+
+        setTimeout(() => {
+          alarm.receive({ topic: 'alarm', command: 'arm' });
+        }, 20);
+
+        setTimeout(() => {
+          try {
+            expect(seen).to.include('arming');
+            expect(seen).to.not.include('arm_blocked');
+            expect(seen).to.not.include('armed');
+            expect(firstArmingPayload).to.include({ waitingForZones: true });
+          } catch (err) {
+            done(err);
+          }
+        }, 120);
+
+        // Close the zone, then the exit delay countdown can start.
+        setTimeout(() => {
+          alarm.receive({ topic: 'sensor/frontdoor', payload: false });
+        }, 150);
+
+        setTimeout(() => {
+          try {
+            expect(seen).to.not.include('arm_blocked');
+            expect(seen).to.include('armed');
+            done();
+          } catch (err) {
+            done(err);
+          }
+        }, 420);
+      })
+      .catch(done);
+  });
+
   it('emits supervision_lost and supervision_restored for supervised zones', function (done) {
     const flowId = 'alarm-supervision1';
     const flow = [
@@ -768,7 +840,7 @@ describe('AlarmSystemUltimate node', function () {
       .catch(done);
   });
 
-  it('blocks arming when supervision is lost (blockArmOnViolations)', function (done) {
+  it('blocks arming when supervision is lost (zone blockArm)', function (done) {
     const flowId = 'alarm-supervision2';
     const flow = [
       { id: flowId, type: 'tab', label: 'alarm-supervision2' },
@@ -779,7 +851,6 @@ describe('AlarmSystemUltimate node', function () {
         controlTopic: 'alarm',
         exitDelaySeconds: 0,
         requireCodeForDisarm: false,
-        blockArmOnViolations: true,
         zones: JSON.stringify([
           {
             topic: 'sensor/frontdoor',
@@ -819,6 +890,63 @@ describe('AlarmSystemUltimate node', function () {
             expect(violations).to.be.an('array');
             expect(violations[0]).to.include({ topic: 'sensor/frontdoor' });
             expect(Boolean(violations[0].supervisionLost)).to.equal(true);
+            done();
+          } catch (err) {
+            done(err);
+          }
+        }, 450);
+      })
+      .catch(done);
+  });
+
+  it('does not block arming when supervision is lost but zone blockArm is false-like', function (done) {
+    const flowId = 'alarm-supervision4';
+    const flow = [
+      { id: flowId, type: 'tab', label: 'alarm-supervision4' },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm',
+        exitDelaySeconds: 0,
+        requireCodeForDisarm: false,
+        zones: JSON.stringify([
+          {
+            topic: 'sensor/frontdoor',
+            type: 'perimeter',
+            supervision: { enabled: true, timeoutSeconds: 0.05, blockArm: 'false' },
+          },
+        ]),
+        wires: [['events'], [], [], [], [], [], [], [], [], []],
+      },
+      { id: 'events', type: 'helper', z: flowId },
+    ];
+
+    loadAlarm(flow)
+      .then(() => {
+        const alarm = helper.getNode('alarm');
+        const events = helper.getNode('events');
+
+        const seen = [];
+        events.on('input', (msg) => {
+          if (msg && typeof msg.event === 'string') {
+            seen.push(msg);
+          }
+        });
+
+        // Start supervision timer without opening the zone.
+        alarm.receive({ topic: 'sensor/frontdoor', payload: false });
+
+        setTimeout(() => {
+          alarm.receive({ topic: 'alarm', command: 'arm' });
+        }, 120);
+
+        setTimeout(() => {
+          try {
+            const blocked = seen.find((m) => m && m.event === 'arm_blocked');
+            expect(blocked, 'arm_blocked should not be received').to.not.exist;
+            const armed = seen.find((m) => m && m.event === 'armed');
+            expect(armed, 'armed not received').to.exist;
             done();
           } catch (err) {
             done(err);

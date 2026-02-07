@@ -115,7 +115,7 @@ You can enable **sensor supervision** per zone to detect devices that stop repor
 - Supervision starts **immediately** when the node runs.
 - If a zone does not receive a **valid** sensor update for `timeoutSeconds`, the node emits `supervision_lost` and the Alarm Panel shows `… • MISSING`.
 - The next valid sensor update emits `supervision_restored`.
-- If `blockArm: true` and **Block arm on violations** is enabled, arming is blocked while the zone is missing.
+- If `blockArm: true`, arming is blocked while the zone is missing.
 
 “Valid” means the message value can be converted to boolean using the Alarm node **With Input** property (default `msg.payload`), e.g. `true/false`, `open/closed`, `on/off`, `1/0`.
 

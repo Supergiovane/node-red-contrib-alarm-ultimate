@@ -471,6 +471,9 @@
       <div class="buttons">
         <button id="btn-zone-add">Add zone</button>
         <button class="primary" id="btn-wizard-toggle">Import zones wizard</button>
+        <button id="btn-zones-export" type="button">Export JSON</button>
+        <button id="btn-zones-import" type="button">Import JSON</button>
+        <input type="file" id="zones-import-file" accept="application/json,.json" style="display:none;" />
       </div>
       <div class="sortbar">
         <label for="sort-key">Sort zones</label>
@@ -679,6 +682,9 @@
       btnGenerate: document.getElementById("btn-generate"),
       btnZoneAdd: document.getElementById("btn-zone-add"),
       btnWizardToggle: document.getElementById("btn-wizard-toggle"),
+      btnZonesExport: document.getElementById("btn-zones-export"),
+      btnZonesImport: document.getElementById("btn-zones-import"),
+      zonesImportFile: document.getElementById("zones-import-file"),
       zoneContext: document.getElementById("zone-context"),
       zoneApplyReminder: document.getElementById("zone-apply-reminder"),
       zoneApplyText: document.getElementById("zone-apply-text"),
@@ -929,6 +935,16 @@
       return "perimeter";
     }
 
+    function isFalseLike(value) {
+      if (value === false) return true;
+      if (value === 0) return true;
+      if (typeof value === "string") {
+        const v = value.trim().toLowerCase();
+        if (v === "false" || v === "0") return true;
+      }
+      return false;
+    }
+
     function applyZoneKind(zone, kind) {
       const k = String(kind || "").trim().toLowerCase();
       if (k === "entry") {
@@ -967,7 +983,7 @@
         const enabled = supervisionConfig.enabled === true;
         const timeoutSeconds = Number(supervisionConfig.timeoutSeconds);
         const blockArm = Object.prototype.hasOwnProperty.call(supervisionConfig, "blockArm")
-          ? supervisionConfig.blockArm !== false
+          ? !isFalseLike(supervisionConfig.blockArm)
           : true;
 
         if (enabled) {
@@ -1090,7 +1106,7 @@
 
     function effectiveSupBlockArm(zone) {
       const sup = zone && zone.supervision && typeof zone.supervision === "object" ? zone.supervision : null;
-      return sup && Object.prototype.hasOwnProperty.call(sup, "blockArm") ? sup.blockArm !== false : true;
+      return sup && Object.prototype.hasOwnProperty.call(sup, "blockArm") ? !isFalseLike(sup.blockArm) : true;
     }
 
     function effectiveSupTimeoutSeconds(zone) {
@@ -1315,7 +1331,7 @@
         const supTimeout =
           sup && sup.enabled === true && Number.isFinite(Number(sup.timeoutSeconds)) ? String(Number(sup.timeoutSeconds)) : "";
         const supBlockArm =
-          sup && Object.prototype.hasOwnProperty.call(sup, "blockArm") ? sup.blockArm !== false : true;
+          sup && Object.prototype.hasOwnProperty.call(sup, "blockArm") ? !isFalseLike(sup.blockArm) : true;
 
         const supWrap = document.createElement("div");
         supWrap.className = "zone-sup";
@@ -1472,6 +1488,41 @@
     function hideStatus(el) {
       el.style.display = "none";
       el.textContent = "";
+    }
+
+    function sanitizeFilenamePart(input) {
+      const raw = String(input || "").trim();
+      if (!raw) return "";
+      return raw
+        .replace(/[^A-Za-z0-9._-]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60);
+    }
+
+    function downloadTextFile(filename, text, mimeType) {
+      const name = String(filename || "").trim() || "download.txt";
+      const type = String(mimeType || "text/plain;charset=utf-8");
+      const blob = new Blob([String(text || "")], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (_err) {
+          // ignore
+        }
+        try {
+          a.remove();
+        } catch (_err) {
+          // ignore
+        }
+      }, 0);
     }
 
     function normalizeLenientJson(input) {
@@ -2488,6 +2539,72 @@
       els.bulkSupBlockArm.addEventListener("change", () =>
         applyBulkSupervisionBlockArm(els.bulkSupBlockArm.checked === true),
       );
+    }
+
+    if (els.btnZonesExport) {
+      els.btnZonesExport.addEventListener("click", () => {
+        const payload = syncJsonFromModel();
+        const safeName = sanitizeFilenamePart(page.alarmNodeName);
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const filename = `alarm-ultimate-zones${safeName ? `-${safeName}` : ""}-${stamp}.json`;
+        downloadTextFile(filename, JSON.stringify(payload, null, 2) + "\n", "application/json;charset=utf-8");
+        showStatus(els.genStatus, "ok", `Exported ${payload.length} zones as ${filename}`);
+      });
+    }
+
+    if (els.btnZonesImport && els.zonesImportFile) {
+      els.btnZonesImport.addEventListener("click", () => {
+        try {
+          els.zonesImportFile.value = "";
+        } catch (_err) {
+          // ignore
+        }
+        els.zonesImportFile.click();
+      });
+
+      els.zonesImportFile.addEventListener("change", () => {
+        const file =
+          els.zonesImportFile && els.zonesImportFile.files && els.zonesImportFile.files[0]
+            ? els.zonesImportFile.files[0]
+            : null;
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const text = String(reader.result || "");
+            const imported = normalizeZonesJson(text);
+            const existingCount = Array.isArray(zonesModel) ? zonesModel.length : 0;
+            if (existingCount > 0 && imported.length > 0) {
+              const ok = window.confirm(
+                `Replace the current zones (${existingCount}) with the imported ones (${imported.length})?`,
+              );
+              if (!ok) return;
+            }
+            zonesModel = imported.map((z, idx) => cleanZoneForJson(z, idx));
+            renderZones();
+            flushZonesToEditor(true);
+            showStatus(els.genStatus, "ok", `Imported ${imported.length} zones (${file.name}).`);
+          } catch (err) {
+            showStatus(els.genStatus, "err", `Unable to import zones: ${err && err.message ? err.message : err}`);
+          } finally {
+            try {
+              els.zonesImportFile.value = "";
+            } catch (_err) {
+              // ignore
+            }
+          }
+        };
+        reader.onerror = () => {
+          showStatus(els.genStatus, "err", `Unable to read file: ${file.name}`);
+          try {
+            els.zonesImportFile.value = "";
+          } catch (_err) {
+            // ignore
+          }
+        };
+        reader.readAsText(file);
+      });
     }
     refreshBulkControls();
     setSortIndicators();

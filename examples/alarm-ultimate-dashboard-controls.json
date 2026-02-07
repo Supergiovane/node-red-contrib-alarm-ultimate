@@ -80,7 +80,6 @@
     "requireCodeForDisarm": false,
     "armCode": "",
     "duressCode": "",
-    "blockArmOnViolations": true,
     "exitDelaySeconds": 10,
     "entryDelaySeconds": 30,
     "emitOpenZonesDuringArming": false,

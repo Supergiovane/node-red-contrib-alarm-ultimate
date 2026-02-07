@@ -3,6 +3,22 @@
 > **BETA (breaking changes):** this package is currently **BETA** and changes can be **breaking** at any release.
 > Backward compatibility is not guaranteed.
 
+## [0.3.0-beta.5] - 2026-02-07
+
+### Breaking (BETA)
+
+- **Alarm System:** removed `blockArmOnViolations`. Arming is now always blocked by violations (open zones, or supervised zones that are **MISSING** when `supervision.blockArm: true`).
+
+### Added
+
+- **Alarm System:** new option `Wait zones closed before exit delay`. When you arm with one or more open zones, the node enters **Arming** but waits for all zones to close before starting the exit delay countdown.
+
+### Changed
+
+- **Persistence:** armed/disarmed state, bypass list, event log, and zone state now persist across Node-RED restart/deploy even when the context store is not persistent (file cache fallback; requires **Persist state**).
+- **Tools:** moved **Export JSON** / **Import JSON** from the node edit dialog to `/alarm-ultimate/alarm-json-mapper`.
+- **Tools / Runtime:** `supervision.blockArm` now treats false-like values (e.g. `"false"`, `0`) as `false`.
+
 ## [0.3.0-beta.4] - 2026-02-06
 
 ### Changed
@@ -199,4 +215,4 @@ In the zone definition, add for example:
 
 - Supervision starts **immediately** when the node is running.
 - If no “valid” updates arrive within `timeoutSeconds`, the zone becomes **MISSING**.
-- With `blockArm: true` (and `blockArmOnViolations` enabled) arming is blocked if a zone is **MISSING**.
+- With `blockArm: true`, arming is blocked if a zone is **MISSING**.
