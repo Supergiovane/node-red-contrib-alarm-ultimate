@@ -57,7 +57,7 @@ npm i node-red-contrib-alarm-ultimate
 Beginner-friendly flow:
 
 1. Add an **AlarmSystemUltimate (BETA)** node.
-2. Click **Manage zones** and add at least one zone (example topic: `sensor/frontdoor`). Use **Export JSON** / **Import JSON** in the Zones tab to backup/restore your zones.
+2. Click **Manage zones** and add at least one zone (example topic: `sensor/frontdoor`). Use **Export JSON** / **Import JSON** in the Zones JSON Mapper web tool to backup/restore your zones.
    **Important:** after editing zones, click **Done** in the Node-RED editor to save (if you click **Cancel**, changes are lost).
 3. Send sensor messages to the Alarm node:
    - open: `msg.topic="sensor/frontdoor"`, `msg.payload=true`
@@ -107,6 +107,16 @@ Open zones listing features:
 - **Open Zones (Arming)**: optional listing during exit delay
 - **Open Zones (On Request)**: list open zones when a message arrives on `openZonesRequestTopic`
 - **Open Zones (Cycle)**: optional always-on cyclic listing at a fixed interval (any alarm state)
+
+Arming behavior:
+
+- By default, arming is blocked if any (non-bypassed) zone is **open**.
+- If enabled in a zone, `supervision.blockArm: true` also blocks arming while the zone is **MISSING**.
+- Optional node setting: **Wait zones closed before exit delay** (when arming with open zones, the node waits for all zones to close before starting the exit delay countdown).
+
+Persistence:
+
+- Enable **Persist state** to keep armed/disarmed state, bypass list, event log and zone state across Node-RED restarts/deploys.
 
 #### Optional per-zone sensor supervision
 
@@ -178,6 +188,7 @@ The Zones JSON Mapper supports:
 
 - Sample message mapping (e.g. KNX Ultimate): map `topic`/`payload` fields and generate a zone template.
 - ETS Group Addresses export (TSV): paste the exported table and generate zones in batch (boolean datapoints only).
+- Backup/restore: **Export JSON** / **Import JSON** for zone definitions.
 - Quality-of-life: bulk apply (Kind/Supervision), sorting, duplicate-topic skipping on import, persisted Step 1 input.
 
 ## Examples

@@ -3,6 +3,16 @@
 > **BETA (breaking changes):** this package is currently **BETA** and changes can be **breaking** at any release.
 > Backward compatibility is not guaranteed.
 
+## [0.3.0-beta.6] - 2026-02-07
+
+### Fixed
+
+- **Editor (Alarm System):** Siren / Open zones / Advanced tabs were empty due to invalid HTML nesting in the edit dialog.
+
+### Changed
+
+- **Tests:** expanded unit test coverage for core Alarm behaviors (arming violations, topic prefix matching, code denial, persistence fallback).
+
 ## [0.3.0-beta.5] - 2026-02-07
 
 ### Breaking (BETA)

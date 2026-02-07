@@ -574,16 +574,15 @@
       />
     </div>
 
-    <div class="form-row">
-	    <hr />
+      <hr />
 
-	    <div class="form-row">
-	      <label
-	        for="node-input-exitDelaySeconds"
-	        ><i class="fa fa-sign-out"></i> Exit delay (s)</label
-	      >
-	      <input type="number" id="node-input-exitDelaySeconds" min="0" />
-	    </div>
+		    <div class="form-row">
+		      <label
+		        for="node-input-exitDelaySeconds"
+		        ><i class="fa fa-sign-out"></i> Exit delay (s)</label
+		      >
+		      <input type="number" id="node-input-exitDelaySeconds" min="0" />
+		    </div>
 
 	    <div class="form-row">
 	      <label
@@ -597,17 +596,17 @@
 	      />
 	    </div>
 
-	    <div class="form-row">
-	      <label
-	        for="node-input-entryDelaySeconds"
-	        ><i class="fa fa-sign-in"></i> Entry delay (s)</label
-	      >
-		      <input type="number" id="node-input-entryDelaySeconds" min="0" />
-		    </div>
+		    <div class="form-row">
+		      <label
+		        for="node-input-entryDelaySeconds"
+		        ><i class="fa fa-sign-in"></i> Entry delay (s)</label
+		      >
+			      <input type="number" id="node-input-entryDelaySeconds" min="0" />
+			    </div>
 
-		    </div>
+				    </div>
 
-		    <div id="node-input-au-tab-siren" class="au-tab" style="display:none;">
+				    <div id="node-input-au-tab-siren" class="au-tab" style="display:none;">
 		      <div class="form-row">
 		        <label for="node-input-sirenTopic"
 		          ><i class="fa fa-bullhorn"></i> Siren topic</label
@@ -789,13 +788,13 @@
 
   | Property                     | Description                                                                                                                          |
   | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-  | Persist state                | Persists arming state, bypass list and event log across restarts.                                                                    |
+  | Persist state                | Persists armed/disarmed state, bypass list, event log and zone state across Node-RED restarts/deploys.                               |
   | Require code for arm         | Requires a valid PIN for arming commands (via `msg.code`). If **Code** is empty, commands are allowed.                               |
   | Require code for disarm      | Requires a valid PIN for disarming commands (via `msg.code`). If **Code** is empty, commands are allowed.                            |
   | Code                         | PIN required to arm/disarm when enabled.                                                                                             |
   | Duress code                  | If provided and `msg.code` matches, the node raises a silent duress alarm while still executing the command.                         |
   | Exit/Entry delay (s)         | Global exit/entry delays (each zone can override entry delay).                                                                       |
-  | Wait zones closed before exit delay | When arming, if one or more zones are open, the node stays in **Arming** and starts the exit delay countdown only after all zones are closed. |
+  | Wait zones closed before exit delay | When arming, if one or more zones are open, the node stays in **Arming** and starts the exit delay countdown only after all zones are closed (supervision **MISSING** with `blockArm: true` still blocks arming). |
   | Emit open zones while arming | Emits open zones one-by-one while arming (during exit delay).                                                                        |
   | Arming list interval (s)     | Interval between each open zone emitted while arming.                                                                                |
   | Open zones request topic     | When a message arrives with `msg.topic` equal to this topic, the node lists open zones even while disarmed.                          |
@@ -816,6 +815,12 @@
   ## Zones JSON (advanced)
 
   Each zone can optionally enable **sensor supervision** (per-zone): if no valid sensor updates are received within `timeoutSeconds`, the node emits `supervision_lost` (supervision starts immediately when the node runs, and `supervision_restored` is emitted on the next valid update).
+
+  Notes:
+
+  - Arming is blocked if any (non-bypassed) zone is **open**.
+  - If `supervision.blockArm: true`, arming is also blocked while the zone is **MISSING**.
+  - If enabled, **Wait zones closed before exit delay** allows arming to wait for **open** zones to close (but it still blocks on **MISSING**).
 
   Example:
 
@@ -880,7 +885,7 @@
 
   Arming / state:
 
-  - `arming` → `{ target, seconds, reason }`
+  - `arming` → `{ target, seconds, reason, waitingForZones? }` (when waiting, `seconds` is `null`)
   - `armed` → `{ reason }`
   - `disarmed` → `{ reason, duress }`
   - `already_armed` → `{ target }`
