@@ -3,13 +3,28 @@
 > **BETA (breaking changes):** this package is currently **BETA** and changes can be **breaking** at any release.
 > Backward compatibility is not guaranteed.
 
+## [0.3.0-beta.7] - 2026-02-08
+
+### Breaking (BETA)
+
+- **Alarm outputs (Open zones):** removed **Open zones (on request)** output + `list_open_zones` / request-topic behavior. Open zones listing while arming and cyclic listing are now always-on outputs (configurable intervals). Total outputs: **9**.
+- **Alarm Zone / Alarm State (outputs):** `msg.payload` is now always a boolean (`true|false`). All extra fields are emitted as root properties on `msg`.
+
+### Fixed
+
+- **Editor (Alarm Zone):** Zone field no longer stays red after selecting **All zones** (async validation refresh).
+
+### Changed
+
+- **Alarm System:** output label renamed to **Any zone open (bool)** and help now documents each output pin.
+- **Examples/Docs/Tests:** updated for new pins and helper node payload shape.
+
 ## [0.3.0-beta.6] - 2026-02-07
 
 ### Breaking (BETA)
 
 - **Alarm Zone:** `AlarmUltimateZone` is now output-only (removed Input mode and all adapters).
 - **Alarm System:** moved zone input adapters into the Alarm node (**Zones → Zone input adapter** + **AX Pro match**).
-- **Alarm System (open zones):** removed **Open zones (on request)** output + `list_open_zones` / request-topic behavior. Open zones listing while arming and cyclic listing are now always-on outputs (configurable intervals).
 
 ### Fixed
 
