@@ -80,7 +80,7 @@ describe('AlarmSystemUltimate node (advanced)', function () {
         requireCodeForDisarm: false,
         persistState: false,
         zones: JSON.stringify([{ topic: 'sensor/frontdoor', type: 'perimeter' }]),
-        wires: [['events'], [], [], [], [], [], [], [], [], []],
+        wires: [['events'], [], [], [], [], [], [], [], []],
       },
       { id: 'events', type: 'helper', z: flowId },
     ];
@@ -122,7 +122,7 @@ describe('AlarmSystemUltimate node (advanced)', function () {
         requireCodeForDisarm: false,
         persistState: false,
         zones: JSON.stringify([{ topic: 'sensor/door*', type: 'perimeter' }]),
-        wires: [['events'], [], [], [], [], [], [], [], [], []],
+        wires: [['events'], [], [], [], [], [], [], [], []],
       },
       { id: 'events', type: 'helper', z: flowId },
     ];
@@ -168,7 +168,7 @@ describe('AlarmSystemUltimate node (advanced)', function () {
         armCode: '1234',
         persistState: false,
         zones: JSON.stringify([{ topic: 'sensor/frontdoor', type: 'perimeter' }]),
-        wires: [['events'], [], [], [], [], [], [], [], [], []],
+        wires: [['events'], [], [], [], [], [], [], [], []],
       },
       { id: 'events', type: 'helper', z: flowId },
     ];
@@ -230,7 +230,7 @@ describe('AlarmSystemUltimate node (advanced)', function () {
         requireCodeForDisarm: false,
         persistState: true,
         zones: JSON.stringify([{ topic: zoneTopic, type: 'perimeter' }]),
-        wires: [['events'], [], [], [], [], [], [], [], [], []],
+        wires: [['events'], [], [], [], [], [], [], [], []],
       },
       { id: 'events', type: 'helper', z: flowId },
     ];
@@ -288,4 +288,3 @@ describe('AlarmSystemUltimate node (advanced)', function () {
       });
   });
 });
-

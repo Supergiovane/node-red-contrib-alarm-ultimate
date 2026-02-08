@@ -5,7 +5,6 @@ const { helper } = require('./helpers');
 
 const alarmNode = require('../nodes/AlarmSystemUltimate.js');
 const alarmStateNode = require('../nodes/AlarmUltimateState.js');
-const alarmZoneNode = require('../nodes/AlarmUltimateZone.js');
 
 function loadFlow(nodeDefs, flow, credentials) {
   const normalizedFlow = flow.map((node, index) => {
@@ -25,7 +24,7 @@ function loadFlow(nodeDefs, flow, credentials) {
   return helper.load(nodeDefs, normalizedFlow, credentials || {});
 }
 
-describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
+describe('Embedded adapters (Alarm State) + Alarm zone input adapters', function () {
   this.timeout(8000);
 
   before(function (done) {
@@ -54,7 +53,7 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
         sirenDurationSeconds: 0,
         requireCodeForDisarm: false,
         zones: '[{"topic":"sensor/frontdoor","type":"perimeter","entry":false}]',
-        wires: [[], [], [], [], [], [], [], [], [], []],
+        wires: [[], [], [], [], [], [], [], [], []],
       },
       {
         id: 'stateNode',
@@ -87,9 +86,9 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
         out.on('input', (msg) => {
           if (finished) return;
           try {
-            if (!msg || !msg.payload) return;
-            const t = msg.payload.SecuritySystemTargetState;
-            const c = msg.payload.SecuritySystemCurrentState;
+            if (!msg) return;
+            const t = msg.SecuritySystemTargetState;
+            const c = msg.SecuritySystemCurrentState;
             if (t === 2 && c === 3) {
               seen.arming = true;
               maybeDone();
@@ -126,7 +125,7 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
         sirenDurationSeconds: 0,
         requireCodeForDisarm: false,
         zones: '[{"topic":"sensor/frontdoor","type":"perimeter","entry":false}]',
-        wires: [['alarmOut'], [], [], [], [], [], [], [], [], []],
+        wires: [['alarmOut'], [], [], [], [], [], [], [], []],
       },
       { id: 'alarmOut', type: 'helper', z: flowId },
       {
@@ -180,7 +179,7 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
         sirenDurationSeconds: 0,
         requireCodeForDisarm: false,
         zones: '[{"topic":"sensor/frontdoor","type":"perimeter","entry":false}]',
-        wires: [['alarmOut'], [], [], [], [], [], [], [], [], []],
+        wires: [['alarmOut'], [], [], [], [], [], [], [], []],
       },
       { id: 'alarmOut', type: 'helper', z: flowId },
       {
@@ -229,7 +228,7 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
       .catch(done);
   });
 
-  it('AlarmUltimateZone (Input + KNX, All zones) injects zone sensor updates into the selected alarm', function (done) {
+  it('AlarmSystemUltimate (Zone input adapter = KNX) maps knx.destination to zone topic', function (done) {
     const flowId = 'embedded-zone-knx-in';
     const flow = [
       { id: flowId, type: 'tab', label: flowId },
@@ -238,30 +237,20 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
         type: 'AlarmSystemUltimate',
         z: flowId,
         controlTopic: 'alarm',
+        zoneInputAdapter: 'knx',
         exitDelaySeconds: 0,
         entryDelaySeconds: 0,
         sirenDurationSeconds: 0,
         requireCodeForDisarm: false,
         zones: '[{"topic":"0/1/2","type":"perimeter","entry":false}]',
-        wires: [['alarmOut'], [], [], [], [], [], [], [], [], []],
+        wires: [['alarmOut'], [], [], [], [], [], [], [], []],
       },
       { id: 'alarmOut', type: 'helper', z: flowId },
-      {
-        id: 'zoneIn',
-        type: 'AlarmUltimateZone',
-        z: flowId,
-        alarmId: 'alarm',
-        zoneTopic: '__all__',
-        io: 'in',
-        adapter: 'knx',
-        outputInitialState: false,
-        wires: [[]],
-      },
     ];
 
-    loadFlow([alarmNode, alarmZoneNode], flow, {})
+    loadFlow([alarmNode], flow, {})
       .then(() => {
-        const zoneIn = helper.getNode('zoneIn');
+        const alarm = helper.getNode('alarm');
         const alarmOut = helper.getNode('alarmOut');
 
         let finished = false;
@@ -281,12 +270,12 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
           }
         });
 
-        zoneIn.receive({ knx: { destination: '0/1/2' }, payload: '1' });
+        alarm.receive({ knx: { destination: '0/1/2' }, payload: '1' });
       })
       .catch(done);
   });
 
-  it('AlarmUltimateZone (Input + AX Pro) matches zoneUpdate.name to the configured topic', function (done) {
+  it('AlarmSystemUltimate (Zone input adapter = AX Pro) matches zoneUpdate.name to the configured topic', function (done) {
     const flowId = 'embedded-zone-axpro-in';
     const flow = [
       { id: flowId, type: 'tab', label: flowId },
@@ -295,31 +284,21 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
         type: 'AlarmSystemUltimate',
         z: flowId,
         controlTopic: 'alarm',
+        zoneInputAdapter: 'axpro',
+        zoneAxProZoneNameMatch: 'contains',
         exitDelaySeconds: 0,
         entryDelaySeconds: 0,
         sirenDurationSeconds: 0,
         requireCodeForDisarm: false,
         zones: JSON.stringify([{ name: 'Front door', topic: 'Front door', type: 'perimeter', entry: false }]),
-        wires: [['alarmOut'], [], [], [], [], [], [], [], [], []],
+        wires: [['alarmOut'], [], [], [], [], [], [], [], []],
       },
       { id: 'alarmOut', type: 'helper', z: flowId },
-      {
-        id: 'zoneIn',
-        type: 'AlarmUltimateZone',
-        z: flowId,
-        alarmId: 'alarm',
-        zoneTopic: 'Front door',
-        io: 'in',
-        adapter: 'axpro',
-        axProZoneNameMatch: 'contains',
-        outputInitialState: false,
-        wires: [[]],
-      },
     ];
 
-    loadFlow([alarmNode, alarmZoneNode], flow, {})
+    loadFlow([alarmNode], flow, {})
       .then(() => {
-        const zoneIn = helper.getNode('zoneIn');
+        const alarm = helper.getNode('alarm');
         const alarmOut = helper.getNode('alarmOut');
 
         let finished = false;
@@ -339,7 +318,7 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
           }
         });
 
-        zoneIn.receive({
+        alarm.receive({
           payload: {
             zoneUpdate: {
               name: 'My Front door Sensor',
@@ -347,65 +326,6 @@ describe('Embedded adapters (Alarm State / Alarm Zone)', function () {
             },
           },
         });
-      })
-      .catch(done);
-  });
-
-  it('AlarmUltimateZone (Output + AX Pro, All zones) formats zone events to payload.zoneUpdate', function (done) {
-    const flowId = 'embedded-zone-axpro-out';
-    const flow = [
-      { id: flowId, type: 'tab', label: flowId },
-      {
-        id: 'alarm',
-        type: 'AlarmSystemUltimate',
-        z: flowId,
-        controlTopic: 'alarm',
-        exitDelaySeconds: 0,
-        entryDelaySeconds: 0,
-        sirenDurationSeconds: 0,
-        requireCodeForDisarm: false,
-        zones: JSON.stringify([
-          { name: 'Front door', topic: 'sensor/frontdoor', type: 'perimeter', entry: false },
-          { name: 'Living motion', topic: 'sensor/living_pir', type: 'motion', entry: false },
-        ]),
-        wires: [[], [], [], [], [], [], [], [], [], []],
-      },
-      {
-        id: 'zoneOut',
-        type: 'AlarmUltimateZone',
-        z: flowId,
-        alarmId: 'alarm',
-        zoneTopic: '__all__',
-        io: 'out',
-        adapter: 'axpro',
-        outputInitialState: false,
-        wires: [['out']],
-      },
-      { id: 'out', type: 'helper', z: flowId },
-    ];
-
-    loadFlow([alarmNode, alarmZoneNode], flow, {})
-      .then(() => {
-        const alarm = helper.getNode('alarm');
-        const out = helper.getNode('out');
-
-        let finished = false;
-        out.on('input', (msg) => {
-          if (finished) return;
-          try {
-            if (!msg || !msg.payload || !msg.payload.zoneUpdate) return;
-            expect(msg.payload.zoneUpdate).to.be.an('object');
-            expect(msg.payload.zoneUpdate.name).to.equal('Front door');
-            expect(msg.payload.zoneUpdate.magnetOpenStatus).to.equal(true);
-            finished = true;
-            done();
-          } catch (err) {
-            finished = true;
-            done(err);
-          }
-        });
-
-        alarm.receive({ topic: 'sensor/frontdoor', payload: true });
       })
       .catch(done);
   });

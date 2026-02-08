@@ -5,6 +5,12 @@
 
 ## [0.3.0-beta.6] - 2026-02-07
 
+### Breaking (BETA)
+
+- **Alarm Zone:** `AlarmUltimateZone` is now output-only (removed Input mode and all adapters).
+- **Alarm System:** moved zone input adapters into the Alarm node (**Zones → Zone input adapter** + **AX Pro match**).
+- **Alarm System (open zones):** removed **Open zones (on request)** output + `list_open_zones` / request-topic behavior. Open zones listing while arming and cyclic listing are now always-on outputs (configurable intervals).
+
 ### Fixed
 
 - **Editor (Alarm System):** Siren / Open zones / Advanced tabs were empty due to invalid HTML nesting in the edit dialog.

@@ -25,9 +25,9 @@ Includes:
 
 - `AlarmSystemUltimate` (BETA): full alarm control panel node (zones, entry/exit delays, bypass, chime, 24h/fire/tamper, siren, event log, optional per-zone sensor supervision).
 - Helper nodes: `AlarmUltimateState`, `AlarmUltimateZone`, `AlarmUltimateSiren`.
-  `AlarmUltimateState` and `AlarmUltimateZone` can be configured as **Input** or **Output** nodes and include embedded adapters:
-  - `AlarmUltimateState`: Default / Homekit / Ax Pro / KNX-Ultimate
-  - `AlarmUltimateZone`: Default / Ax Pro / KNX-Ultimate
+  - `AlarmUltimateState`: Input/Output node with embedded adapters (Default / Homekit / Ax Pro / KNX-Ultimate).
+  - `AlarmUltimateZone`: output-only zone events splitter (no adapters).
+  - `AlarmUltimateSiren`: output-only siren state splitter.
 - Web tools: Zones JSON mapper + web Alarm Panel (embeddable in Node-RED Dashboard).
 
 Note: `AlarmSystemUltimate` is currently **BETA**.
@@ -69,10 +69,10 @@ Beginner-friendly flow:
 
 Optional (recommended):
 
-- Use `AlarmUltimateZone` in **Input** mode (Zone: **All zones**) to normalize sensor messages and inject them into the selected Alarm node.
+- For sensor integrations that don't use `msg.topic`, use **Zones → Zone input adapter** in the `AlarmSystemUltimate` editor (KNX-Ultimate: `knx.destination`, AX Pro: `payload.zoneUpdate`).
 - Use `AlarmUltimateState` in **Input** mode to normalize arm/disarm commands (e.g. HomeKit) and inject them into the selected Alarm node.
 - Use `AlarmUltimateState` in **Output** mode with an **Adapter** to format state events for external systems (HomeKit / KNX / AX Pro / ...).
-- Use `AlarmUltimateZone` in **Output** mode with an **Adapter** to format zone events for external systems (e.g. KNX / AX Pro).
+- Use `AlarmUltimateZone` / `AlarmUltimateSiren` output-only nodes to split Alarm outputs into dedicated streams.
 - For distributed flows, use Node-RED built-in `link in` / `link out` to fan-in sensors/commands and fan-out Alarm outputs (see `examples/alarm-ultimate-link-bus.json`).
 
 ## Screenshots
@@ -98,15 +98,14 @@ Main node that:
 - Receives **control commands** on `msg.topic === controlTopic`
 - Receives **sensor messages** on any other topic and matches them to a configured zone
 
-It emits events and state updates on **10 outputs** (see the node help in the editor for full details). Output #1 (**All messages**) is a superset and always emits everything.
+It emits events and state updates on **9 outputs** (see the node help in the editor for full details). Output #1 (**All messages**) is a superset and may emit a single message or an array (event + siren at the same time).
 
-Use `AlarmUltimateState` / `AlarmUltimateZone` in **Output** mode with an **Adapter** to fan-out/massage events for your integrations.
+Use `AlarmUltimateState` (Output mode + Adapter) to format state events for your integrations, and `AlarmUltimateZone` / `AlarmUltimateSiren` to split outputs into dedicated streams.
 
 Open zones listing features:
 
-- **Open Zones (Arming)**: optional listing during exit delay
-- **Open Zones (On Request)**: list open zones when a message arrives on `openZonesRequestTopic`
-- **Open Zones (Cycle)**: optional always-on cyclic listing at a fixed interval (any alarm state)
+- **Open Zones (Arming)**: open zones listing while arming (interval configurable; `0` disables)
+- **Open Zones (Cycle)**: cyclic open zones listing at a fixed interval (any alarm state; `0` disables)
 
 Arming behavior:
 

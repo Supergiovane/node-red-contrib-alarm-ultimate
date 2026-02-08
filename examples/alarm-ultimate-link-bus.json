@@ -61,11 +61,7 @@
     "duressCode": "",
     "exitDelaySeconds": 10,
     "entryDelaySeconds": 30,
-    "emitOpenZonesDuringArming": false,
     "openZonesArmingIntervalSeconds": 1,
-    "openZonesRequestTopic": "alarm/listOpenZones",
-    "openZonesRequestIntervalSeconds": 0,
-    "emitOpenZonesCycle": false,
     "openZonesCycleIntervalSeconds": 5,
     "sirenDurationSeconds": 180,
     "sirenLatchUntilDisarm": false,
@@ -103,9 +99,6 @@
       ],
       [
         "b1c2d3e4f5061727"
-      ],
-      [
-        "b1c2d3e4f5061728"
       ],
       [
         "b1c2d3e4f5061729"
@@ -194,7 +187,7 @@
     "id": "b1c2d3e4f5061726",
     "type": "link out",
     "z": "a0f1b2c3d4e5f601",
-    "name": "AU ← Any zone open (out 7)",
+    "name": "AU ← Any zone open (bool) (out 7)",
     "mode": "link",
     "links": [
       "b1c2d3e4f5061807"
@@ -217,23 +210,10 @@
     "wires": []
   },
   {
-    "id": "b1c2d3e4f5061728",
-    "type": "link out",
-    "z": "a0f1b2c3d4e5f601",
-    "name": "AU ← Open zones (request) (out 9)",
-    "mode": "link",
-    "links": [
-      "b1c2d3e4f5061809"
-    ],
-    "x": 770,
-    "y": 440,
-    "wires": []
-  },
-  {
     "id": "b1c2d3e4f5061729",
     "type": "link out",
     "z": "a0f1b2c3d4e5f601",
-    "name": "AU ← Open zones (cycle) (out 10)",
+    "name": "AU ← Open zones (cycle) (out 9)",
     "mode": "link",
     "links": [
       "b1c2d3e4f5061810"
@@ -658,7 +638,7 @@
     "id": "b1c2d3e4f5061807",
     "type": "link in",
     "z": "a0f1b2c3d4e5f603",
-    "name": "AU Any zone open",
+    "name": "AU Any zone open (bool)",
     "links": [
       "b1c2d3e4f5061726"
     ],
@@ -674,7 +654,7 @@
     "id": "b1c2d3e4f5061907",
     "type": "debug",
     "z": "a0f1b2c3d4e5f603",
-    "name": "Any zone open",
+    "name": "Any zone open (bool)",
     "active": true,
     "tosidebar": true,
     "console": false,
@@ -714,37 +694,6 @@
     "targetType": "full",
     "x": 390,
     "y": 400,
-    "wires": []
-  },
-  {
-    "id": "b1c2d3e4f5061809",
-    "type": "link in",
-    "z": "a0f1b2c3d4e5f603",
-    "name": "AU Open zones (request)",
-    "links": [
-      "b1c2d3e4f5061728"
-    ],
-    "x": 170,
-    "y": 440,
-    "wires": [
-      [
-        "b1c2d3e4f5061909"
-      ]
-    ]
-  },
-  {
-    "id": "b1c2d3e4f5061909",
-    "type": "debug",
-    "z": "a0f1b2c3d4e5f603",
-    "name": "Open zones (request)",
-    "active": true,
-    "tosidebar": true,
-    "console": false,
-    "tostatus": false,
-    "complete": "true",
-    "targetType": "full",
-    "x": 390,
-    "y": 440,
     "wires": []
   },
   {

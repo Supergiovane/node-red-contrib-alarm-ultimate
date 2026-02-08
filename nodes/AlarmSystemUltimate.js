@@ -6,6 +6,36 @@ const path = require('path');
 const { alarmInstances, alarmEmitter } = require('./lib/alarm-registry.js');
 const { attachAlarmUltimateEnvelope } = require('./lib/alarm-ultimate-envelope.js');
 
+function getAnyFromObject(obj, propertyPath) {
+  const root = obj && typeof obj === 'object' ? obj : null;
+  if (!root) return undefined;
+  const pathText = typeof propertyPath === 'string' && propertyPath.trim() ? propertyPath.trim() : 'payload';
+  const parts = pathText.split('.').filter(Boolean);
+  let cur = root;
+  for (const part of parts) {
+    if (!cur || typeof cur !== 'object') return undefined;
+    cur = cur[part];
+  }
+  return cur;
+}
+
+function matchesAxProZoneName(zoneName, zoneTopic, matchKind) {
+  const name = String(zoneName || '').trim();
+  const topic = String(zoneTopic || '').trim();
+  if (!name || !topic) return false;
+
+  if (topic.endsWith('*')) {
+    const prefix = topic.slice(0, -1);
+    return prefix ? name.startsWith(prefix) : false;
+  }
+
+  const kind = String(matchKind || 'exact').trim().toLowerCase();
+  if (kind === 'starts') return name.startsWith(topic);
+  if (kind === 'contains') return name.includes(topic);
+  if (kind === 'ends') return name.endsWith(topic);
+  return name === topic;
+}
+
 function readJsonFileSync(filePath) {
   try {
     if (!fs.existsSync(filePath)) {
@@ -160,6 +190,15 @@ module.exports = function (RED) {
     const maxLogEntries = clampInt(config.maxLogEntries, 50, 0, 500);
     const persistState = config.persistState !== false;
 
+    const zoneInputAdapter =
+      typeof config.zoneInputAdapter === 'string' && config.zoneInputAdapter.trim().length > 0
+        ? config.zoneInputAdapter.trim()
+        : 'default';
+    const zoneAxProZoneNameMatch =
+      typeof config.zoneAxProZoneNameMatch === 'string' && config.zoneAxProZoneNameMatch.trim().length > 0
+        ? config.zoneAxProZoneNameMatch.trim()
+        : 'exact';
+
     const fileCacheDir =
       RED &&
       RED.settings &&
@@ -174,16 +213,7 @@ module.exports = function (RED) {
     const zoneConfigText = typeof config.zones === 'string' ? config.zones : '';
     let zones = parseZones(zoneConfigText);
 
-	    const emitOpenZonesDuringArming = config.emitOpenZonesDuringArming === true;
 	    const openZonesArmingIntervalMs = toMilliseconds(config.openZonesArmingIntervalSeconds, 1);
-
-	    const openZonesRequestTopic =
-	      typeof config.openZonesRequestTopic === 'string' && config.openZonesRequestTopic.trim().length > 0
-	        ? config.openZonesRequestTopic.trim()
-	        : `${controlTopic}/listOpenZones`;
-	    const openZonesRequestIntervalMs = toMilliseconds(config.openZonesRequestIntervalSeconds, 0);
-
-	    const emitOpenZonesCycle = config.emitOpenZonesCycle === true;
 	    const openZonesCycleIntervalMs = toMilliseconds(config.openZonesCycleIntervalSeconds, 5);
 
     const stateKey = 'AlarmSystemUltimateState';
@@ -312,8 +342,7 @@ module.exports = function (RED) {
     const OUTPUT_ERROR_EVENTS = 5;
 	    const OUTPUT_ANY_ZONE_OPEN = 6;
 	    const OUTPUT_OPEN_ZONES_ARMING = 7;
-	    const OUTPUT_OPEN_ZONES_ON_REQUEST = 8;
-	    const OUTPUT_OPEN_ZONES_CYCLE = 9;
+	    const OUTPUT_OPEN_ZONES_CYCLE = 8;
 
     const alarmEvents = new Set(['alarm']);
     const armingEvents = new Set([
@@ -346,7 +375,6 @@ module.exports = function (RED) {
     let lastOpenZonesCount = null;
 
 	    let openZonesArmingInterval = null;
-	    let openZonesRequestInterval = null;
 	    let openZonesCycleInterval = null;
 	    let openZonesArmingIndex = 0;
 	    let openZonesCycleIndex = 0;
@@ -361,9 +389,8 @@ module.exports = function (RED) {
       // 5: Errors/Denied
       // 6: Any zone open
       // 7: Open zones (arming)
-      // 8: Open zones (on request)
-      // 9: Open zones (cycle)
-      return 10;
+      // 8: Open zones (cycle)
+      return 9;
     }
 
     function createOutputsArray() {
@@ -469,8 +496,6 @@ module.exports = function (RED) {
 	          ? 'any_zone_open'
 	          : outputIndex === OUTPUT_OPEN_ZONES_ARMING
 	            ? 'open_zones_arming'
-	            : outputIndex === OUTPUT_OPEN_ZONES_ON_REQUEST
-	              ? 'open_zones_request'
 	              : outputIndex === OUTPUT_OPEN_ZONES_CYCLE
 	                ? 'open_zones_cycle'
 	                : 'message';
@@ -1036,17 +1061,10 @@ module.exports = function (RED) {
       return msg;
     }
 
-    function stopOpenZonesDuringArming() {
-      if (openZonesArmingInterval) {
-        timerBag.clearInterval(openZonesArmingInterval);
-        openZonesArmingInterval = null;
-      }
-    }
-
-	    function stopOpenZonesRequestListing() {
-	      if (openZonesRequestInterval) {
-	        timerBag.clearInterval(openZonesRequestInterval);
-	        openZonesRequestInterval = null;
+	    function stopOpenZonesDuringArming() {
+	      if (openZonesArmingInterval) {
+	        timerBag.clearInterval(openZonesArmingInterval);
+	        openZonesArmingInterval = null;
 	      }
 	    }
 
@@ -1078,7 +1096,7 @@ module.exports = function (RED) {
 	    function startOpenZonesDuringArming(baseMsg) {
 	      stopOpenZonesDuringArming();
 
-	      if (!emitOpenZonesDuringArming || openZonesArmingIntervalMs <= 0) {
+	      if (openZonesArmingIntervalMs <= 0) {
 	        return;
       }
 
@@ -1113,7 +1131,7 @@ module.exports = function (RED) {
 
 	    function startOpenZonesCycle(baseMsg) {
 	      stopOpenZonesCycle();
-	      if (!emitOpenZonesCycle || openZonesCycleIntervalMs <= 0) {
+	      if (openZonesCycleIntervalMs <= 0) {
 	        return;
 	      }
 	      openZonesCycleIndex = 0;
@@ -1122,52 +1140,6 @@ module.exports = function (RED) {
 	        emitNextOpenZoneCycle(null);
 	      }, openZonesCycleIntervalMs);
 	    }
-
-	    function emitOpenZonesOnRequest(baseMsg) {
-	      stopOpenZonesRequestListing();
-
-      const snapshot = getOpenZonesSnapshot();
-      if (snapshot.openZones.length === 0) {
-        const msg = baseMsg ? REDUtil.cloneMessage(baseMsg) : {};
-        msg.topic = `${controlTopic}/openZones`;
-        msg.event = 'open_zones';
-        msg.payload = { total: 0, zones: [] };
-        attachAU(msg, {
-          kind: 'open_zones',
-          event: 'open_zones',
-          total: 0,
-          zones: [],
-        });
-        sendSingleOutput(OUTPUT_OPEN_ZONES_ON_REQUEST, msg);
-        return;
-      }
-
-      let index = 0;
-      const total = snapshot.openZones.length;
-
-      function sendOne(nextBaseMsg) {
-        if (index >= total) {
-          stopOpenZonesRequestListing();
-          return;
-        }
-        const zone = snapshot.openZones[index];
-        index += 1;
-        const msg = buildOpenZoneMessage('request', zone, index, total, nextBaseMsg);
-        sendSingleOutput(OUTPUT_OPEN_ZONES_ON_REQUEST, msg);
-      }
-
-      if (openZonesRequestIntervalMs > 0) {
-        sendOne(baseMsg);
-        openZonesRequestInterval = timerBag.setInterval(() => {
-          sendOne(null);
-        }, openZonesRequestIntervalMs);
-        return;
-      }
-
-      for (let i = 0; i < total; i += 1) {
-        sendOne(i === 0 ? baseMsg : null);
-      }
-    }
 
     function sendSiren(active, baseMsg, reason) {
       const topic = config.sirenTopic || `${controlTopic}/siren`;
@@ -1314,7 +1286,6 @@ module.exports = function (RED) {
         return;
       }
       stopOpenZonesDuringArming();
-      stopOpenZonesRequestListing();
       state.alarmActive = true;
       state.alarmZone = zone ? zone.key : null;
       state.silentAlarmActive = Boolean(silent);
@@ -1372,7 +1343,6 @@ module.exports = function (RED) {
 
     function disarm(baseMsg, reason, duress) {
       stopOpenZonesDuringArming();
-      stopOpenZonesRequestListing();
       clearExitTimer();
       clearEntryTimer();
       state.arming = null;
@@ -1432,7 +1402,6 @@ module.exports = function (RED) {
 
     function prepareForArming(baseMsg) {
       stopOpenZonesDuringArming();
-      stopOpenZonesRequestListing();
       clearExitTimer();
       clearEntryTimer();
       state.entry = null;
@@ -1803,7 +1772,6 @@ module.exports = function (RED) {
 	      const command = typeof msg.command === 'string' ? msg.command.toLowerCase().trim() : '';
 	      if (msg.reset === true || command === 'reset') {
 	        stopOpenZonesDuringArming();
-	        stopOpenZonesRequestListing();
 	        openZonesCycleIndex = 0;
 	        clearExitTimer();
 	        clearEntryTimer();
@@ -1817,11 +1785,6 @@ module.exports = function (RED) {
 
       if (msg.status === true || command === 'status') {
         emitStatus(msg);
-        return true;
-      }
-
-      if (command === 'list_open_zones' || command === 'listopenzones' || msg.listOpenZones === true) {
-        emitOpenZonesOnRequest(msg);
         return true;
       }
 
@@ -1893,14 +1856,8 @@ module.exports = function (RED) {
       return false;
     }
 
-    function handleSensorMessage(msg) {
-      const zone = findZone(msg.topic);
-      if (!zone) {
-        return;
-      }
-      const resolved = helpers.resolveInput(msg, payloadPropName, null, RED);
-      const value = resolved.boolean;
-      if (value === undefined) {
+    function applyZoneSensorValue(zone, value, baseMsg) {
+      if (!zone || typeof value !== 'boolean') {
         return;
       }
 
@@ -1932,7 +1889,7 @@ module.exports = function (RED) {
               timeoutSeconds: Number(zone.supervisionTimeoutMs || 0) / 1000,
               lastSeenAt: zoneMeta.lastSeenAt || 0,
             },
-            msg
+            baseMsg
           );
         }
         scheduleSupervisionTimer(zone);
@@ -1946,16 +1903,16 @@ module.exports = function (RED) {
             open: value === true,
             bypassed: state.bypass[zone.key] === true,
           },
-          msg
+          baseMsg
         );
       }
 
       if (changed && emitRestoreEvents && value === false) {
-        emitEvent('zone_restore', { zone: buildZoneSummary(zone) }, msg);
+        emitEvent('zone_restore', { zone: buildZoneSummary(zone) }, baseMsg);
       }
 
       if (changed) {
-        emitAnyZoneOpenIfChanged(msg);
+        emitAnyZoneOpenIfChanged(baseMsg);
         scheduleFileCacheWrite();
         try {
           alarmEmitter.emit('zone_state', {
@@ -1973,12 +1930,12 @@ module.exports = function (RED) {
       }
 
       if (value !== true) {
-        maybeStartExitDelayAfterZonesClosed(msg);
+        maybeStartExitDelayAfterZonesClosed(baseMsg);
         return;
       }
 
       if (state.bypass[zone.key] === true && zone.bypassable !== false) {
-        emitEvent('zone_bypassed_trigger', { zone: buildZoneSummary(zone) }, msg);
+        emitEvent('zone_bypassed_trigger', { zone: buildZoneSummary(zone) }, baseMsg);
         return;
       }
 
@@ -1991,34 +1948,98 @@ module.exports = function (RED) {
       scheduleFileCacheWrite();
 
       if (zone.alwaysActive) {
-        triggerAlarm(zone.type, zone, msg, false);
+        triggerAlarm(zone.type, zone, baseMsg, false);
         return;
       }
 
       if (state.arming && !zone.instantDuringExit) {
-        emitEvent('zone_ignored_exit', { zone: buildZoneSummary(zone) }, msg);
+        emitEvent('zone_ignored_exit', { zone: buildZoneSummary(zone) }, baseMsg);
         return;
       }
 
       if (state.mode === 'disarmed') {
         if (zone.chime) {
-          emitEvent('chime', { zone: buildZoneSummary(zone) }, msg);
+          emitEvent('chime', { zone: buildZoneSummary(zone) }, baseMsg);
         }
         return;
       }
 
       if (zone.entry) {
-        startEntryDelay(zone, msg);
+        startEntryDelay(zone, baseMsg);
         return;
       }
-      triggerAlarm('instant', zone, msg, false);
+      triggerAlarm('instant', zone, baseMsg, false);
+    }
+
+    function resolveAxProZoneUpdate(msg) {
+      const root = getAnyFromObject(msg, payloadPropName);
+      if (!root || typeof root !== 'object') return null;
+      const zoneUpdate =
+        root.zoneUpdate && typeof root.zoneUpdate === 'object' ? root.zoneUpdate : root;
+      if (!zoneUpdate || typeof zoneUpdate !== 'object') return null;
+
+      const rawZoneName =
+        typeof zoneUpdate.name === 'string' && zoneUpdate.name.trim()
+          ? zoneUpdate.name.trim()
+          : zoneUpdate.id !== undefined && zoneUpdate.id !== null
+            ? String(zoneUpdate.id)
+            : '';
+      if (!rawZoneName) return null;
+
+      const zone = zones.find((z) => z && matchesAxProZoneName(rawZoneName, z.topic, zoneAxProZoneNameMatch)) || null;
+      if (!zone) return null;
+
+      let open;
+      if (typeof zoneUpdate.magnetOpenStatus === 'boolean') open = zoneUpdate.magnetOpenStatus;
+      else if (typeof zoneUpdate.alarm === 'boolean') open = zoneUpdate.alarm;
+      else if (typeof zoneUpdate.sensorStatus === 'string') {
+        const v = zoneUpdate.sensorStatus.trim().toLowerCase();
+        open = v !== 'normal' && v !== 'closed' && v !== 'ok';
+      } else if (typeof zoneUpdate.status === 'string') {
+        const v = zoneUpdate.status.trim().toLowerCase();
+        open = v !== 'normal' && v !== 'closed' && v !== 'ok' && v !== 'restore';
+      } else {
+        return null;
+      }
+
+      if (typeof open !== 'boolean') return null;
+      return { zone, value: open };
+    }
+
+    function handleSensorMessage(msg) {
+      const inMsg = msg && typeof msg === 'object' ? msg : {};
+
+      if (zoneInputAdapter === 'knx') {
+        const destination =
+          inMsg.knx && typeof inMsg.knx.destination === 'string' && inMsg.knx.destination.trim()
+            ? inMsg.knx.destination.trim()
+            : '';
+        if (!destination) return;
+        const zone = findZone(destination);
+        if (!zone) return;
+        const resolved = helpers.resolveInput(inMsg, payloadPropName, null, RED);
+        const value = resolved.boolean;
+        if (value === undefined) return;
+        applyZoneSensorValue(zone, value === true, inMsg);
+        return;
+      }
+
+      if (zoneInputAdapter === 'axpro') {
+        const parsed = resolveAxProZoneUpdate(inMsg);
+        if (!parsed) return;
+        applyZoneSensorValue(parsed.zone, parsed.value, inMsg);
+        return;
+      }
+
+      const zone = findZone(inMsg.topic);
+      if (!zone) return;
+      const resolved = helpers.resolveInput(inMsg, payloadPropName, null, RED);
+      const value = resolved.boolean;
+      if (value === undefined) return;
+      applyZoneSensorValue(zone, value === true, inMsg);
     }
 
     node.on('input', (msg) => {
-      if (msg && typeof msg.topic === 'string' && msg.topic === openZonesRequestTopic) {
-        emitOpenZonesOnRequest(msg);
-        return;
-      }
       if (shouldConsumeControlMessage(msg)) {
         if (handleControlMessage(msg)) {
           return;

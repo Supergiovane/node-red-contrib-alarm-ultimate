@@ -39,7 +39,7 @@ describe('Alarm Ultimate output-only nodes', function () {
         sirenDurationSeconds: 0.2,
         requireCodeForDisarm: false,
         zones: JSON.stringify([{ name: 'Front', topic: 'sensor/frontdoor', type: 'perimeter', entry: false }]),
-        wires: [['events'], ['siren'], [], [], [], [], [], [], [], []],
+        wires: [['events'], ['siren'], [], [], [], [], [], [], []],
       },
       { id: 'events', type: 'helper', z: flowId, x: 280, y: 60 },
       { id: 'siren', type: 'helper', z: flowId, x: 280, y: 100 },
@@ -110,11 +110,11 @@ describe('Alarm Ultimate output-only nodes', function () {
             expect(msg.alarmUltimate.kind).to.equal('event');
             expect(msg.alarmUltimate.event).to.equal(msg.event);
 
-            const initReason = msg && msg.payload && msg.payload.reason;
-            if (String(initReason || '').startsWith('init') && msg.event === 'disarmed' && msg.payload.mode === 'disarmed') {
+            const initReason = msg && msg.reason;
+            if (String(initReason || '').startsWith('init') && msg.event === 'disarmed' && msg.mode === 'disarmed' && msg.payload === false) {
               seen.initialDisarmed = true;
             }
-            if (msg.event === 'armed' && msg.payload && msg.payload.mode === 'armed') {
+            if (msg.event === 'armed' && msg.mode === 'armed' && msg.payload === true) {
               seen.armed = true;
             }
             maybeDone();
@@ -131,12 +131,12 @@ describe('Alarm Ultimate output-only nodes', function () {
             expect(msg.alarmUltimate.kind).to.equal('event');
             expect(msg.alarmUltimate.event).to.equal(msg.event);
 
-            const initReason = msg && msg.payload && msg.payload.reason;
-            if (String(initReason || '').startsWith('init') && msg.event === 'zone_close' && msg.payload && msg.payload.open === false) {
+            const initReason = msg && msg.reason;
+            if (String(initReason || '').startsWith('init') && msg.event === 'zone_close' && msg.payload === false && msg.open === false) {
               seen.initialZoneClosed = true;
               expect(msg.topic).to.equal('alarm/event');
             }
-            if (msg.event === 'zone_open' && msg.payload && msg.payload.open === true && msg.payload.zone && msg.payload.zone.topic === 'sensor/frontdoor') {
+            if (msg.event === 'zone_open' && msg.payload === true && msg.open === true && msg.zone && msg.zone.topic === 'sensor/frontdoor') {
               seen.zoneOpen = true;
               expect(msg.topic).to.equal('alarm/event');
             }

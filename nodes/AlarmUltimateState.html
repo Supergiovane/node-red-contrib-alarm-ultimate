@@ -10,8 +10,12 @@
       topic: { value: "" },
       outputInitialState: { value: true },
     },
-    inputs: 1,
-    outputs: 1,
+    inputs: function () {
+      return String(this.io || "out") === "in" ? 1 : 0;
+    },
+    outputs: function () {
+      return String(this.io || "out") === "out" ? 1 : 0;
+    },
     icon: "alarm-ultimate-state.svg",
     label: function () {
       const selfLabel = this.name || "Alarm State";
@@ -74,15 +78,14 @@
     },
     oneditsave: function () {
       const io = String($("#node-input-io").val() || "out");
-      this.inputs = io === "in" ? 1 : 0;
-      this.outputs = io === "out" ? 1 : 0;
+      const outputs = io === "out" ? 1 : 0;
       this.wires = Array.isArray(this.wires) ? this.wires : [];
-      if (this.outputs === 0) {
+      if (outputs === 0) {
         this.wires = [];
-      } else if (this.wires.length < this.outputs) {
-        while (this.wires.length < this.outputs) this.wires.push([]);
-      } else if (this.wires.length > this.outputs) {
-        this.wires = this.wires.slice(0, this.outputs);
+      } else if (this.wires.length < outputs) {
+        while (this.wires.length < outputs) this.wires.push([]);
+      } else if (this.wires.length > outputs) {
+        this.wires = this.wires.slice(0, outputs);
       }
     },
   });
@@ -151,7 +154,9 @@ Output message (same format as the Alarm node `.../event` output):
 
 - `msg.topic`: configurable (default: `controlTopic + "/event"`)
 - `msg.event`: one of `arming`, `armed`, `disarmed`, `reset`, `entry_delay`, `alarm`
-- `msg.payload`: `{ event, mode, ...details }`
+- `msg.payload`: `true|false` (armed/active boolean)
+- `msg.mode`: `armed|disarmed`
+- other event fields (reason, seconds, violations, ...) are emitted as **root properties** on `msg`
 - `msg.alarmUltimate`: canonical, versioned envelope (stable fields for adapters)
 
 Notes:
@@ -203,7 +208,7 @@ Only arming/disarming CID codes are handled (other CID events are ignored):
 
 ## Output adapter notes
 
-- **Default / Ax Pro**: pass-through (same format as the Alarm node `.../event` output).
-- **Homekit**: outputs `msg.payload.SecuritySystemTargetState` and `SecuritySystemCurrentState`.
+- **Default / Ax Pro**: keeps a boolean `msg.payload` and emits details as root properties.
+- **Homekit**: emits `msg.SecuritySystemTargetState` and `msg.SecuritySystemCurrentState` as root properties (while keeping boolean `msg.payload`).
 - **KNX-Ultimate**: outputs a boolean `msg.payload` and sets `msg.destination` (defaults to `msg.topic`).
 </script>

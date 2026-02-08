@@ -30,10 +30,7 @@
     "duressCode": "",
     "exitDelaySeconds": 10,
     "entryDelaySeconds": 30,
-    "emitOpenZonesDuringArming": false,
     "openZonesArmingIntervalSeconds": 1,
-    "openZonesRequestTopic": "alarm/listOpenZones",
-    "openZonesRequestIntervalSeconds": 0,
     "sirenDurationSeconds": 180,
     "sirenLatchUntilDisarm": false,
     "sirenTopic": "alarm/siren",
@@ -47,7 +44,6 @@
     "x": 220,
     "y": 200,
     "wires": [
-      [],
       [],
       [],
       [],

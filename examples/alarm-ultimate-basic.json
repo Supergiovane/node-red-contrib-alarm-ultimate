@@ -30,10 +30,7 @@
     "duressCode": "",
     "exitDelaySeconds": 10,
     "entryDelaySeconds": 30,
-    "emitOpenZonesDuringArming": false,
     "openZonesArmingIntervalSeconds": 1,
-    "openZonesRequestTopic": "alarm/listOpenZones",
-    "openZonesRequestIntervalSeconds": 0,
     "sirenDurationSeconds": 180,
     "sirenLatchUntilDisarm": false,
     "sirenTopic": "alarm/siren",
@@ -73,8 +70,7 @@
       ],
       [
         "02468ace13579bdf"
-      ],
-      []
+      ]
     ]
   },
   {
@@ -158,35 +154,6 @@
     "onceDelay": 0.1,
     "x": 150,
     "y": 180,
-    "wires": [
-      [
-        "a1b2c3d4e5f6a7b8"
-      ]
-    ]
-  },
-  {
-    "id": "abcd1234ef005678",
-    "type": "inject",
-    "z": "f1c9d0f3d9b8a001",
-    "name": "List open zones",
-    "props": [
-      {
-        "p": "topic",
-        "v": "alarm",
-        "vt": "str"
-      },
-      {
-        "p": "command",
-        "v": "list_open_zones",
-        "vt": "str"
-      }
-    ],
-    "topic": "alarm",
-    "command": "list_open_zones",
-    "once": false,
-    "onceDelay": 0.1,
-    "x": 170,
-    "y": 220,
     "wires": [
       [
         "a1b2c3d4e5f6a7b8"

@@ -133,11 +133,14 @@ function toHomekitSecuritySystemOut(msg, node) {
   }
 
   const out = { ...(msg || {}) };
-  out.payload = {
+  const hkPayload = {
     SecuritySystemTargetState: outTarget,
     SecuritySystemCurrentState: outCurrent,
   };
-  attachAlarmUltimateEnvelope(out, { homekit: { kind: 'security_system', payload: out.payload } });
+  out.SecuritySystemTargetState = outTarget;
+  out.SecuritySystemCurrentState = outCurrent;
+  out.payload = outTarget !== 3;
+  attachAlarmUltimateEnvelope(out, { homekit: { kind: 'security_system', payload: hkPayload } });
   return out;
 }
 
@@ -336,11 +339,16 @@ module.exports = function (RED) {
       if (typeof homekitTargetState === 'number' && Number.isFinite(homekitTargetState)) {
         msg.homekitTargetState = homekitTargetState;
       }
-      msg.payload = {
-        event,
-        mode: m,
-        ...(details || {}),
-      };
+      msg.payload = event === 'disarmed' || event === 'reset' ? false : true;
+      msg.mode = m;
+      const d = details && typeof details === 'object' ? details : null;
+      if (d) {
+        for (const [k, v] of Object.entries(d)) {
+          if (!k) continue;
+          if (k === 'event' || k === 'mode') continue;
+          msg[k] = v;
+        }
+      }
       const auUpdate = {
         ts: Date.now(),
         kind: 'event',

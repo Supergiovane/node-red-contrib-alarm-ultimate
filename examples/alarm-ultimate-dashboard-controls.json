@@ -82,10 +82,7 @@
     "duressCode": "",
     "exitDelaySeconds": 10,
     "entryDelaySeconds": 30,
-    "emitOpenZonesDuringArming": false,
     "openZonesArmingIntervalSeconds": 1,
-    "openZonesRequestTopic": "alarm/listOpenZones",
-    "openZonesRequestIntervalSeconds": 0,
     "sirenDurationSeconds": 180,
     "sirenLatchUntilDisarm": false,
     "sirenTopic": "alarm/siren",
@@ -111,7 +108,6 @@
       [
         "f50b6a7c1c8b3d12"
       ],
-      [],
       [],
       [],
       []
@@ -228,33 +224,6 @@
     "topicType": "str",
     "x": 160,
     "y": 400,
-    "wires": [
-      [
-        "c44ac2b6af1a1e2a"
-      ]
-    ]
-  },
-  {
-    "id": "c44ac2b6af1a1e23",
-    "type": "ui_button",
-    "z": "b81f9a4b2f9c1a10",
-    "name": "List open zones",
-    "group": "b2b3c4e5f6078891",
-    "order": 4,
-    "width": "6",
-    "height": "1",
-    "passthru": false,
-    "label": "List open zones",
-    "tooltip": "Emits one message per open zone on output 9",
-    "color": "white",
-    "bgcolor": "#6e7681",
-    "icon": "fa-list",
-    "payload": "list_open_zones",
-    "payloadType": "str",
-    "topic": "",
-    "topicType": "str",
-    "x": 170,
-    "y": 440,
     "wires": [
       [
         "c44ac2b6af1a1e2a"

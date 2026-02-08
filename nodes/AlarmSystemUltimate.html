@@ -15,17 +15,10 @@
       waitZonesClosedBeforeExit: { value: false },
       exitDelaySeconds: { value: 30, validate: RED.validators.number() },
       entryDelaySeconds: { value: 30, validate: RED.validators.number() },
-      emitOpenZonesDuringArming: { value: false },
       openZonesArmingIntervalSeconds: {
         value: 1,
         validate: RED.validators.number(),
       },
-      openZonesRequestTopic: { value: "alarm/listOpenZones" },
-	      openZonesRequestIntervalSeconds: {
-	        value: 0,
-	        validate: RED.validators.number(),
-	      },
-	      emitOpenZonesCycle: { value: false },
 	      openZonesCycleIntervalSeconds: {
 	        value: 5,
 	        validate: RED.validators.number(),
@@ -40,9 +33,11 @@
       emitRestoreEvents: { value: false },
       maxLogEntries: { value: 50, validate: RED.validators.number() },
       zones: { value: "" },
+      zoneInputAdapter: { value: "default" },
+      zoneAxProZoneNameMatch: { value: "exact" },
     },
     inputs: 1,
-    outputs: 10,
+    outputs: 9,
     outputLabels: [
       "All messages",
       "Siren",
@@ -50,9 +45,8 @@
       "Arm/Disarm updates",
       "Zone activity",
       "Errors/Denied",
-      "Any zone open",
+      "Any zone open (bool)",
       "Open zones (arming)",
-      "Open zones (on request)",
       "Open zones (cycle)",
     ],
     icon: "alarm-ultimate.svg",
@@ -109,6 +103,8 @@
 
       const zonesField = $("#node-input-zones");
       const zonesSummary = $("#node-input-zones-summary");
+      const zoneInputAdapterField = $("#node-input-zoneInputAdapter");
+      const zoneAxProMatchRow = $("#au-row-zoneAxProZoneNameMatch");
       const syncTargetsField = $("#node-input-syncTargets");
       const syncTargetsUi = $("#node-input-syncTargets-ui");
 
@@ -266,6 +262,11 @@
         updateZonesSummary();
       }
 
+      function refreshZoneAdapterVisibility() {
+        const adapter = String(zoneInputAdapterField.val() || "default");
+        zoneAxProMatchRow.toggle(adapter === "axpro");
+      }
+
       function openZonesManager() {
         const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
         const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
@@ -291,6 +292,9 @@
         evt.preventDefault();
         openZonesManager();
       });
+
+      zoneInputAdapterField.off("change").on("change", refreshZoneAdapterVisibility);
+      refreshZoneAdapterVisibility();
 
       const messageListener = (evt) => {
         if (!evt || evt.origin !== openerOrigin) return;
@@ -487,6 +491,36 @@
 		        <span id="node-input-zones-summary" style="margin-left:8px; color:#777;"></span>
 		      </div>
 
+		      <div class="form-row">
+		        <label for="node-input-zoneInputAdapter"><i class="fa fa-plug"></i> Zone input adapter</label>
+		        <div style="width:70%;">
+		          <select id="node-input-zoneInputAdapter" style="width: 100%;">
+		            <option value="default">Default (msg.topic + boolean payload)</option>
+		            <option value="knx">KNX-Ultimate (knx.destination + boolean payload)</option>
+		            <option value="axpro">Ax Pro (Hikvision Ultimate) (payload.zoneUpdate)</option>
+		          </select>
+		          <div class="form-tips" style="margin-top:6px;">
+		            Use this when your sensors don't send the zone identifier in <code>msg.topic</code>.
+		          </div>
+		        </div>
+		      </div>
+
+		      <div class="form-row" id="au-row-zoneAxProZoneNameMatch">
+		        <label for="node-input-zoneAxProZoneNameMatch"><i class="fa fa-bullseye"></i> AX Pro match</label>
+		        <div style="width:70%; display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+		          <select id="node-input-zoneAxProZoneNameMatch" style="flex: 0 1 280px;">
+		            <option value="exact">The zone name matches exactly the Topic</option>
+		            <option value="starts">The zone name starts with the Topic</option>
+		            <option value="contains">The zone name contains the Topic</option>
+		            <option value="ends">The zone name ends with the Topic</option>
+		          </select>
+		          <div class="form-tips" style="flex:1; min-width:260px; margin:0;">
+		            With AX Pro, the incoming zone name is <code>payload.zoneUpdate.name</code> and it is matched against
+		            the configured <b>zone topic</b> using the rule above.
+		          </div>
+		        </div>
+		      </div>
+
 		      <textarea id="node-input-zones" style="display:none;"></textarea>
 		    </div>
 
@@ -653,14 +687,10 @@
 		      </div>
 
 		      <div class="form-row">
-		        <label for="node-input-emitOpenZonesDuringArming"
-		          ><i class="fa fa-list"></i> Emit open zones while arming</label
-		        >
-		        <input
-		          type="checkbox"
-		          id="node-input-emitOpenZonesDuringArming"
-		          style="width:auto; margin-top:7px;"
-		        />
+		        <div class="form-tips" style="margin:0;">
+		          Open zones are emitted on dedicated outputs:
+		          <b>Open zones (arming)</b> while arming, and <b>Open zones (cycle)</b> at a fixed interval.
+		        </div>
 		      </div>
 
 		      <div class="form-row">
@@ -672,42 +702,6 @@
 		          id="node-input-openZonesArmingIntervalSeconds"
 		          min="0"
 		          step="0.1"
-		        />
-		      </div>
-
-		      <div class="form-row">
-		        <label for="node-input-openZonesRequestTopic"
-		          ><i class="fa fa-list"></i> Open zones request topic</label
-		        >
-		        <input
-		          type="text"
-		          id="node-input-openZonesRequestTopic"
-		          placeholder="alarm/listOpenZones"
-		        />
-		      </div>
-
-		      <div class="form-row">
-		        <label for="node-input-openZonesRequestIntervalSeconds"
-		          ><i class="fa fa-clock-o"></i> Request list interval (s)</label
-		        >
-		        <input
-		          type="number"
-		          id="node-input-openZonesRequestIntervalSeconds"
-		          min="0"
-		          step="0.1"
-		        />
-		      </div>
-
-		      <hr />
-
-		      <div class="form-row">
-		        <label for="node-input-emitOpenZonesCycle"
-		          ><i class="fa fa-refresh"></i> Cycle open zones (always)</label
-		        >
-		        <input
-		          type="checkbox"
-		          id="node-input-emitOpenZonesCycle"
-		          style="width:auto; margin-top:7px;"
 		        />
 		      </div>
 
@@ -763,14 +757,14 @@
      - disarm: `msg.command="disarm"`
   5. Attach a **Debug** node to see what the Alarm outputs.
 
-  Tip (recommended): use **Alarm Zone** / **Alarm State** in **Input** mode to normalize incoming data (KNX/HomeKit/...) and inject it into the selected Alarm node. Use **Alarm Zone** / **Alarm State** in **Output** mode with an **Adapter** to filter/transform Alarm outputs (HomeKit, KNX, AX Pro, ...).
+  Tip (recommended): use **Alarm State** in **Input** mode with an **Adapter** (HomeKit / AX Pro / ...) to normalize arm/disarm commands and inject them into the selected Alarm node. For sensor integrations that don't use `msg.topic`, use **Zones → Zone input adapter**.
 
   The node has 2 inputs "in one":
 
   - **Control messages**: when `msg.topic` equals **Control topic**.
-  - **Sensor messages**: any other message, matched to a zone by `msg.topic` and converted to boolean using **With Input** (default `payload`).
+  - **Sensor messages**: any other message, matched to a zone by `msg.topic` (or by the selected **Zone input adapter**) and converted to boolean using **With Input** (default `payload`).
 
-  Tip: Use one or more **Alarm Zone** / **Alarm State** nodes (Output mode + Adapter) to filter/transform Alarm outputs (zone activity, HomeKit/KNX/AX Pro, ...).
+  Tip: Use **Alarm Zone** / **Alarm State** / **Alarm Siren** output-only nodes to split Alarm outputs into dedicated streams. Apply any protocol-specific formatting in the flow (or via adapters where available).
 
   <br/>
 
@@ -781,6 +775,7 @@
   - **Name**: optional label shown in the Alarm Panel.
   - **Control topic**: topic that receives commands (and is used as base for some outputs).
   - **With Input**: message property evaluated as sensor value (default `payload`). It must be convertible to boolean (`true/false`, `open/closed`, `on/off`, `1/0`, ...).
+  - **Zone input adapter**: how the node identifies the zone for sensor messages (default: `msg.topic`). Use it for KNX-Ultimate (`knx.destination`) and AX Pro (`payload.zoneUpdate`).
 
   <br/>
 
@@ -795,11 +790,7 @@
   | Duress code                  | If provided and `msg.code` matches, the node raises a silent duress alarm while still executing the command.                         |
   | Exit/Entry delay (s)         | Global exit/entry delays (each zone can override entry delay).                                                                       |
   | Wait zones closed before exit delay | When arming, if one or more zones are open, the node stays in **Arming** and starts the exit delay countdown only after all zones are closed (supervision **MISSING** with `blockArm: true` still blocks arming). |
-  | Emit open zones while arming | Emits open zones one-by-one while arming (during exit delay).                                                                        |
-  | Arming list interval (s)     | Interval between each open zone emitted while arming.                                                                                |
-  | Open zones request topic     | When a message arrives with `msg.topic` equal to this topic, the node lists open zones even while disarmed.                          |
-  | Request list interval (s)    | Interval between each open zone emitted on request (0 = send immediately).                                                           |
-  | Cycle open zones (always)    | Cycles open zones one-by-one at a fixed interval, regardless of alarm state.                                                         |
+  | Arming list interval (s)     | Interval between each open zone emitted while arming (0 = disabled).                                                                 |
   | Cycle interval (s)           | Interval between each open zone emitted by the cycle (0 = disabled).                                                                 |
   | Siren topic                  | Topic used to turn the siren on/off (default: `controlTopic + "/siren"`).                                                             |
   | Siren ON/OFF payload         | Values emitted for siren on/off (typed).                                                                                             |
@@ -837,7 +828,12 @@
 
   ## Output
 
-  The node has **10 outputs** (pins). Output **#1 (All messages)** is a superset and always emits everything.
+  The node has **9 outputs** (pins).
+
+  Important: **Output #1 (All messages)** is a *superset* of all other outputs. It can emit:
+
+  - a single message, or
+  - an array of messages (for example, when the node emits an event **and** a siren update at the same time).
 
   1. **All messages** (superset)
   2. **Siren**
@@ -845,10 +841,21 @@
   4. **Arm/Disarm updates**
   5. **Zone activity**
   6. **Errors/Denied**
-  7. **Any zone open**
+  7. **Any zone open (bool)**
   8. **Open zones (arming)**
-  9. **Open zones (on request)**
-  10. **Open zones (cycle)**
+  9. **Open zones (cycle)**
+
+  ### What each output is for
+
+  1. **All messages**: everything the node emits (events + siren + open zones listing + any-zone-open).
+  2. **Siren**: only siren state updates (`msg.topic = sirenTopic`, `msg.event = siren_on|siren_off`, typed payload).
+  3. **Alarm triggered**: only the `alarm` event (`msg.topic = controlTopic + "/event"`, `msg.event = "alarm"`).
+  4. **Arm/Disarm updates**: arming/state timeline events (ex: `arming`, `armed`, `disarmed`, `arm_blocked`, `entry_delay`, `status`, `reset`, and also `siren_on/off` *events* on `.../event`).
+  5. **Zone activity**: zone-related events (ex: `zone_open/zone_close`, `chime`, `bypassed/unbypassed`, `zone_restore`, `supervision_lost/restored`).
+  6. **Errors/Denied**: errors and permission denials (`msg.event = error|denied`).
+  7. **Any zone open (bool)**: a boolean summary that changes when *any zone open* state (or count) changes (`msg.payload = true|false` + `msg.openZones*`).
+  8. **Open zones (arming)**: open zones listing *while arming* (`msg.topic = controlTopic + "/openZone"`, `msg.event="open_zone"`, `msg.payload.context="arming"`).
+  9. **Open zones (cycle)**: cyclic open zones listing at a fixed interval (`msg.payload.context="cycle"`).
 
   **Event messages**
 
@@ -867,7 +874,7 @@
   - `msg.event`: `siren_on` / `siren_off`
   - `msg.reason`: why it changed (`manual`, `panic`, `instant`, `entry_timeout`, `timeout`, `disarm`, ...)
 
-  **Any zone open**
+  **Any zone open (bool)**
 
   - `msg.topic = controlTopic + "/anyZoneOpen"`
   - `msg.payload = true|false`
@@ -877,7 +884,7 @@
 
   - `msg.topic = controlTopic + "/openZone"`
   - `msg.event = "open_zone"`
-  - `msg.payload = { context, position, total, zone }` where `context` can be `arming`, `request` or `cycle`
+  - `msg.payload = { context, position, total, zone }` where `context` can be `arming` or `cycle`
 
   <br/>
 
@@ -928,11 +935,6 @@
   Status snapshot:
 
   - `msg.command = "status"` or `msg.status = true`
-
-	  List open zones (one message per zone on the node output):
-
-  - `msg.command = "list_open_zones"` or `msg.listOpenZones = true`
-  - or send a message with `msg.topic = <Open zones request topic>` (works even while disarmed)
 
 	  Bypass / unbypass (zone topic):
 

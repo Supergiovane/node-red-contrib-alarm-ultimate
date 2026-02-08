@@ -12,13 +12,10 @@
           return Boolean(next);
         },
       },
-      io: { value: "out" },
-      adapter: { value: "default" },
-      axProZoneNameMatch: { value: "exact" },
       topic: { value: "" },
       outputInitialState: { value: true },
     },
-    inputs: 1,
+    inputs: 0,
     outputs: 1,
     icon: "alarm-ultimate-zone.svg",
     label: function () {
@@ -37,26 +34,12 @@
     oneditprepare: function () {
       const alarmSelect = $("#node-input-alarmId");
       const zoneSelect = $("#node-input-zoneTopic");
-      const ioSelect = $("#node-input-io");
-      const adapterSelect = $("#node-input-adapter");
-      const topicRow = $("#au-row-topic");
-      const initRow = $("#au-row-outputInitialState");
-      const axProMatchRow = $("#au-row-axProZoneNameMatch");
       const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
       const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
       const panelButton = $("#node-input-alarm-panel");
 
       function apiUrl(path) {
         return `${root}${path.replace(/^\//, "")}`;
-      }
-
-      function refreshVisibility() {
-        const mode = String(ioSelect.val() || "out");
-        const isOut = mode === "out";
-        topicRow.toggle(isOut);
-        initRow.toggle(isOut);
-        const adapter = String(adapterSelect.val() || "default");
-        axProMatchRow.toggle(mode === "in" && adapter === "axpro");
       }
 
       panelButton.off("click").on("click", (evt) => {
@@ -105,6 +88,10 @@
               zoneSelect.append($("<option></option>").attr("value", topic).text(label));
             });
             if (this.zoneTopic) zoneSelect.val(this.zoneTopic);
+            // Force Node-RED editor to re-run validation (async loaded options may leave the field in error state).
+            try {
+              zoneSelect.trigger("change");
+            } catch (_err) { }
           })
           .fail(() => { });
       }
@@ -114,23 +101,6 @@
       try {
         loadAlarms.call(this).always(() => loadZones.call(this, this.alarmId));
       } catch (err) { }
-
-      ioSelect.off("change").on("change", refreshVisibility);
-      adapterSelect.off("change").on("change", refreshVisibility);
-      refreshVisibility();
-    },
-    oneditsave: function () {
-      const io = String($("#node-input-io").val() || "out");
-      this.inputs = io === "in" ? 1 : 0;
-      this.outputs = io === "out" ? 1 : 0;
-      this.wires = Array.isArray(this.wires) ? this.wires : [];
-      if (this.outputs === 0) {
-        this.wires = [];
-      } else if (this.wires.length < this.outputs) {
-        while (this.wires.length < this.outputs) this.wires.push([]);
-      } else if (this.wires.length > this.outputs) {
-        this.wires = this.wires.slice(0, this.outputs);
-      }
     },
   });
 </script>
@@ -158,44 +128,10 @@
     <select id="node-input-zoneTopic" style="width: 70%"></select>
   </div>
 
-  <div class="form-row">
-    <label for="node-input-io"><i class="fa fa-exchange"></i> Mode</label>
-    <select id="node-input-io" style="width: 70%">
-      <option value="out">Output (events → flow)</option>
-      <option value="in">Input (flow → alarm)</option>
-    </select>
+  <div class="form-row" id="au-row-topic">
+    <label for="node-input-topic"><i class="fa fa-tag"></i> Topic</label>
+    <input type="text" id="node-input-topic" placeholder="(default: &lt;controlTopic&gt;/event)" />
   </div>
-
-	  <div class="form-row">
-	    <label for="node-input-adapter"><i class="fa fa-plug"></i> Adapter</label>
-	    <select id="node-input-adapter" style="width: 70%">
-	      <option value="default">Default</option>
-	      <option value="axpro">Ax Pro (Hikvision Ultimate)</option>
-	      <option value="knx">KNX-Ultimate</option>
-	    </select>
-	  </div>
-
-	  <div class="form-row" id="au-row-axProZoneNameMatch">
-	    <label for="node-input-axProZoneNameMatch"><i class="fa fa-bullseye"></i> AX Pro match</label>
-	    <div style="width:70%; display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
-	      <select id="node-input-axProZoneNameMatch" style="flex: 0 1 280px;">
-	        <option value="exact">The zone name matches exactly the Topic</option>
-	        <option value="starts">The zone name starts with the Topic</option>
-	        <option value="contains">The zone name contains the Topic</option>
-	        <option value="ends">The zone name ends with the Topic</option>
-	      </select>
-	      <div class="form-tips" style="flex:1; min-width:260px; margin:0;">
-	        The Alarm zone is identified by <code>msg.topic</code>. With AX Pro, the incoming zone name is
-	        <code>payload.zoneUpdate.name</code> and it is matched against <b>Zone topic</b> using the rule above to decide
-	        which Alarm zone to inject.
-	      </div>
-	    </div>
-	  </div>
-
-	  <div class="form-row" id="au-row-topic">
-	    <label for="node-input-topic"><i class="fa fa-tag"></i> Topic</label>
-	    <input type="text" id="node-input-topic" placeholder="(default: &lt;controlTopic&gt;/event)" />
-	  </div>
 
   <div class="form-row" id="au-row-outputInitialState">
     <label for="node-input-outputInitialState"><i class="fa fa-bolt"></i> Emit on deploy</label>
@@ -204,72 +140,26 @@
 </script>
 
 <script type="text/markdown" data-help-name="AlarmUltimateZone">
-Alarm Zone can work in two modes:
-
-- **Output**: emits zone open/close events from a selected **Alarm System Ultimate** node.
-- **Input**: receives messages from the flow and injects zone sensor updates into the selected Alarm node.
+Alarm Zone is an output-only node that emits zone open/close events from a selected **Alarm System Ultimate** node.
 
 Quick start:
 
 1. Select the Alarm node.
 2. Select the Zone (or **All zones**).
-3. Choose **Mode** and **Adapter**.
-4. Connect to a **Debug** (or to your integration nodes).
+3. Connect to a **Debug** (or to your integrations).
 
 Output message (same format as the Alarm node `.../event` output):
 
 - `msg.topic`: configurable (default: `controlTopic + "/event"`)
 - `msg.event`: `zone_open` or `zone_close`
-- `msg.payload`: `{ event, mode, zone, open, bypassed, reason }`
-- `msg.alarmUltimate`: canonical, versioned envelope (stable fields for adapters)
+- `msg.payload`: `true|false` (zone open boolean)
+- `msg.mode`: `armed|disarmed`
+- `msg.zone`, `msg.open`, `msg.bypassed`, `msg.reason` are emitted as **root properties**
+- `msg.alarmUltimate`: canonical, versioned envelope
 
 Notes:
 
 - The zone list is loaded from the selected Alarm node state (`/alarm-ultimate/alarm/:id/state`).
 - No wiring from the Alarm node is required: select the Alarm node and this node subscribes internally.
 - Use the **Panel** button to open the Alarm Panel preselected on the chosen Alarm node.
-
-## Input mode details
-
-In **Input** mode this node injects a sensor update into the selected Alarm node (as if it was coming from the alarm bus).
-
-### Default / KNX-Ultimate
-
-- The zone is identified by `msg.topic`.
-- With **KNX-Ultimate** you can also pass the group address via `msg.knx.destination` (it overrides `msg.topic`).
-
-### Ax Pro (Hikvision Ultimate)
-
-This mode expects a payload like:
-
-```json
-{
-  "payload": {
-    "zoneUpdate": {
-      "name": "Front door",
-      "magnetOpenStatus": true
-    }
-  }
-}
-```
-
-The Alarm node identifies the zone by `msg.topic`. With AX Pro, the incoming zone is provided as `payload.zoneUpdate.name`.
-This node uses **AX Pro match** to map that name to an Alarm zone topic:
-
-- If **Zone** is a specific zone: `zoneUpdate.name` is matched against the configured **Zone topic**.
-- If **Zone** is **All zones**: `zoneUpdate.name` is matched against **all** configured zones topics and the first match is injected.
-
-- **exact**: `name === topic`
-- **starts**: `name.startsWith(topic)`
-- **contains**: `name.includes(topic)`
-- **ends**: `name.endsWith(topic)`
-
-If the **Zone topic** ends with `*`, it is always treated as a prefix match (e.g. `Zone*` matches any `zoneUpdate.name` starting with `Zone`).
-
-## Output adapter notes
-
-In **Output** mode:
-
-- **KNX-Ultimate**: outputs a boolean `msg.payload` and sets `msg.destination` (defaults to `msg.topic`).
-- **Ax Pro**: zone open/close events are formatted to `msg.payload.zoneUpdate` (Hikvision Ultimate style).
 </script>

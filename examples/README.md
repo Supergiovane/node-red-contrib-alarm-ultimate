@@ -14,7 +14,7 @@ This flow includes:
 
 Notes:
 
-- The old Alarm “Translator” option has been removed. If you need to translate incoming device messages, use `AlarmUltimateZone` in **Input** mode (Zone: **All zones**) with an appropriate **Adapter**.
+- The old Alarm “Translator” option has been removed. If you need to translate incoming device messages, use standard Node-RED nodes (Change/Function) or configure `AlarmSystemUltimate` → **Zones → Zone input adapter** (KNX-Ultimate / AX Pro).
 - Zones can be edited from the Alarm node editor via the “Manage zones” button (opens the `alarm-json-mapper` tool).
 - Optional: you can enable **sensor supervision** per-zone (to detect devices that stop reporting). When a supervised zone is missing, the Alarm Panel shows `… • MISSING` and the node emits `supervision_lost` / `supervision_restored`.
 
@@ -41,7 +41,7 @@ Import `examples/alarm-ultimate-dashboard.json`.
 
 Import `examples/alarm-ultimate-dashboard-controls.json`.
 
-- Includes the panel (iframe) + Dashboard buttons for `arm`, `disarm`, `status`, `list_open_zones`, `siren_on/off`, `panic`.
+- Includes the panel (iframe) + Dashboard buttons for `arm`, `disarm`, `status`, `siren_on/off`, `panic`.
 - Also includes a small “sensor simulator” (buttons that send `true/false` on `sensor/frontdoor` and `sensor/living_pir`).
 - The iframe uses a _relative_ URL that escapes the Dashboard path (`../alarm-ultimate/...`) so it works even when Node-RED is served under a path prefix (e.g. Home Assistant Ingress).
 - The embedded panel supports `view=keypad`, `view=zones`, and `view=log` (useful to show a user-facing event log).
@@ -62,7 +62,7 @@ If you run Node-RED as the Home Assistant Add-on and you want to use the standar
 
 This example:
 
-- Maps `binary_sensor.*` state changes (`"on"/"off"`) into Alarm zones using `AlarmUltimateZone` in **Input** mode (Zone: **All zones**, Adapter: **Default**).
+- Maps `binary_sensor.*` state changes (`"on"/"off"`) into Alarm zones by converting them to boolean and setting `msg.topic` to the configured zone topic (e.g. via a Change node).
 - Receives arm/disarm commands from a Home Assistant Template Alarm Control Panel via the `alarm_ultimate_command` event.
 - Mirrors Alarm events back into Home Assistant by updating `input_select.alarm_ultimate_state`.
 
