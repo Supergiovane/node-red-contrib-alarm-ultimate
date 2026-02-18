@@ -1,7 +1,7 @@
 {
   "name": "node-red-contrib-alarm-ultimate",
-  "version": "0.3.0",
-  "description": "Alarm System node for Node-RED.",
+  "version": "1.0.0",
+  "description": "Alarm System node for Node-RED. Integrates also with Home Assistant, MQTT, KNX-Ultimate. Completed with web interface for fast configuration and control. With zone import wizard.",
   "author": "Massimo Saccani (https://github.com/Supergiovane)",
   "license": "MIT",
   "keywords": [
