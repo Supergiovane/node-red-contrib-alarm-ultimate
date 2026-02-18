@@ -1,7 +1,22 @@
 # Changelog
 
-> **BETA (breaking changes):** this package is currently **BETA** and changes can be **breaking** at any release.
-> Backward compatibility is not guaranteed.
+> Stable release track from `0.3.0`.
+> Previous beta history is preserved below.
+
+## [0.3.0] - 2026-02-18
+
+### Release
+
+- First stable release of `node-red-contrib-alarm-ultimate` (from `0.3.0-beta.7`).
+
+### Fixed
+
+- **Security (Zones JSON Mapper):** fixed XSS risk in the target-alarm context rendering by removing unsafe `innerHTML` usage for the node name.
+- **Output-only nodes:** initial retry intervals now stop automatically once the first valid state is received (`AlarmUltimateState`, `AlarmUltimateZone`, `AlarmUltimateSiren`).
+
+### Changed
+
+- **Packaging:** added explicit npm publish allowlist (`package.json` `files`) to avoid accidental inclusion of unwanted files.
 
 ## [0.3.0-beta.7] - 2026-02-08
 

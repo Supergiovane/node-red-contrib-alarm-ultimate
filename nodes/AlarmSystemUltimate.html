@@ -1,7 +1,7 @@
 <script type="text/javascript">
   RED.nodes.registerType("AlarmSystemUltimate", {
     category: "Alarm Ultimate",
-    color: "#A8DADC",
+    color: "#D9B26B",
     defaults: {
       name: { value: "" },
       controlTopic: { value: "alarm" },
@@ -51,10 +51,10 @@
     ],
     icon: "alarm-ultimate.svg",
     label: function () {
-      return this.name || "Alarm System (BETA)";
+      return this.name || "Alarm System";
     },
     paletteLabel: function () {
-      return "Alarm System (BETA)";
+      return "Alarm System";
     },
 	    oneditprepare: function () {
 	      const nodeId = this.id;
@@ -445,21 +445,22 @@
 
 		  <div class="alarm-ultimate-editor">
 		  <div class="form-row">
-		    <b>Alarm System Ultimate (BETA)</b>
-	    &nbsp;&nbsp;<span style="color:red"
-	      ><i class="fa fa-question-circle"></i>&nbsp;<a
-	        target="_blank"
-	        href="https://github.com/Supergiovane/node-red-contrib-alarm-ultimate"
-	        ><u>Help online</u></a
-	      ></span
-	    >
-	    &nbsp;&nbsp;<span style="color:#cc0000"
-	      ><i class="fa fa-youtube-play"></i>&nbsp;<a
-	        target="_blank"
-	        href="https://youtu.be/HUPzhVgObBE"
-	        ><u>YOUTUBE</u></a
-	      ></span
-		    >
+		    <label>VIDEO</label>
+		    <a
+		      target="_blank"
+		      rel="noopener noreferrer"
+		      href="https://www.youtube.com/watch?v=HUPzhVgObBE&list=PL9Yh1bjbLAYrybBZKykfKLDrRAspj9to4"
+		    ><i class="fa fa-youtube-play" style="color:#cc0000;"></i> See it on YouTube</a>
+		  </div>
+
+		  <div class="form-row">
+		    <b>Alarm System Ultimate</b>
+		    &nbsp;&nbsp;<span style="color:red">
+		      <i class="fa fa-question-circle"></i>&nbsp;<a
+		        target="_blank"
+		        href="https://github.com/Supergiovane/node-red-contrib-alarm-ultimate"
+		      ><u>Help online</u></a>
+		    </span>
 		  </div>
 
 		  <div class="form-row">
@@ -742,11 +743,11 @@
 				</script>
 
 <script type="text/markdown" data-help-name="AlarmSystemUltimate">
-  <p><b>BETA</b> – Alarm control panel node with a single armed/disarmed state, zones, entry/exit delays, bypass, chime, tamper/fire/24h zones, siren control, status and event log.</p>
+  <p>Alarm control panel node with a single armed/disarmed state, zones, entry/exit delays, bypass, chime, tamper/fire/24h zones, siren control, status and event log.</p>
 
   ## Quick start (5 minutes)
 
-  1. Add an **Alarm System (BETA)** node to your flow.
+  1. Add an **Alarm System** node to your flow.
   2. Click **Manage zones** and create at least one zone (example topic: `sensor/frontdoor`). Use **Export JSON** / **Import JSON** in the web tool to backup/restore your zones.  
      **Important:** after editing zones, click **Done** in the Node-RED editor to save (if you click **Cancel**, changes are lost).
   3. Send sensor messages to the Alarm node:

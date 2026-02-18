@@ -17,6 +17,13 @@ module.exports = function (RED) {
     const outputInitialState = config.outputInitialState !== false;
 
     let lastActive = null;
+    let initRetryInterval = null;
+
+    function stopInitRetryInterval() {
+      if (!initRetryInterval) return;
+      timerBag.clearInterval(initRetryInterval);
+      initRetryInterval = null;
+    }
 
     function buildTopic(controlTopic) {
       if (configuredTopic) return configuredTopic;
@@ -28,6 +35,7 @@ module.exports = function (RED) {
       if (typeof active !== 'boolean') return;
       if (lastActive === active && reason !== 'init') return;
       lastActive = active;
+      stopInitRetryInterval();
 
       setNodeStatus({
         fill: active ? 'red' : 'green',
@@ -80,10 +88,12 @@ module.exports = function (RED) {
 
     if (outputInitialState) {
       timerBag.setTimeout(() => emitCurrent('init'), 0);
-      timerBag.setInterval(() => {
+      initRetryInterval = timerBag.setInterval(() => {
         if (lastActive === null) {
           emitCurrent('init_retry');
+          return;
         }
+        stopInitRetryInterval();
       }, 1000);
     } else {
       setNodeStatus({ fill: 'grey', shape: 'ring', text: 'Ready' });

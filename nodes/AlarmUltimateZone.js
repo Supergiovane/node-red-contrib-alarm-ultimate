@@ -21,6 +21,13 @@ module.exports = function (RED) {
     let lastOpen = null;
     const lastOpenByZoneKey = new Map();
     let lastMode = null;
+    let initRetryInterval = null;
+
+    function stopInitRetryInterval() {
+      if (!initRetryInterval) return;
+      timerBag.clearInterval(initRetryInterval);
+      initRetryInterval = null;
+    }
 
     function buildTopic(controlTopic, zoneTopic) {
       if (configuredTopic) return configuredTopic;
@@ -40,9 +47,11 @@ module.exports = function (RED) {
         const prev = lastOpenByZoneKey.has(key) ? lastOpenByZoneKey.get(key) : null;
         if (prev === open && reason !== 'init') return;
         lastOpenByZoneKey.set(key, open);
+        stopInitRetryInterval();
       } else {
         if (lastOpen === open && reason !== 'init') return;
         lastOpen = open;
+        stopInitRetryInterval();
       }
 
       const zoneTopic =
@@ -171,14 +180,17 @@ module.exports = function (RED) {
 
     if (outputInitialState) {
       timerBag.setTimeout(() => emitCurrent('init'), 0);
-      timerBag.setInterval(() => {
+      initRetryInterval = timerBag.setInterval(() => {
         if (allZones) {
           if (lastOpenByZoneKey.size === 0) emitCurrent('init_retry');
+          else stopInitRetryInterval();
           return;
         }
         if (lastOpen === null) {
           emitCurrent('init_retry');
+          return;
         }
+        stopInitRetryInterval();
       }, 1000);
     } else {
       setNodeStatus({ fill: 'grey', shape: 'ring', text: 'Ready' });

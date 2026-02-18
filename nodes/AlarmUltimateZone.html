@@ -1,7 +1,7 @@
 <script type="text/javascript">
   RED.nodes.registerType("AlarmUltimateZone", {
     category: "Alarm Ultimate",
-    color: "#CFEFF0",
+    color: "#E3CEA0",
     defaults: {
       name: { value: "" },
       alarmId: { value: "", required: true },
@@ -106,6 +106,15 @@
 </script>
 
 <script type="text/html" data-template-name="AlarmUltimateZone">
+  <div class="form-row">
+    <label>VIDEO</label>
+    <a
+      target="_blank"
+      rel="noopener noreferrer"
+      href="https://www.youtube.com/watch?v=HUPzhVgObBE&list=PL9Yh1bjbLAYrybBZKykfKLDrRAspj9to4"
+    ><i class="fa fa-youtube-play" style="color:#cc0000;"></i> See it on YouTube</a>
+  </div>
+
   <div class="form-row">
     <label>WEB PAGE</label>
     <button type="button" class="red-ui-button" id="node-input-alarm-panel">

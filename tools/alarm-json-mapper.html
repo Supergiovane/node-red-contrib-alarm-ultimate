@@ -2511,7 +2511,12 @@
       const name = String(nodeName || "").trim() || page.alarmNodeName;
       if (page.alarmNodeId) {
         const label = name ? `${name}` : "(unnamed Alarm)";
-        els.zoneContext.innerHTML = `Target Alarm: <span class="pill">${label}</span> • synced automatically`;
+        const prefix = document.createTextNode("Target Alarm: ");
+        const pill = document.createElement("span");
+        pill.className = "pill";
+        pill.textContent = label;
+        const suffix = document.createTextNode(" • synced automatically");
+        els.zoneContext.replaceChildren(prefix, pill, suffix);
         if (els.zoneApplyReminder && els.zoneApplyText) {
           els.zoneApplyReminder.style.display = "";
           els.zoneApplyText.innerHTML =

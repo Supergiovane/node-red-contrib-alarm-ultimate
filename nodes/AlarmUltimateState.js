@@ -286,6 +286,13 @@ module.exports = function (RED) {
     const adapter = typeof config.adapter === 'string' && config.adapter.trim() ? config.adapter.trim() : 'default';
 
     let lastMode = null;
+    let initRetryInterval = null;
+
+    function stopInitRetryInterval() {
+      if (!initRetryInterval) return;
+      timerBag.clearInterval(initRetryInterval);
+      initRetryInterval = null;
+    }
 
     function buildTopic(controlTopic) {
       if (configuredTopic) return configuredTopic;
@@ -325,6 +332,7 @@ module.exports = function (RED) {
           return;
         }
         lastMode = m;
+        stopInitRetryInterval();
       }
 
       setNodeStatus({
@@ -479,10 +487,12 @@ module.exports = function (RED) {
 
     if (outputInitialState) {
       timerBag.setTimeout(() => emitCurrent('init'), 0);
-      timerBag.setInterval(() => {
+      initRetryInterval = timerBag.setInterval(() => {
         if (lastMode === null) {
           emitCurrent('init_retry');
+          return;
         }
+        stopInitRetryInterval();
       }, 1000);
     } else {
       setNodeStatus({ fill: 'grey', shape: 'ring', text: `Ready (${adapter || 'default'})` });
