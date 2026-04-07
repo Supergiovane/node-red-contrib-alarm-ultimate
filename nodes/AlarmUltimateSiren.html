@@ -112,10 +112,10 @@ Output message (same format as the Alarm node siren output):
 - `msg.event`: `siren_on` or `siren_off`
 - `msg.payload`: `true` when the siren is on, otherwise `false`
 - `msg.reason`: `manual|timeout|arm|disarm|...`
-- `msg.alarmUltimate`: canonical, versioned envelope (stable fields for adapters)
+- `msg.alarmUltimate`: optional standard object with extra alarm details
 
 Notes:
 
-- No wiring from the Alarm node is required: select the Alarm node and this node subscribes internally.
+- No wire from the Alarm node is required: just select the Alarm node in this editor.
 - Use the **Panel** button to open the Alarm Panel preselected on the chosen Alarm node.
 </script>

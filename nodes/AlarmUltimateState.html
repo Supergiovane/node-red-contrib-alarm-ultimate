@@ -166,11 +166,11 @@ Output message (same format as the Alarm node `.../event` output):
 - `msg.payload`: `true|false` (armed/active boolean)
 - `msg.mode`: `armed|disarmed`
 - other event fields (reason, seconds, violations, ...) are emitted as **root properties** on `msg`
-- `msg.alarmUltimate`: canonical, versioned envelope (stable fields for adapters)
+- `msg.alarmUltimate`: optional standard object with extra alarm details
 
 Notes:
 
-- No wiring from the Alarm node is required: select the Alarm node and this node subscribes internally.
+- No wire from the Alarm node is required: just select the Alarm node in this editor.
 - Use the **Panel** button to open the Alarm Panel preselected on the chosen Alarm node.
 
 ## Input mode details
@@ -215,7 +215,7 @@ Only arming/disarming CID codes are handled (other CID events are ignored):
 - `3441` → `arm` (Stay)
 - `1401` → `disarm`
 
-## Output adapter notes
+## Adapter output behavior
 
 - **Default / Ax Pro**: keeps a boolean `msg.payload` and emits details as root properties.
 - **Homekit**: emits `msg.SecuritySystemTargetState` and `msg.SecuritySystemCurrentState` as root properties (while keeping boolean `msg.payload`).

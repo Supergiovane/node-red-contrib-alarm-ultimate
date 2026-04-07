@@ -1,13 +1,25 @@
 # Changelog
 
 > Stable release track from `0.3.0`.
-> Previous beta history is preserved below.
+> Previous pre-release history is preserved below.
+
+## [1.0.1] - 2026-04-07
+
+### Changed
+
+- **Tools UI (Vue shell):** aligned all pages in `tools/` to the KNX AI visual style (layout, colors, typography, shared CSS shell).
+- **Navigation:** renamed sections to **Control Panel**, **Zones**, and **Settings** with SVG icons and improved selected-menu highlighting.
+- **Zones page:** reorganized import flow by moving the full **Import Wizard** into its own dedicated box (now positioned above the zones list).
+- **Settings page:** moved JSON import/export actions from Zones to Settings and renamed actions to **Export Zones** / **Import Zones**.
+- **Control Panel page:** removed redundant helper texts in the Node box and improved node-selection button readability.
+- **Zones supervision timeout:** default timeout is now `120` seconds and empty timeout fields no longer trigger validation errors.
+- **Packaging:** added `prepublishOnly` hook to automatically run `build:vue-tools` before publishing.
 
 ## [0.3.0] - 2026-02-18
 
 ### Release
 
-- First stable release of `node-red-contrib-alarm-ultimate` (from `0.3.0-beta.7`).
+- First stable release of `node-red-contrib-alarm-ultimate` (from `0.3.0-pre-release.7`).
 
 ### Fixed
 
@@ -18,9 +30,9 @@
 
 - **Packaging:** added explicit npm publish allowlist (`package.json` `files`) to avoid accidental inclusion of unwanted files.
 
-## [0.3.0-beta.7] - 2026-02-08
+## [0.3.0-pre-release.7] - 2026-02-08
 
-### Breaking (BETA)
+### Breaking (pre-release)
 
 - **Alarm outputs (Open zones):** removed **Open zones (on request)** output + `list_open_zones` / request-topic behavior. Open zones listing while arming and cyclic listing are now always-on outputs (configurable intervals). Total outputs: **9**.
 - **Alarm Zone / Alarm State (outputs):** `msg.payload` is now always a boolean (`true|false`). All extra fields are emitted as root properties on `msg`.
@@ -34,9 +46,9 @@
 - **Alarm System:** output label renamed to **Any zone open (bool)** and help now documents each output pin.
 - **Examples/Docs/Tests:** updated for new pins and helper node payload shape.
 
-## [0.3.0-beta.6] - 2026-02-07
+## [0.3.0-pre-release.6] - 2026-02-07
 
-### Breaking (BETA)
+### Breaking (pre-release)
 
 - **Alarm Zone:** `AlarmUltimateZone` is now output-only (removed Input mode and all adapters).
 - **Alarm System:** moved zone input adapters into the Alarm node (**Zones → Zone input adapter** + **AX Pro match**).
@@ -49,9 +61,9 @@
 
 - **Tests:** expanded unit test coverage for core Alarm behaviors (arming violations, topic prefix matching, code denial, persistence fallback).
 
-## [0.3.0-beta.5] - 2026-02-07
+## [0.3.0-pre-release.5] - 2026-02-07
 
-### Breaking (BETA)
+### Breaking (pre-release)
 
 - **Alarm System:** removed `blockArmOnViolations`. Arming is now always blocked by violations (open zones, or supervised zones that are **MISSING** when `supervision.blockArm: true`).
 
@@ -65,7 +77,7 @@
 - **Tools:** moved **Export JSON** / **Import JSON** from the node edit dialog to `/alarm-ultimate/alarm-json-mapper`.
 - **Tools / Runtime:** `supervision.blockArm` now treats false-like values (e.g. `"false"`, `0`) as `false`.
 
-## [0.3.0-beta.4] - 2026-02-06
+## [0.3.0-pre-release.4] - 2026-02-06
 
 ### Changed
 
@@ -73,7 +85,7 @@
 - **UI:** `AlarmUltimateZone` now allows selecting the **Ax Pro** adapter also in **Output** mode.
 - **Docs:** refreshed node help and README for coherence (HomeKit input notes, Ax Pro mapping notes, "click Done" reminder).
 
-## [0.3.0-beta.3] - 2026-02-06
+## [0.3.0-pre-release.3] - 2026-02-06
 
 ### Changed
 
@@ -85,7 +97,7 @@
 - **Tools (Zones JSON Mapper):** improved visibility of the "click Done in Node-RED editor to apply" reminder.
 - **UI:** clarified AX Pro matching help text in `AlarmUltimateZone`.
 
-## [0.3.0-beta.2] - 2026-02-04
+## [0.3.0-pre-release.2] - 2026-02-04
 
 ### Changed
 
@@ -94,9 +106,9 @@
 - **Tools:** Zones JSON Mapper now accepts **JSON array only** (aligned with `AlarmSystemUltimate.zones`).
 - **UI:** refined AX Pro “match” option labels in `AlarmUltimateZone`.
 
-## [0.3.0-beta.1] - 2026-02-04
+## [0.3.0-pre-release.1] - 2026-02-04
 
-### Breaking (BETA)
+### Breaking (pre-release)
 
 - **Zones identifier:** removed the `id`/`zoneId` field from zones. Zones are identified only by `topic`.
 - **Zones format:** `AlarmSystemUltimate.zones` now accepts **JSON array only** (no single-object, no JSON-per-line).
@@ -113,9 +125,9 @@
 - **Alarm State (Input + AX Pro):** added support for AX Pro `CIDEvent.code` to inject arm/disarm (`3401` Away, `3441` Stay, `1401` Disarmed).
 - **Tools:** Alarm JSON Mapper and Alarm Panel updated to reflect topic-only zones and the simplified zones format.
 
-## [0.3.0-beta.0] - 2026-02-04
+## [0.3.0-pre-release.0] - 2026-02-04
 
-### Breaking (BETA)
+### Breaking (pre-release)
 
 - **Removed adapter nodes:** `AlarmUltimateInputAdapter` and `AlarmUltimateOutputAdapter` have been removed.
 - **Alarm State / Alarm Zone I/O mode:** `AlarmUltimateState` and `AlarmUltimateZone` can now be configured as **Input** (flow → selected alarm) or **Output** (selected alarm → flow).
@@ -131,9 +143,9 @@
 - Replace any `AlarmUltimateOutputAdapter` nodes with:
   - `AlarmUltimateState` / `AlarmUltimateZone` → **Mode: Output**, pick an **Adapter**, wire their output to your integrations.
 
-## [0.2.0-beta.0] - 2026-02-03
+## [0.2.0-pre-release.0] - 2026-02-03
 
-### Breaking (BETA)
+### Breaking (pre-release)
 
 - **Canonical envelope:** all nodes now emit `msg.alarmUltimate` (versioned) as the stable, canonical representation of alarm messages.
 - **Output-only helper nodes:** `Alarm State`, `Alarm Zone`, `Alarm Siren` now emit the same “default telegrams” as `AlarmSystemUltimate`:
@@ -155,7 +167,7 @@
 
 ## [0.1.17] - 2026-02-02
 
-### Breaking (BETA)
+### Breaking (pre-release)
 
 - **Output Adapter (Homekit Alarm Status):** on `arming` the node keeps `SecuritySystemCurrentState` at the previous value (while updating `SecuritySystemTargetState`). If you relied on both being the same during arming, update your downstream flows.
 
@@ -197,7 +209,7 @@
 
 ## [Unreleased]
 
-### Breaking (BETA)
+### Breaking (pre-release)
 
 - TBD.
 
@@ -215,7 +227,7 @@
 
 ## [0.1.9] - 2026-02-02
 
-### Breaking (BETA)
+### Breaking (pre-release)
 
 - **Alarm node:** removed classic multi-output mode; `AlarmSystemUltimate` now has a single output only.
 

@@ -1,0 +1,425 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --mono: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --soft-radius: 4px;
+  --hb-primary: #ff9800;
+  --hb-primary-dark: #ef6c00;
+  --bg: #f4f4f4;
+  --panel: #ffffff;
+  --panel-soft: #efefef;
+  --text: #333333;
+  --muted: #666666;
+  --border: #d7dde8;
+  --line: rgba(0, 0, 0, 0.125);
+  --accent: #ff9800;
+  --accent-soft: #fff3e0;
+  --ok-bg: #edf9ef;
+  --ok-border: #5bbf73;
+  --err-bg: #ffe9ea;
+  --err-border: #d95b63;
+  --warn-bg: #fff5e3;
+  --warn-border: #d99a34;
+  --ok: #2e7d32;
+  --warn: #ed6c02;
+  --danger: #d32f2f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: inherit;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.alarm-page-shell {
+  --alarm-sidebar-expanded-width: 220px;
+  --alarm-sidebar-collapsed-width: 60px;
+  --alarm-sidebar-current-width: var(--alarm-sidebar-expanded-width);
+  width: min(1600px, calc(100% - 24px));
+  min-height: calc(100vh - 24px);
+  margin: 12px auto;
+  display: grid;
+  grid-template-columns: var(--alarm-sidebar-current-width) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  transition: grid-template-columns 0.24s ease;
+}
+
+.alarm-page-shell.sidebar-collapsed {
+  --alarm-sidebar-current-width: var(--alarm-sidebar-collapsed-width);
+}
+
+.alarm-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 16px 16px;
+  border-radius: var(--soft-radius);
+  background: var(--hb-primary-dark);
+  box-shadow: 0 26px 60px rgba(8, 10, 16, 0.34);
+  color: #f6f8fb;
+  overflow: hidden;
+}
+
+.alarm-sidebar-brand {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 28px;
+  align-items: start;
+  gap: 10px;
+}
+
+.alarm-brand-mark {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--soft-radius);
+  font-weight: 800;
+  font-size: 15px;
+  color: #fff;
+}
+
+.alarm-sidebar-copy {
+  min-width: 0;
+}
+
+.alarm-sidebar-copy .eyebrow {
+  margin: 0 0 4px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.alarm-sidebar-copy h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1;
+  color: #fff;
+}
+
+.alarm-sidebar-copy .subhead {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.alarm-sidebar-collapse {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: var(--soft-radius);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4f8ff;
+  cursor: pointer;
+}
+
+.alarm-sidebar-collapse:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.alarm-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.alarm-nav-link {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #edf1f8;
+  text-decoration: none;
+  font-size: 16px;
+  line-height: 1.2;
+  position: relative;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.alarm-nav-link:hover {
+  background: var(--hb-primary);
+  color: #fff;
+}
+
+.alarm-nav-link.active {
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.96);
+  color: #fff;
+}
+
+.alarm-nav-link.active .alarm-nav-title {
+  font-weight: 700;
+}
+
+.alarm-nav-link.active .alarm-nav-icon {
+  color: var(--hb-primary);
+}
+
+.alarm-nav-link.active:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.alarm-nav-link.active:hover .alarm-nav-icon {
+  color: #fff;
+}
+
+.alarm-nav-icon {
+  flex: 0 0 28px;
+  width: 28px;
+  min-width: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: 700;
+}
+
+.alarm-nav-svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  fill: currentColor;
+}
+
+.alarm-nav-copy {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.alarm-nav-title {
+  display: block;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.alarm-page-shell.sidebar-collapsed .alarm-sidebar {
+  align-items: center;
+  padding: 14px 10px;
+}
+
+.alarm-page-shell.sidebar-collapsed .alarm-sidebar-copy,
+.alarm-page-shell.sidebar-collapsed .alarm-nav-copy,
+.alarm-page-shell.sidebar-collapsed .alarm-sidebar-footer {
+  display: none;
+}
+
+.alarm-page-shell.sidebar-collapsed .alarm-sidebar-brand {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+
+.alarm-page-shell.sidebar-collapsed .alarm-sidebar-collapse {
+  margin-top: 4px;
+}
+
+.alarm-page-shell.sidebar-collapsed .alarm-nav-link {
+  justify-content: center;
+  padding: 14px 8px;
+}
+
+.alarm-page-shell.sidebar-collapsed .alarm-nav-link.active {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.96);
+}
+
+.alarm-sidebar-footer {
+  margin-top: auto;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.alarm-workspace {
+  min-width: 0;
+  padding: 10px;
+  border-radius: var(--soft-radius);
+  background: var(--bg);
+  box-shadow: 0 24px 60px rgba(25, 32, 48, 0.14);
+}
+
+.alarm-topbar {
+  margin: 0;
+  padding: 20px 22px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--soft-radius);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 247, 251, 0.94) 100%);
+  box-shadow: 0 12px 30px rgba(26, 32, 44, 0.08);
+}
+
+.alarm-topbar h2 {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.02;
+  color: #111723;
+}
+
+.alarm-topbar .eyebrow {
+  margin: 0 0 6px;
+  color: #3d4a60;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.alarm-topbar .subhead {
+  max-width: 860px;
+  margin: 8px 0 0;
+  color: #52617b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.alarm-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.alarm-toolbar-cluster {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.alarm-content > main {
+  max-width: none;
+  margin: 0;
+  padding: 16px;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--soft-radius);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 8px 18px rgba(21, 31, 48, 0.06);
+}
+
+button,
+.red-ui-button,
+.primary-button,
+.secondary-button {
+  border-radius: var(--soft-radius);
+}
+
+button.primary,
+.primary-button {
+  border-color: transparent;
+  background: var(--hb-primary);
+  color: #fff;
+}
+
+button.primary:hover,
+.primary-button:hover {
+  background: #e68900;
+  border-color: transparent;
+}
+
+button.secondary-button,
+.secondary-button {
+  border-color: transparent;
+  background: #607d8b;
+  color: #fff;
+}
+
+button.secondary-button:hover,
+.secondary-button:hover {
+  background: #546e7a;
+  border-color: transparent;
+}
+
+button.danger {
+  border-color: transparent;
+  background: #d32f2f;
+  color: #fff;
+}
+
+button.danger:hover {
+  background: #c62828;
+}
+
+button.selected {
+  border-color: transparent;
+  background: #607d8b;
+  color: #fff;
+}
+
+button.selected.ok {
+  border-color: transparent;
+  background: #2e7d32;
+}
+
+button.selected.warn {
+  border-color: transparent;
+  background: #ed6c02;
+}
+
+button.selected.danger {
+  border-color: transparent;
+  background: #d32f2f;
+}
+
+body.embed .alarm-page-shell {
+  display: block;
+  width: 100%;
+  min-height: auto;
+  margin: 0;
+}
+
+body.embed .alarm-sidebar,
+body.embed .alarm-topbar {
+  display: none;
+}
+
+body.embed .alarm-workspace {
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+@media (max-width: 980px) {
+  .alarm-page-shell {
+    width: min(1600px, calc(100% - 16px));
+    min-height: calc(100vh - 16px);
+    margin: 8px auto;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .alarm-sidebar {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .alarm-topbar {
+    padding: 16px 14px 12px;
+  }
+
+  .alarm-content > main {
+    padding: 12px;
+  }
+}

@@ -1,0 +1,619 @@
+/* Shared content styles for Control Panel + Zones, aligned with KNX AI web tokens */
+.alarm-content main {
+  display: grid;
+  gap: 12px;
+}
+
+.alarm-content .grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.alarm-mapper-page .alarm-content .grid {
+  grid-template-columns: 1.2fr 0.8fr;
+}
+
+.alarm-content .card {
+  padding: 12px;
+}
+
+.alarm-content .card h2 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #222;
+}
+
+.alarm-content .row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.alarm-mapper-page .alarm-content .row {
+  grid-template-columns: 160px 1fr;
+}
+
+.alarm-content .row label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.alarm-content textarea,
+.alarm-content select,
+.alarm-content input[type="text"],
+.alarm-content input[type="password"],
+.alarm-content input[type="number"] {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  border-radius: var(--soft-radius);
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.alarm-content textarea:focus,
+.alarm-content select:focus,
+.alarm-content input[type="text"]:focus,
+.alarm-content input[type="password"]:focus,
+.alarm-content input[type="number"]:focus {
+  outline: 2px solid rgba(255, 152, 0, 0.25);
+  border-color: rgba(255, 152, 0, 0.62);
+}
+
+.alarm-content textarea {
+  min-height: 240px;
+  resize: vertical;
+  line-height: 1.35;
+}
+
+.alarm-content input[type="number"] {
+  font-variant-numeric: tabular-nums;
+}
+
+.alarm-content .buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.alarm-content button {
+  border: 1px solid var(--line);
+  background: #607d8b;
+  color: #fff;
+  border-radius: var(--soft-radius);
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.08s ease;
+}
+
+.alarm-content button:hover {
+  background: #546e7a;
+  border-color: transparent;
+}
+
+.alarm-content button:active {
+  transform: translateY(1px);
+}
+
+.alarm-content button:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.alarm-content button.primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+}
+
+.alarm-content button.primary:hover {
+  background: #e68900;
+}
+
+.alarm-content button.selected {
+  border-color: transparent;
+  background: #607d8b;
+  color: #fff;
+}
+
+.alarm-content button.selected.ok {
+  background: var(--ok);
+}
+
+.alarm-content button.selected.warn {
+  background: var(--warn);
+}
+
+.alarm-content button.selected.danger {
+  background: var(--danger);
+}
+
+.alarm-content button.danger,
+.alarm-content .btn-danger {
+  border-color: transparent;
+  background: #d32f2f;
+  color: #fff;
+}
+
+.alarm-content button.danger:hover,
+.alarm-content .btn-danger:hover {
+  background: #c62828;
+}
+
+.alarm-content .hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+.alarm-content .status {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: var(--soft-radius);
+  border: 1px solid var(--line);
+  margin-top: 10px;
+  background: #fff;
+}
+
+.alarm-content .status.ok {
+  border-color: var(--ok-border);
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.alarm-content .status.warn {
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.alarm-content .status.err {
+  border-color: var(--err-border);
+  background: var(--err-bg);
+  color: var(--danger);
+}
+
+.alarm-content .pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+  background: #fff;
+}
+
+.alarm-content .pill.ok {
+  border-color: var(--ok-border);
+  color: var(--ok);
+}
+
+.alarm-content .pill.warn {
+  border-color: var(--warn-border);
+  color: var(--warn);
+}
+
+.alarm-content .pill.err,
+.alarm-content .pill.danger {
+  border-color: var(--err-border);
+  color: var(--danger);
+}
+
+.alarm-content .pill.small {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.alarm-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.alarm-content th,
+.alarm-content td {
+  border-bottom: 1px solid var(--line);
+  padding: 8px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.alarm-content th {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+  background: rgba(255, 152, 0, 0.08);
+}
+
+.alarm-content tbody tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.018);
+}
+
+.alarm-content .mono {
+  font-family: var(--mono);
+}
+
+.alarm-content pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.alarm-content .disabled {
+  opacity: 0.55;
+  pointer-events: none;
+  filter: grayscale(0.12);
+}
+
+/* Alarm panel specific */
+.alarm-panel-page.embed .alarm-content main {
+  max-width: none;
+  padding: 12px;
+}
+
+.alarm-panel-page.embed .alarm-content .grid {
+  grid-template-columns: 1fr;
+}
+
+.alarm-panel-page.view-keypad .alarm-content .grid,
+.alarm-panel-page.view-zones .alarm-content .grid {
+  grid-template-columns: 1fr;
+}
+
+.alarm-panel-page.view-keypad #zonesCard {
+  display: none;
+}
+
+.alarm-panel-page.view-zones #keypadCard {
+  display: none;
+}
+
+.alarm-panel-page.view-keypad #logCard,
+.alarm-panel-page.view-zones #logCard {
+  display: none;
+}
+
+.alarm-panel-page.view-log .alarm-content .grid {
+  display: none;
+}
+
+.alarm-panel-page .status {
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.alarm-panel-page .status .left {
+  display: grid;
+  gap: 2px;
+}
+
+.alarm-panel-page .status .title {
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.alarm-panel-page .status .meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.alarm-panel-page .status .meta .lines {
+  display: grid;
+  gap: 6px;
+}
+
+.alarm-panel-page .status .meta .line {
+  display: grid;
+  grid-template-columns: 180px auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.alarm-panel-page .status .meta .line .name {
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.alarm-panel-page .status .meta .line .details {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alarm-panel-page button.node {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-color: #c8e6c9;
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.alarm-panel-page button.node:hover {
+  border-color: #a5d6a7;
+  background: #dff1e1;
+  color: #1b5e20;
+}
+
+.alarm-panel-page button.node.selected,
+.alarm-panel-page button.node.selected.ok,
+.alarm-panel-page button.node.selected.warn,
+.alarm-panel-page button.node.selected.danger {
+  border-color: #2e7d32;
+  background: #2e7d32;
+  color: #ffffff;
+}
+
+.alarm-panel-page button.node.selected:hover,
+.alarm-panel-page button.node.selected.ok:hover,
+.alarm-panel-page button.node.selected.warn:hover,
+.alarm-panel-page button.node.selected.danger:hover {
+  border-color: #1b5e20;
+  background: #1b5e20;
+  color: #ffffff;
+}
+
+.alarm-panel-page button.node .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #9e9e9e;
+}
+
+.alarm-panel-page button.node.ok .dot {
+  background: var(--ok);
+}
+
+.alarm-panel-page button.node.warn .dot {
+  background: var(--warn);
+}
+
+.alarm-panel-page button.node.danger .dot {
+  background: var(--danger);
+}
+
+.alarm-panel-page .kbd {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.alarm-panel-page .kbd button {
+  padding: 10px;
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+.alarm-panel-page .zone-open {
+  color: var(--danger);
+}
+
+.alarm-panel-page .zone-closed {
+  color: var(--ok);
+}
+
+.alarm-panel-page .zone-bypassed {
+  color: var(--warn);
+}
+
+.alarm-panel-page .zone-missing {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.alarm-panel-page .log-details {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* Mapper specific */
+.alarm-mapper-page .zone-sup {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.alarm-mapper-page .zone-sup label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.alarm-mapper-page .zone-sup .sup-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.alarm-mapper-page .zone-sup .sup-time span {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+.alarm-mapper-page .zone-sup input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.alarm-mapper-page .zone-sup input[type="number"] {
+  min-width: 80px;
+}
+
+.alarm-mapper-page .callout {
+  border: 1px solid var(--warn-border);
+  background: var(--warn-bg);
+  border-radius: var(--soft-radius);
+  padding: 10px 12px;
+  margin-top: 10px;
+}
+
+.alarm-mapper-page .callout .title {
+  color: var(--warn);
+  font-weight: 700;
+  font-size: 13px;
+  margin: 0 0 6px;
+}
+
+.alarm-mapper-page .callout .text {
+  color: var(--text);
+  font-size: 13px;
+  margin: 0;
+}
+
+.alarm-mapper-page .kbd {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.alarm-mapper-page .two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.alarm-mapper-page .th-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.alarm-mapper-page .bulk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.alarm-mapper-page .bulk label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.alarm-mapper-page .bulk select {
+  width: auto;
+  min-width: 140px;
+  padding: 4px 6px;
+  font-size: 11px;
+}
+
+.alarm-mapper-page button.mini {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: var(--soft-radius);
+}
+
+.alarm-mapper-page .sortbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.alarm-mapper-page .sortbar label {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.alarm-mapper-page .sortbar select {
+  width: auto;
+  min-width: 220px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.alarm-mapper-page .sortbar .dir {
+  width: auto;
+  min-width: 120px;
+}
+
+.alarm-mapper-page th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.alarm-mapper-page .sort-indicator {
+  margin-left: 6px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.alarm-mapper-page #wizard-card #wizard {
+  margin-top: 10px;
+}
+
+.alarm-mapper-page td input[type="text"],
+.alarm-mapper-page td input[type="number"],
+.alarm-mapper-page td select {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.alarm-settings-page .settings-card {
+  max-width: 760px;
+}
+
+.alarm-settings-page .settings-actions {
+  margin-top: 14px;
+}
+
+@media (max-width: 980px) {
+  .alarm-content .grid,
+  .alarm-mapper-page .alarm-content .grid,
+  .alarm-mapper-page .two {
+    grid-template-columns: 1fr;
+  }
+
+  .alarm-content .row,
+  .alarm-mapper-page .alarm-content .row {
+    grid-template-columns: 1fr;
+  }
+
+  .alarm-content .row label {
+    margin-bottom: 4px;
+  }
+}

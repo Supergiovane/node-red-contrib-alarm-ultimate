@@ -7,7 +7,6 @@
 [![Node-RED Flows][flows-image]][flows-url]
 [![License][license-image]][license-url]
 [![GitHub issues][issues-image]][issues-url]
-[![Status: beta][beta-image]][repo-url]
 
 # node-red-contrib-alarm-ultimate
 
@@ -23,14 +22,14 @@ Alarm System Ultimate nodes + web panel for Node-RED.
 
 Includes:
 
-- `AlarmSystemUltimate` (BETA): full alarm control panel node (zones, entry/exit delays, bypass, chime, 24h/fire/tamper, siren, event log, optional per-zone sensor supervision).
+- `AlarmSystemUltimate`: main alarm node with panel-style behavior (zones, entry/exit delays, bypass, chime, 24h/fire/tamper, siren, event log, optional per-zone sensor supervision).
 - Helper nodes: `AlarmUltimateState`, `AlarmUltimateZone`, `AlarmUltimateSiren`.
-  - `AlarmUltimateState`: Input/Output node with embedded adapters (Default / Homekit / Ax Pro / KNX-Ultimate).
+  - `AlarmUltimateState`: input/output helper for arm/disarm and state integration (Default / Homekit / Ax Pro / KNX-Ultimate).
   - `AlarmUltimateZone`: output-only zone events splitter (no adapters).
   - `AlarmUltimateSiren`: output-only siren state splitter.
 - Web tools: Zones JSON mapper + web Alarm Panel (embeddable in Node-RED Dashboard).
 
-Note: `AlarmSystemUltimate` is currently **BETA**.
+`AlarmSystemUltimate` is now stable.
 
 ## Table of contents
 
@@ -40,8 +39,8 @@ Note: `AlarmSystemUltimate` is currently **BETA**.
 - [Nodes](#nodes)
 - [Web tools](#web-tools)
 - [Examples](#examples)
-- [Permissions and endpoints](#permissions-and-endpoints)
-- [Development](#development)
+- [Advanced integration reference (optional)](#advanced-integration-reference-optional)
+- [Contributing (optional)](#contributing-optional)
 
 ## Install
 
@@ -56,8 +55,8 @@ npm i node-red-contrib-alarm-ultimate
 
 Beginner-friendly flow:
 
-1. Add an **AlarmSystemUltimate (BETA)** node.
-2. Click **Manage zones** and add at least one zone (example topic: `sensor/frontdoor`). Use **Export JSON** / **Import JSON** in the Zones JSON Mapper web tool to backup/restore your zones.
+1. Add an **AlarmSystemUltimate** node.
+2. Click **Manage zones** and add at least one zone (example topic: `sensor/frontdoor`). For backup/restore use **Export Zones** / **Import Zones** in the **Settings** page.
    **Important:** after editing zones, click **Done** in the Node-RED editor to save (if you click **Cancel**, changes are lost).
 3. Send sensor messages to the Alarm node:
    - open: `msg.topic="sensor/frontdoor"`, `msg.payload=true`
@@ -91,7 +90,7 @@ Optional (recommended):
 
 ## Nodes
 
-### Alarm System Ultimate (BETA)
+### Alarm System Ultimate 
 
 Main node that:
 
@@ -152,7 +151,9 @@ Example zone:
 - `Alarm Zone` (`AlarmUltimateZone`): emits `zone_open` / `zone_close` as `.../event` telegrams
 - `Alarm Siren` (`AlarmUltimateSiren`): emits siren telegrams (`msg.topic = <controlTopic>/siren`, `msg.event = siren_on|siren_off`, `msg.payload = true|false`)
 
-### Canonical envelope (`msg.alarmUltimate`)
+### Advanced integration (optional): `msg.alarmUltimate`
+
+If you are just wiring nodes in Node-RED, you can safely skip this section.
 
 All nodes in this package add a stable, versioned object to every output message:
 
@@ -168,11 +169,11 @@ msg.alarmUltimate = {
 };
 ```
 
-Embedded adapters use `msg.alarmUltimate` as the canonical source, so they do not depend on user-configurable `msg.topic` / `msg.payload` formats.
+Adapters and advanced integrations can use `msg.alarmUltimate` as a consistent source of alarm details.
 
 ## Web tools
 
-These pages are served via the Node-RED admin HTTP endpoint:
+These web pages are available from your Node-RED editor at:
 
 - Zones JSON Mapper: `/alarm-ultimate/alarm-json-mapper`
 - Alarm Panel: `/alarm-ultimate/alarm-panel`
@@ -187,8 +188,11 @@ The Zones JSON Mapper supports:
 
 - Sample message mapping (e.g. KNX Ultimate): map `topic`/`payload` fields and generate a zone template.
 - ETS Group Addresses export (TSV): paste the exported table and generate zones in batch (boolean datapoints only).
-- Backup/restore: **Export JSON** / **Import JSON** for zone definitions.
 - Quality-of-life: bulk apply (Kind/Supervision), sorting, duplicate-topic skipping on import, persisted Step 1 input.
+
+The Settings page supports:
+
+- Backup/restore: **Export Zones** / **Import Zones** for zone definitions.
 
 ## Examples
 
@@ -200,7 +204,7 @@ The Zones JSON Mapper supports:
 
 See `examples/README.md`.
 
-## Development
+## Contributing (optional)
 
 Run tests:
 
@@ -208,7 +212,9 @@ Run tests:
 npm test
 ```
 
-## Permissions and endpoints
+## Advanced integration reference (optional)
+
+If you are using the package normally in flows, you can ignore this section.
 
 When Node-RED authentication is enabled, the admin endpoints use these permissions (if available):
 
@@ -236,4 +242,3 @@ HTTP admin endpoints:
 [flows-image]: https://img.shields.io/badge/Node--RED%20Flows-library-8f0000?logo=nodered&logoColor=white
 [license-image]: https://img.shields.io/npm/l/node-red-contrib-alarm-ultimate.svg
 [issues-image]: https://img.shields.io/github/issues/Supergiovane/node-red-contrib-alarm-ultimate.svg
-[beta-image]: https://img.shields.io/badge/status-beta-orange.svg

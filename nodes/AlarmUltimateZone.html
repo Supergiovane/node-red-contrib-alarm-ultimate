@@ -164,11 +164,11 @@ Output message (same format as the Alarm node `.../event` output):
 - `msg.payload`: `true|false` (zone open boolean)
 - `msg.mode`: `armed|disarmed`
 - `msg.zone`, `msg.open`, `msg.bypassed`, `msg.reason` are emitted as **root properties**
-- `msg.alarmUltimate`: canonical, versioned envelope
+- `msg.alarmUltimate`: optional standard object with extra alarm details
 
 Notes:
 
-- The zone list is loaded from the selected Alarm node state (`/alarm-ultimate/alarm/:id/state`).
-- No wiring from the Alarm node is required: select the Alarm node and this node subscribes internally.
+- The zone list is loaded automatically from the selected Alarm node.
+- No wire from the Alarm node is required: just select the Alarm node in this editor.
 - Use the **Panel** button to open the Alarm Panel preselected on the chosen Alarm node.
 </script>

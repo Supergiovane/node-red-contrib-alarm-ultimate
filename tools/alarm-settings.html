@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Settings (Node-RED)</title>
+  <link rel="stylesheet" href="./alarm-tools/assets/alarm-vue-shell.css" />
+  <link rel="stylesheet" href="./alarm-tools/assets/alarm-tools-pages.css" />
+</head>
+
+<body class="alarm-settings-page">
+  <div id="alarm-vue-shell" class="alarm-page-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+    <aside class="alarm-sidebar" v-if="!embedMode">
+      <div class="alarm-sidebar-brand">
+        <span class="alarm-brand-mark">AU</span>
+        <div class="alarm-sidebar-copy">
+          <p class="eyebrow">Alarm Ultimate</p>
+        </div>
+        <button type="button" class="alarm-sidebar-collapse" @click="toggleSidebar" :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+          {{ sidebarCollapsed ? '+' : '-' }}
+        </button>
+      </div>
+      <nav class="alarm-nav">
+        <a class="alarm-nav-link" :class="{ active: currentPage === 'panel' }" :href="panelUrl">
+          <span class="alarm-nav-icon" aria-hidden="true">
+            <svg class="alarm-nav-svg" viewBox="0 0 24 24">
+              <path d="M4 6h10a2 2 0 1 0 0-2H4a1 1 0 0 0 0 2zm0 7h4a2 2 0 1 0 0-2H4a1 1 0 0 0 0 2zm0 7h10a2 2 0 1 0 0-2H4a1 1 0 0 0 0 2zM18 5a2 2 0 1 0 2-2 2 2 0 0 0-2 2zm-6 7a2 2 0 1 0 2-2 2 2 0 0 0-2 2zm6 7a2 2 0 1 0 2-2 2 2 0 0 0-2 2z" />
+            </svg>
+          </span>
+          <span class="alarm-nav-copy">
+            <span class="alarm-nav-title">Control Panel</span>
+          </span>
+        </a>
+        <a class="alarm-nav-link" :class="{ active: currentPage === 'mapper' }" :href="mapperUrl">
+          <span class="alarm-nav-icon" aria-hidden="true">
+            <svg class="alarm-nav-svg" viewBox="0 0 24 24">
+              <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
+            </svg>
+          </span>
+          <span class="alarm-nav-copy">
+            <span class="alarm-nav-title">Zones</span>
+          </span>
+        </a>
+        <a class="alarm-nav-link" :class="{ active: currentPage === 'settings' }" :href="settingsUrl">
+          <span class="alarm-nav-icon" aria-hidden="true">
+            <svg class="alarm-nav-svg" viewBox="0 0 24 24">
+              <path d="M19.14 12.94c.03-.31.05-.62.05-.94s-.02-.63-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.22 7.22 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.49-.42h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.58.23-1.13.55-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.03.31-.05.62-.05.94s.02.63.05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.5.39 1.05.71 1.63.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.58-.23 1.13-.55 1.63-.94l2.39.96c.24.1.51.01.64-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5z" />
+            </svg>
+          </span>
+          <span class="alarm-nav-copy">
+            <span class="alarm-nav-title">Settings</span>
+          </span>
+        </a>
+      </nav>
+      <p class="alarm-sidebar-footer">Alarm tools</p>
+    </aside>
+
+    <section class="alarm-workspace">
+      <header class="alarm-topbar" v-if="!embedMode">
+        <p class="eyebrow">Alarm Ultimate</p>
+        <h2>{{ pageTitle }}</h2>
+      </header>
+
+      <div class="alarm-content">
+        <main>
+          <section class="card settings-card">
+            <h2>Zones</h2>
+            <p id="zone-context" class="hint"></p>
+            <p class="hint" style="margin-top:4px;">
+              Connection: <span id="zone-connection" class="pill">Not connected</span>
+            </p>
+            <p class="hint" id="zones-count">Zones loaded: 0</p>
+
+            <div class="buttons settings-actions">
+              <button class="primary" id="btn-zones-export" type="button">Export Zones</button>
+              <button id="btn-zones-import" type="button">Import Zones</button>
+              <input type="file" id="zones-import-file" accept="application/json,.json" style="display:none;" />
+            </div>
+
+            <div id="gen-status" class="status warn" style="display:none; margin-top:10px;"></div>
+          </section>
+        </main>
+      </div>
+    </section>
+  </div>
+
+  <script src="./alarm-tools/assets/vue.global.prod.js"></script>
+  <script src="./alarm-tools/assets/alarm-vue-shell.js"></script>
+  <script>
+    window.__alarmSettingsVueShell = typeof window.createAlarmVueShell === "function"
+      ? window.createAlarmVueShell({
+          rootId: "alarm-vue-shell",
+          currentPage: "settings",
+          pageTitle: "Settings",
+          pageSubtitle: ""
+        })
+      : null;
+  </script>
+
+  <script>
+    const els = {
+      btnZonesExport: document.getElementById("btn-zones-export"),
+      btnZonesImport: document.getElementById("btn-zones-import"),
+      zonesImportFile: document.getElementById("zones-import-file"),
+      genStatus: document.getElementById("gen-status"),
+      zoneConnection: document.getElementById("zone-connection"),
+      zoneContext: document.getElementById("zone-context"),
+      zonesCount: document.getElementById("zones-count"),
+    };
+
+    const page = {
+      origin: window.location.origin,
+      params: new URLSearchParams(window.location.search),
+      get alarmNodeId() {
+        return String(this.params.get("id") || "").trim();
+      },
+      get alarmNodeName() {
+        return String(this.params.get("name") || "").trim();
+      },
+      get hasOpener() {
+        try {
+          return Boolean(window.opener && !window.opener.closed);
+        } catch (_err) {
+          return false;
+        }
+      },
+    };
+
+    const bc =
+      typeof BroadcastChannel === "function"
+        ? new BroadcastChannel("alarm-ultimate-zones")
+        : null;
+
+    let zonesModel = [];
+    let editorConnected = false;
+
+    function setConnectionState(state) {
+      if (!els.zoneConnection) return;
+      const s = String(state || "").trim();
+      if (s === "connected") {
+        els.zoneConnection.textContent = "Connected";
+        els.zoneConnection.className = "pill ok";
+        return;
+      }
+      if (s === "connecting") {
+        els.zoneConnection.textContent = "Connecting...";
+        els.zoneConnection.className = "pill warn";
+        return;
+      }
+      els.zoneConnection.textContent = "Not connected";
+      els.zoneConnection.className = "pill err";
+    }
+
+    function canTalkToEditor() {
+      return Boolean(page.alarmNodeId) && (page.hasOpener || Boolean(bc));
+    }
+
+    function normalizeZonesJson(text) {
+      const raw = String(text || "").trim();
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        throw new Error("Zones JSON must be a JSON array of objects.");
+      }
+      return parsed.filter((z) => z && typeof z === "object");
+    }
+
+    function showStatus(kind, message) {
+      if (!els.genStatus) return;
+      els.genStatus.style.display = "";
+      els.genStatus.className = `status ${kind}`;
+      els.genStatus.textContent = message;
+    }
+
+    function setZonesCount() {
+      if (!els.zonesCount) return;
+      els.zonesCount.textContent = `Zones loaded: ${Array.isArray(zonesModel) ? zonesModel.length : 0}`;
+    }
+
+    function renderZoneContext(nodeName) {
+      if (!els.zoneContext) return;
+      const resolvedName = String(nodeName || page.alarmNodeName || "").trim();
+      if (!page.alarmNodeId) {
+        els.zoneContext.textContent = "Open this page from the Alarm node editor to manage zones.";
+        return;
+      }
+      if (resolvedName) {
+        els.zoneContext.textContent = `Node: ${resolvedName} (${page.alarmNodeId})`;
+        return;
+      }
+      els.zoneContext.textContent = `Node id: ${page.alarmNodeId}`;
+    }
+
+    function sanitizeFilenamePart(input) {
+      const raw = String(input || "").trim();
+      if (!raw) return "";
+      return raw
+        .replace(/[^A-Za-z0-9._-]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60);
+    }
+
+    function downloadTextFile(filename, text, mimeType) {
+      const name = String(filename || "").trim() || "download.txt";
+      const type = String(mimeType || "text/plain;charset=utf-8");
+      const blob = new Blob([String(text || "")], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (_err) {
+          // ignore
+        }
+        try {
+          a.remove();
+        } catch (_err) {
+          // ignore
+        }
+      }, 0);
+    }
+
+    function requestZonesFromEditor() {
+      if (!canTalkToEditor()) return;
+      setConnectionState("connecting");
+      try {
+        if (page.hasOpener) {
+          window.opener.postMessage({ type: "alarm-ultimate-request-zones", nodeId: page.alarmNodeId }, page.origin);
+        }
+      } catch (_err) {
+        // ignore
+      }
+      try {
+        if (bc) {
+          bc.postMessage({ type: "alarm-ultimate-request-zones", nodeId: page.alarmNodeId });
+        }
+      } catch (_err) {
+        // ignore
+      }
+    }
+
+    function sendZonesToEditor(payload) {
+      if (!canTalkToEditor()) {
+        showStatus("err", "Open this page from the Alarm node editor to import zones.");
+        setConnectionState("disconnected");
+        return false;
+      }
+      const zones = Array.isArray(payload) ? payload : [];
+      const zonesJson = JSON.stringify(zones, null, 2);
+      try {
+        if (page.hasOpener) {
+          window.opener.postMessage(
+            { type: "alarm-ultimate-zones", nodeId: page.alarmNodeId, zonesJson, zones },
+            page.origin,
+          );
+        }
+      } catch (_err) {
+        // ignore
+      }
+      try {
+        if (bc) {
+          bc.postMessage({ type: "alarm-ultimate-zones", nodeId: page.alarmNodeId, zonesJson, zones });
+        }
+      } catch (_err) {
+        // ignore
+      }
+      return true;
+    }
+
+    function handleEditorZonesMessage(data) {
+      if (!data || data.type !== "alarm-ultimate-zones") return;
+      if (page.alarmNodeId && data.nodeId !== page.alarmNodeId) return;
+      if (typeof data.zonesJson !== "string") return;
+      try {
+        zonesModel = normalizeZonesJson(data.zonesJson);
+        editorConnected = true;
+        setConnectionState("connected");
+        if (typeof data.nodeName === "string") {
+          renderZoneContext(data.nodeName);
+        }
+        setZonesCount();
+        showStatus("ok", `Loaded ${zonesModel.length} zones from Alarm editor.`);
+      } catch (err) {
+        showStatus("err", `Load failed: ${String(err && err.message ? err.message : err)}`);
+      }
+    }
+
+    if (els.btnZonesExport) {
+      els.btnZonesExport.addEventListener("click", () => {
+        const payload = Array.isArray(zonesModel) ? zonesModel : [];
+        const safeName = sanitizeFilenamePart(page.alarmNodeName);
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const filename = `alarm-ultimate-zones${safeName ? `-${safeName}` : ""}-${stamp}.json`;
+        downloadTextFile(filename, JSON.stringify(payload, null, 2) + "\n", "application/json;charset=utf-8");
+        showStatus("ok", `Exported ${payload.length} zones as ${filename}`);
+      });
+    }
+
+    if (els.btnZonesImport && els.zonesImportFile) {
+      els.btnZonesImport.addEventListener("click", () => {
+        try {
+          els.zonesImportFile.value = "";
+        } catch (_err) {
+          // ignore
+        }
+        els.zonesImportFile.click();
+      });
+
+      els.zonesImportFile.addEventListener("change", () => {
+        const file =
+          els.zonesImportFile && els.zonesImportFile.files && els.zonesImportFile.files[0]
+            ? els.zonesImportFile.files[0]
+            : null;
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const text = String(reader.result || "");
+            const imported = normalizeZonesJson(text);
+            const existingCount = Array.isArray(zonesModel) ? zonesModel.length : 0;
+            if (existingCount > 0 && imported.length > 0) {
+              const ok = window.confirm(
+                `Replace the current zones (${existingCount}) with the imported ones (${imported.length})?`,
+              );
+              if (!ok) return;
+            }
+            const pushed = sendZonesToEditor(imported);
+            if (!pushed) return;
+            zonesModel = imported;
+            editorConnected = true;
+            setConnectionState("connected");
+            setZonesCount();
+            showStatus("ok", `Imported ${imported.length} zones (${file.name}).`);
+          } catch (err) {
+            showStatus("err", `Unable to import zones: ${err && err.message ? err.message : err}`);
+          } finally {
+            try {
+              els.zonesImportFile.value = "";
+            } catch (_err) {
+              // ignore
+            }
+          }
+        };
+        reader.onerror = () => {
+          showStatus("err", `Unable to read file: ${file.name}`);
+          try {
+            els.zonesImportFile.value = "";
+          } catch (_err) {
+            // ignore
+          }
+        };
+        reader.readAsText(file);
+      });
+    }
+
+    window.addEventListener("message", (evt) => {
+      if (evt.origin !== page.origin) return;
+      const data = evt.data && typeof evt.data === "object" ? evt.data : null;
+      handleEditorZonesMessage(data);
+    });
+
+    if (bc) {
+      bc.addEventListener("message", (evt) => {
+        const data = evt && evt.data && typeof evt.data === "object" ? evt.data : null;
+        handleEditorZonesMessage(data);
+      });
+    }
+
+    renderZoneContext();
+    setZonesCount();
+    setConnectionState(canTalkToEditor() ? "connecting" : "disconnected");
+    if (canTalkToEditor()) {
+      requestZonesFromEditor();
+    } else {
+      showStatus("warn", "Open this page from the Alarm node editor to sync zones.");
+    }
+  </script>
+</body>
+</html>

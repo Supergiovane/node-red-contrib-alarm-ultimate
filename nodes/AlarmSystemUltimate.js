@@ -97,12 +97,36 @@ module.exports = function (RED) {
       });
     }
 
+    function sendToolAssetFile(res, filename) {
+      const assetsRoot = path.join(__dirname, '..', 'tools', 'assets');
+      const requested = String(filename || '').replace(/^\/+/, '');
+      const rootPath = path.resolve(assetsRoot);
+      const fullPath = path.resolve(rootPath, requested);
+      if (!fullPath.startsWith(rootPath + path.sep)) {
+        res.status(403).end();
+        return;
+      }
+      res.sendFile(fullPath, (err) => {
+        if (err) {
+          res.status(err.statusCode || 404).end();
+        }
+      });
+    }
+
     RED.httpAdmin.get('/alarm-ultimate/alarm-json-mapper', needsRead, (req, res) => {
       sendToolFile(res, 'alarm-json-mapper.html');
     });
 
     RED.httpAdmin.get('/alarm-ultimate/alarm-panel', needsRead, (req, res) => {
       sendToolFile(res, 'alarm-panel.html');
+    });
+
+    RED.httpAdmin.get('/alarm-ultimate/alarm-settings', needsRead, (req, res) => {
+      sendToolFile(res, 'alarm-settings.html');
+    });
+
+    RED.httpAdmin.get('/alarm-ultimate/alarm-tools/assets/:file', needsRead, (req, res) => {
+      sendToolAssetFile(res, req.params.file);
     });
 
     RED.httpAdmin.get('/alarm-ultimate/alarm/nodes', needsRead, (req, res) => {

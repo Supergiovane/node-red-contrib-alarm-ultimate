@@ -3,494 +3,184 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Alarm Panel</title>
-    <style>
-      :root {
-        color-scheme: light dark;
-        --bg: #0b1020;
-        --panel: #111936;
-        --text: #e7eaf6;
-        --muted: #a9b0d2;
-        --border: #2a355f;
-        --accent: #6ea8fe;
-        --ok: #2fbf71;
-        --warn: #ffcc66;
-        --danger: #ff6b6b;
-        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
-          monospace;
-        --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
-          "Segoe UI Emoji";
-      }
-
-      @media (prefers-color-scheme: light) {
-        :root {
-          --bg: #f6f8ff;
-          --panel: #ffffff;
-          --text: #111827;
-          --muted: #5b647a;
-          --border: #d8deef;
-          --accent: #2563eb;
-        }
-      }
-
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font-family: var(--sans);
-      }
-
-      body.embed header {
-        display: none;
-      }
-
-      body.embed main {
-        max-width: none;
-        padding: 12px;
-      }
-
-      body.embed .grid {
-        grid-template-columns: 1fr;
-      }
-
-      body.view-keypad .grid,
-      body.view-zones .grid {
-        grid-template-columns: 1fr;
-      }
-
-      body.view-keypad #zonesCard {
-        display: none;
-      }
-
-      body.view-zones #keypadCard {
-        display: none;
-      }
-
-      body.view-keypad #logCard,
-      body.view-zones #logCard {
-        display: none;
-      }
-
-      body.view-log .grid {
-        display: none;
-      }
-
-      header {
-        padding: 16px;
-        border-bottom: 1px solid var(--border);
-      }
-
-      header h1 {
-        margin: 0 0 6px 0;
-        font-size: 18px;
-      }
-
-      header p {
-        margin: 0;
-        color: var(--muted);
-        font-size: 13px;
-      }
-
-      main {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 16px;
-        display: grid;
-        gap: 12px;
-      }
-
-      .grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-      }
-
-      @media (max-width: 980px) {
-        .grid {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      .card {
-        border: 1px solid var(--border);
-        background: var(--panel);
-        border-radius: 10px;
-        padding: 12px;
-      }
-
-      .card h2 {
-        font-size: 14px;
-        margin: 0 0 10px 0;
-      }
-
-      .row {
-        display: grid;
-        grid-template-columns: 140px 1fr;
-        gap: 10px;
-        align-items: center;
-        margin: 8px 0;
-      }
-
-      .row label {
-        font-size: 12px;
-        color: var(--muted);
-      }
-
-      select,
-      input[type="password"],
-      input[type="text"] {
-        width: 100%;
-        border: 1px solid var(--border);
-        background: transparent;
-        color: var(--text);
-        border-radius: 8px;
-        padding: 8px 10px;
-        box-sizing: border-box;
-        font-family: var(--mono);
-        font-size: 12px;
-      }
-
-      .buttons {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 10px;
-      }
-
-      button {
-        border: 1px solid var(--border);
-        background: rgba(110, 168, 254, 0.12);
-        color: var(--text);
-        border-radius: 8px;
-        padding: 8px 10px;
-        cursor: pointer;
-        font-size: 12px;
-        transition: background-color 120ms ease, border-color 120ms ease, transform 80ms ease;
-      }
-
-      button.primary {
-        border-color: rgba(110, 168, 254, 0.85);
-        background: var(--accent);
-        color: #fff;
-      }
-
-      button.danger {
-        border-color: rgba(255, 107, 107, 0.55);
-        background: rgba(255, 107, 107, 0.14);
-      }
-
-      button:hover {
-        background: rgba(110, 168, 254, 0.18);
-        border-color: rgba(110, 168, 254, 0.35);
-      }
-
-      button.primary:hover {
-        filter: brightness(1.05);
-      }
-
-      button:active {
-        transform: translateY(1px);
-      }
-
-      button.selected {
-        border-color: rgba(110, 168, 254, 0.9);
-        background: rgba(110, 168, 254, 0.28);
-      }
-
-      button.selected.ok {
-        border-color: rgba(47, 191, 113, 0.65);
-        background: rgba(47, 191, 113, 0.16);
-      }
-
-      button.selected.warn {
-        border-color: rgba(255, 204, 102, 0.65);
-        background: rgba(255, 204, 102, 0.14);
-      }
-
-      button.selected.danger {
-        border-color: rgba(255, 107, 107, 0.65);
-        background: rgba(255, 107, 107, 0.14);
-      }
-
-      button.node {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      button.node .dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: var(--border);
-      }
-
-      button.node.ok .dot {
-        background: var(--ok);
-      }
-      button.node.warn .dot {
-        background: var(--warn);
-      }
-      button.node.danger .dot {
-        background: var(--danger);
-      }
-
-      .status {
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 10px;
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 10px;
-        align-items: center;
-      }
-
-      .status .left {
-        display: grid;
-        gap: 2px;
-      }
-
-      .status .title {
-        font-family: var(--mono);
-        font-size: 13px;
-      }
-
-      .status .meta {
-        color: var(--muted);
-        font-size: 12px;
-      }
-
-      .status .meta .lines {
-        display: grid;
-        gap: 6px;
-      }
-
-      .status .meta .line {
-        display: grid;
-        grid-template-columns: 180px auto;
-        gap: 10px;
-        align-items: center;
-      }
-
-      .status .meta .line .name {
-        font-family: var(--mono);
-        font-size: 12px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .status .meta .line .details {
-        font-family: var(--mono);
-        font-size: 11px;
-        color: var(--muted);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .pill {
-        font-family: var(--mono);
-        font-size: 12px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-      }
-
-      .pill.ok {
-        border-color: rgba(47, 191, 113, 0.55);
-        color: var(--ok);
-      }
-      .pill.warn {
-        border-color: rgba(255, 204, 102, 0.55);
-        color: var(--warn);
-      }
-      .pill.danger {
-        border-color: rgba(255, 107, 107, 0.55);
-        color: var(--danger);
-      }
-
-      .pill.small {
-        padding: 4px 8px;
-        font-size: 11px;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-family: var(--mono);
-        font-size: 12px;
-      }
-
-      th,
-      td {
-        border-bottom: 1px solid var(--border);
-        padding: 8px 6px;
-        text-align: left;
-        vertical-align: top;
-      }
-
-      th {
-        color: var(--muted);
-        font-weight: 600;
-      }
-
-      .zone-open {
-        color: var(--danger);
-      }
-      .zone-closed {
-        color: var(--ok);
-      }
-      .zone-bypassed {
-        color: var(--warn);
-      }
-      .zone-missing {
-        color: var(--warn);
-        font-weight: 700;
-      }
-
-      .kbd {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-        margin-top: 10px;
-      }
-
-      .kbd button {
-        padding: 10px;
-        font-family: var(--mono);
-        font-size: 14px;
-      }
-
-      .hint {
-        color: var(--muted);
-        font-size: 12px;
-        margin: 8px 0 0 0;
-      }
-
-      .log-details {
-        color: var(--muted);
-        font-size: 11px;
-      }
-    </style>
+    <title>Control Panel</title>
+    <link rel="stylesheet" href="./alarm-tools/assets/alarm-vue-shell.css" />
+    <link rel="stylesheet" href="./alarm-tools/assets/alarm-tools-pages.css" />
   </head>
-  <body>
-    <header>
-      <h1>Alarm Panel</h1>
-      <p>View all zones and use the keypad to arm/disarm the Alarm System Ultimate node.</p>
-    </header>
-
-	    <main>
-      <section class="card">
-        <h2>Node</h2>
-        <div class="row">
-          <label>Alarm nodes</label>
-          <div>
-            <div class="buttons" id="nodeButtons"></div>
-            <div class="hint" id="nodeHint"></div>
-            <div class="hint" id="selectionHint"></div>
-            <div class="buttons" style="margin-top:8px;">
-              <button id="btnSelectAll" type="button">Select all</button>
-            </div>
+  <body class="alarm-panel-page">
+    <div id="alarm-vue-shell" class="alarm-page-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+      <aside class="alarm-sidebar" v-if="!embedMode">
+        <div class="alarm-sidebar-brand">
+          <span class="alarm-brand-mark">AU</span>
+          <div class="alarm-sidebar-copy">
+            <p class="eyebrow">Alarm Ultimate</p>
           </div>
+          <button type="button" class="alarm-sidebar-collapse" @click="toggleSidebar" :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+            {{ sidebarCollapsed ? '+' : '-' }}
+          </button>
         </div>
-        <div id="nodeStatus" class="status" style="display: none">
-          <div class="left">
-            <div class="title" id="statusTitle"></div>
-            <div class="meta" id="statusMeta"></div>
-          </div>
-          <div class="pill" id="statusPill"></div>
-        </div>
-      </section>
+        <nav class="alarm-nav">
+          <a class="alarm-nav-link" :class="{ active: currentPage === 'panel' }" :href="panelUrl">
+            <span class="alarm-nav-icon" aria-hidden="true">
+              <svg class="alarm-nav-svg" viewBox="0 0 24 24">
+                <path d="M4 6h10a2 2 0 1 0 0-2H4a1 1 0 0 0 0 2zm0 7h4a2 2 0 1 0 0-2H4a1 1 0 0 0 0 2zm0 7h10a2 2 0 1 0 0-2H4a1 1 0 0 0 0 2zM18 5a2 2 0 1 0 2-2 2 2 0 0 0-2 2zm-6 7a2 2 0 1 0 2-2 2 2 0 0 0-2 2zm6 7a2 2 0 1 0 2-2 2 2 0 0 0-2 2z" />
+              </svg>
+            </span>
+            <span class="alarm-nav-copy">
+              <span class="alarm-nav-title">Control Panel</span>
+            </span>
+          </a>
+          <a class="alarm-nav-link" :class="{ active: currentPage === 'mapper' }" :href="mapperUrl">
+            <span class="alarm-nav-icon" aria-hidden="true">
+              <svg class="alarm-nav-svg" viewBox="0 0 24 24">
+                <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
+              </svg>
+            </span>
+            <span class="alarm-nav-copy">
+              <span class="alarm-nav-title">Zones</span>
+            </span>
+          </a>
+          <a class="alarm-nav-link" :class="{ active: currentPage === 'settings' }" :href="settingsUrl">
+            <span class="alarm-nav-icon" aria-hidden="true">
+              <svg class="alarm-nav-svg" viewBox="0 0 24 24">
+                <path d="M19.14 12.94c.03-.31.05-.62.05-.94s-.02-.63-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.22 7.22 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.49-.42h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.58.23-1.13.55-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.03.31-.05.62-.05.94s.02.63.05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.5.39 1.05.71 1.63.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.58-.23 1.13-.55 1.63-.94l2.39.96c.24.1.51.01.64-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5z" />
+              </svg>
+            </span>
+            <span class="alarm-nav-copy">
+              <span class="alarm-nav-title">Settings</span>
+            </span>
+          </a>
+        </nav>
+        <p class="alarm-sidebar-footer">Alarm tools</p>
+      </aside>
 
-	      <div class="grid">
-	        <section class="card" id="keypadCard" data-section="keypad">
-	          <h2>Keypad</h2>
-	          <div class="row">
-	            <label for="code">Code</label>
-	            <input id="code" type="password" autocomplete="one-time-code" placeholder="(optional)" />
-	          </div>
-          <div class="buttons">
-            <button class="primary" id="btnArm">Arm</button>
-            <button class="danger" id="btnDisarm">Disarm</button>
-          </div>
-          <div class="kbd" aria-label="Keypad">
-            <button data-k="1">1</button>
-            <button data-k="2">2</button>
-            <button data-k="3">3</button>
-            <button data-k="4">4</button>
-            <button data-k="5">5</button>
-            <button data-k="6">6</button>
-            <button data-k="7">7</button>
-            <button data-k="8">8</button>
-            <button data-k="9">9</button>
-            <button data-k="clear">Clear</button>
-            <button data-k="0">0</button>
-            <button data-k="back">Back</button>
-          </div>
-          <p class="hint">Commands are sent to the selected node using the Node-RED admin HTTP endpoint.</p>
-          <p class="hint" id="cmdStatus" style="display: none"></p>
-	        </section>
+      <section class="alarm-workspace">
+        <header class="alarm-topbar" v-if="!embedMode">
+          <p class="eyebrow">Alarm Ultimate</p>
+          <h2>{{ pageTitle }}</h2>
+        </header>
 
-		        <section class="card" id="zonesCard" data-section="zones">
-		          <h2>Zones</h2>
-		          <div class="hint" id="zonesHint">Loading...</div>
-              <div class="buttons" style="margin-top:8px;">
-                <button id="btnZonesFilterOpen" type="button">OPEN</button>
-                <button id="btnZonesFilterAll" type="button">ALL</button>
+        <div class="alarm-content">
+          <main>
+            <section class="card">
+              <h2>Node</h2>
+              <div class="row">
+                <label>Alarm System</label>
+                <div>
+                  <div class="buttons" id="nodeButtons"></div>
+                  <div class="buttons" style="margin-top:8px;">
+                    <button id="btnSelectAll" type="button">Select all</button>
+                  </div>
+                </div>
               </div>
-		          <div style="overflow: auto; margin-top: 10px">
-		            <table>
-	              <thead>
-	                <tr>
-                  <th>Alarm</th>
-                  <th>Zone</th>
-                  <th>State</th>
-                  <th>Type</th>
-                  <th>Topic</th>
-                </tr>
-              </thead>
-              <tbody id="zonesBody"></tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+              <div id="nodeStatus" class="status" style="display: none">
+                <div class="left">
+                  <div class="meta" id="statusMeta"></div>
+                </div>
+                <div class="pill" id="statusPill"></div>
+              </div>
+            </section>
 
-      <section class="card" id="logCard" data-section="log">
-        <h2>Log</h2>
-        <div class="hint" id="logHint">Loading...</div>
-        <div class="buttons" style="margin-top:8px;">
-          <button id="btnLogFilterAll" type="button">ALL</button>
-          <button id="btnLogFilterAlarm" type="button">ALARM</button>
-          <button id="btnLogFilterArming" type="button">ARMING</button>
-          <button id="btnLogFilterZones" type="button">ZONES</button>
-          <button id="btnLogFilterErrors" type="button">ERRORS</button>
-          <button id="btnLogDownload" type="button">Download JSON</button>
-        </div>
-        <div style="overflow:auto; margin-top:10px;">
-          <table>
-            <thead>
-              <tr>
-                <th>Alarm</th>
-                <th>Time</th>
-                <th>Event</th>
-                <th>Details</th>
-              </tr>
-            </thead>
-            <tbody id="logBody"></tbody>
-          </table>
+            <div class="grid">
+              <section class="card" id="keypadCard" data-section="keypad">
+                <h2>Keypad</h2>
+                <div class="row">
+                  <label for="code">Code</label>
+                  <input id="code" type="password" autocomplete="one-time-code" placeholder="(optional)" />
+                </div>
+                <div class="buttons">
+                  <button class="primary" id="btnArm">Arm</button>
+                  <button class="danger" id="btnDisarm">Disarm</button>
+                </div>
+                <div class="kbd" aria-label="Keypad">
+                  <button data-k="1">1</button>
+                  <button data-k="2">2</button>
+                  <button data-k="3">3</button>
+                  <button data-k="4">4</button>
+                  <button data-k="5">5</button>
+                  <button data-k="6">6</button>
+                  <button data-k="7">7</button>
+                  <button data-k="8">8</button>
+                  <button data-k="9">9</button>
+                  <button data-k="clear">Clear</button>
+                  <button data-k="0">0</button>
+                  <button data-k="back">Back</button>
+                </div>
+                <p class="hint">Commands are sent to the selected node using the Node-RED admin HTTP endpoint.</p>
+                <p class="hint" id="cmdStatus" style="display: none"></p>
+              </section>
+
+              <section class="card" id="zonesCard" data-section="zones">
+                <h2>Zones</h2>
+                <div class="hint" id="zonesHint">Loading...</div>
+                <div class="buttons" style="margin-top:8px;">
+                  <button id="btnZonesFilterOpen" type="button">OPEN</button>
+                  <button id="btnZonesFilterAll" type="button">ALL</button>
+                </div>
+                <div style="overflow: auto; margin-top: 10px">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Alarm</th>
+                        <th>Zone</th>
+                        <th>State</th>
+                        <th>Type</th>
+                        <th>Topic</th>
+                      </tr>
+                    </thead>
+                    <tbody id="zonesBody"></tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+            <section class="card" id="logCard" data-section="log">
+              <h2>Log</h2>
+              <div class="hint" id="logHint">Loading...</div>
+              <div class="buttons" style="margin-top:8px;">
+                <button id="btnLogFilterAll" type="button">ALL</button>
+                <button id="btnLogFilterAlarm" type="button">ALARM</button>
+                <button id="btnLogFilterArming" type="button">ARMING</button>
+                <button id="btnLogFilterZones" type="button">ZONES</button>
+                <button id="btnLogFilterErrors" type="button">ERRORS</button>
+                <button id="btnLogDownload" type="button">Download JSON</button>
+              </div>
+              <div style="overflow:auto; margin-top:10px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Alarm</th>
+                      <th>Time</th>
+                      <th>Event</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="logBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </main>
         </div>
       </section>
-    </main>
+    </div>
 
+    <script src="./alarm-tools/assets/vue.global.prod.js"></script>
+    <script src="./alarm-tools/assets/alarm-vue-shell.js"></script>
     <script>
+      window.__alarmPanelVueShell = typeof window.createAlarmVueShell === "function"
+        ? window.createAlarmVueShell({
+            rootId: "alarm-vue-shell",
+            currentPage: "panel",
+            pageTitle: "Control Panel",
+            pageSubtitle: ""
+          })
+        : null;
+    </script>
+
+	    <script>
 		      const els = {
 		        nodeButtons: document.getElementById("nodeButtons"),
-		        nodeHint: document.getElementById("nodeHint"),
-	          selectionHint: document.getElementById("selectionHint"),
 	          btnSelectAll: document.getElementById("btnSelectAll"),
 		        nodeStatus: document.getElementById("nodeStatus"),
-		        statusTitle: document.getElementById("statusTitle"),
 		        statusMeta: document.getElementById("statusMeta"),
 		        statusPill: document.getElementById("statusPill"),
 		        zonesBody: document.getElementById("zonesBody"),
@@ -549,6 +239,8 @@
 	      let zonesFilter = "open"; // "open" | "all"
 	      let zonesFilterUserSelected = false;
 	      let zonesFilterInitialized = false;
+        let audioUnlockBound = false;
+        let audioUnlockDone = false;
 
       function getAudioContext() {
         if (audioCtx) return audioCtx;
@@ -558,17 +250,67 @@
         return audioCtx;
       }
 
-      async function ensureAudioReady() {
+      function primeAudioContext(ctx) {
+        if (!ctx) return;
+        try {
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          gain.gain.setValueAtTime(0.0001, now);
+          osc.frequency.setValueAtTime(440, now);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.005);
+          osc.onended = () => {
+            try {
+              osc.disconnect();
+              gain.disconnect();
+            } catch (_err) {}
+          };
+        } catch (_err) {}
+      }
+
+      async function unlockAudio() {
         const ctx = getAudioContext();
         if (!ctx) return null;
         try {
-          if (ctx.state === "suspended") {
+          if (ctx.state !== "running") {
             await ctx.resume();
           }
-        } catch (err) {
+          if (ctx.state === "running" && !audioUnlockDone) {
+            audioUnlockDone = true;
+            primeAudioContext(ctx);
+          }
+          return ctx.state === "running" ? ctx : null;
+        } catch (_err) {
           return null;
         }
-        return ctx;
+      }
+
+      function installAudioUnlockHandlers() {
+        if (audioUnlockBound) return;
+        audioUnlockBound = true;
+
+        const teardown = () => {
+          document.removeEventListener("pointerdown", onGesture, true);
+          document.removeEventListener("touchstart", onGesture, true);
+          document.removeEventListener("keydown", onGesture, true);
+        };
+
+        const onGesture = () => {
+          unlockAudio().then((ctx) => {
+            if (ctx && ctx.state === "running") teardown();
+          }).catch(() => {});
+        };
+
+        document.addEventListener("pointerdown", onGesture, true);
+        document.addEventListener("touchstart", onGesture, true);
+        document.addEventListener("keydown", onGesture, true);
+      }
+
+      async function ensureAudioReady() {
+        return await unlockAudio();
       }
 
       async function playBeep(freq, durationMs, volume, type) {
@@ -582,7 +324,7 @@
         osc.type = type || "sine";
         osc.frequency.setValueAtTime(Number(freq) || 800, now);
 
-        const v = Math.max(0.0001, Math.min(Number(volume) || 0.08, 0.2));
+        const v = Math.max(0.0001, Math.min(Number(volume) || 0.1, 0.2));
         const dur = Math.max(0.01, (Number(durationMs) || 60) / 1000);
 
         gain.gain.setValueAtTime(0.0001, now);
@@ -611,21 +353,21 @@
 
       function startArmingBeeps() {
         if (armingBeepTimer) return;
-        playBeep(660, 50, 0.05, "sine");
+        playBeep(660, 50, 0.065, "sine");
         armingBeepTimer = setInterval(() => {
-          playBeep(660, 50, 0.05, "sine");
+          playBeep(660, 50, 0.065, "sine");
         }, 800);
       }
 
       function playModeBeep(mode) {
         if (mode === "armed") {
-          playBeep(880, 70, 0.085, "sine");
-          setTimeout(() => playBeep(1175, 70, 0.085, "sine"), 110);
+          playBeep(880, 70, 0.11, "sine");
+          setTimeout(() => playBeep(1175, 70, 0.11, "sine"), 110);
           return;
         }
         if (mode === "disarmed") {
-          playBeep(587, 90, 0.085, "sine");
-          setTimeout(() => playBeep(440, 110, 0.085, "sine"), 140);
+          playBeep(587, 90, 0.11, "sine");
+          setTimeout(() => playBeep(440, 110, 0.11, "sine"), 140);
         }
       }
 
@@ -644,7 +386,7 @@
         osc.frequency.setValueAtTime(freq, now);
 
         gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.08, now + 0.002);
+        gain.gain.exponentialRampToValueAtTime(0.1, now + 0.002);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.03);
 
         osc.connect(gain);
@@ -704,11 +446,6 @@
 	      function apiUrl(path) {
 	        const root = httpAdminRoot();
 	        return root.endsWith("/") ? `${root}${path.replace(/^\//, "")}` : `${root}/${path.replace(/^\//, "")}`;
-	      }
-
-	      function setNodeHint(text) {
-	        if (!els.nodeHint) return;
-	        els.nodeHint.textContent = text || "";
 	      }
 
 	      function authHeaders() {
@@ -1155,16 +892,6 @@
 	          return st && typeof st === "object" ? st : { label: "Unknown", cls: "" };
 	        }
 
-        function updateSelectionHint() {
-          const count = selectedIds.size;
-          if (!els.selectionHint) return;
-          if (count === 0) {
-            els.selectionHint.textContent = "Select at least one Alarm node.";
-            return;
-          }
-          els.selectionHint.innerHTML = `Selected: <span class="pill small">${count}</span> (click buttons to add/remove)`;
-        }
-
 	        function setSelectedIds(next) {
 	          const ids = Array.isArray(next) ? next.map(String).filter(Boolean) : [];
 	          selectedIds = new Set(ids);
@@ -1175,7 +902,6 @@
 	          persistSelectedIds();
 	          resetStateAudioTracking();
 	          resetLogTracking();
-	          updateSelectionHint();
 	          renderNodeButtons();
 	          loadState().catch(() => {});
 	        }
@@ -1229,11 +955,8 @@
 	          updateSelectAllVisibility();
 	          if (!nodesList.length) {
 		          els.zonesHint.textContent = "No Alarm nodes found.";
-		          setNodeHint("No Alarm nodes found. Deploy your flow and refresh.");
 	            renderNodeButtons();
-	            updateSelectionHint();
           } else {
-	          setNodeHint("");
             const restored = restoreSelectedIds().filter((id) => nodesList.some((n) => n.id === id));
             setSelectedIds(restored.length ? restored : [nodesList[0].id]);
 	        }
@@ -1278,7 +1001,6 @@
           }
 
           renderNodeButtons();
-          updateSelectionHint();
 
           if (okStates.length === 0) {
             els.nodeStatus.style.display = "none";
@@ -1306,11 +1028,6 @@
           }
 
           els.nodeStatus.style.display = "";
-          els.statusTitle.textContent = multiple
-            ? `Selected alarms (${okStates.length})`
-            : okStates[0].data && okStates[0].data.name
-              ? okStates[0].data.name
-              : okStates[0].id;
 
           if (multiple) {
             const lines = okStates
@@ -1578,7 +1295,7 @@
 
 		      (async function init() {
 		        try {
-		          setNodeHint(`API root: ${httpAdminRoot()}`);
+              installAudioUnlockHandlers();
 		          updateLogFilterButtons();
 		          if (showLog && els.logHint) {
 		            els.logHint.textContent = "Loading...";
@@ -1589,7 +1306,6 @@
 		          startPolling();
 	            startNodeButtonPolling();
 	        } catch (err) {
-	          setNodeHint(err.message);
 	          els.zonesHint.textContent = err.message;
 	        }
 	      })();

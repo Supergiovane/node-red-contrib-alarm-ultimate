@@ -4,656 +4,272 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Alarm JSON Mapper (Node-RED)</title>
-  <style>
-    :root {
-      color-scheme: light dark;
-      --bg: #0b1020;
-      --panel: #111936;
-      --text: #e7eaf6;
-      --muted: #a9b0d2;
-      --border: #2a355f;
-      --accent: #6ea8fe;
-      --ok: #2fbf71;
-      --warn: #ffcc66;
-      --danger: #ff6b6b;
-      --tableHeadBg: rgba(99, 161, 252, 0.14);
-      --tableRowAltBg: rgba(255, 255, 255, 0.035);
-      --mono:
-        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-        "Liberation Mono", "Courier New", monospace;
-      --sans:
-        system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
-        "Apple Color Emoji", "Segoe UI Emoji";
-    }
-
-    @media (prefers-color-scheme: light) {
-      :root {
-        --bg: #f6f8ff;
-        --panel: #ffffff;
-        --text: #111827;
-        --muted: #5b647a;
-        --border: #d8deef;
-        --accent: #2563eb;
-        --tableHeadBg: #f1f5ff;
-        --tableRowAltBg: #f7f8fb;
-      }
-    }
-
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--sans);
-      line-height: 1.4;
-    }
-
-    header {
-      padding: 18px 16px;
-      border-bottom: 1px solid var(--border);
-      background: linear-gradient(180deg,
-          rgba(110, 168, 254, 0.12),
-          rgba(0, 0, 0, 0));
-    }
-
-    header h1 {
-      font-size: 18px;
-      margin: 0 0 6px 0;
-    }
-
-    header p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    main {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 16px;
-      display: grid;
-      gap: 12px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1.2fr 0.8fr;
-      gap: 12px;
-    }
-
-    @media (max-width: 980px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .card {
-      border: 1px solid var(--border);
-      background: var(--panel);
-      border-radius: 10px;
-      padding: 12px;
-    }
-
-    .card h2 {
-      font-size: 14px;
-      margin: 0 0 10px 0;
-    }
-
-    .row {
-      display: grid;
-      grid-template-columns: 160px 1fr;
-      gap: 10px;
-      align-items: center;
-      margin: 8px 0;
-    }
-
-    .row label {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    textarea,
-    select,
-    input[type="text"],
-    input[type="number"] {
-      width: 100%;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text);
-      border-radius: 8px;
-      padding: 8px 10px;
-      box-sizing: border-box;
-      font-family: var(--mono);
-      font-size: 12px;
-    }
-
-    textarea {
-      min-height: 240px;
-      resize: vertical;
-    }
-
-    input[type="number"] {
-      font-variant-numeric: tabular-nums;
-    }
-
-    .zone-sup {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .zone-sup label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--muted);
-      user-select: none;
-      white-space: nowrap;
-    }
-
-    .zone-sup .sup-time {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .zone-sup .sup-time span {
-      font-size: 12px;
-      color: var(--muted);
-      font-family: var(--mono);
-    }
-
-    .zone-sup input[type="checkbox"] {
-      width: auto;
-      margin: 0;
-    }
-
-    .zone-sup input[type="number"] {
-      min-width: 80px;
-    }
-
-    .buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    button {
-      border: 1px solid var(--border);
-      background: rgba(110, 168, 254, 0.12);
-      color: var(--text);
-      border-radius: 8px;
-      padding: 8px 10px;
-      cursor: pointer;
-      font-size: 12px;
-      transition: background-color 120ms ease, border-color 120ms ease, transform 80ms ease;
-    }
-
-    button.primary {
-      border-color: rgba(110, 168, 254, 0.85);
-      background: var(--accent);
-      color: #ffffff;
-    }
-
-    button:hover {
-      background: rgba(110, 168, 254, 0.18);
-      border-color: rgba(110, 168, 254, 0.35);
-    }
-
-    button.primary:hover {
-      filter: brightness(1.05);
-    }
-
-    button:active {
-      transform: translateY(1px);
-    }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .hint {
-      font-size: 12px;
-      color: var(--muted);
-      margin: 6px 0 0 0;
-    }
-
-    .status {
-      font-family: var(--mono);
-      font-size: 12px;
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      margin-top: 10px;
-    }
-
-    .status.ok {
-      border-color: rgba(47, 191, 113, 0.55);
-      color: var(--ok);
-    }
-
-    .status.warn {
-      border-color: rgba(255, 204, 102, 0.55);
-      color: var(--warn);
-    }
-
-    .status.err {
-      border-color: rgba(255, 107, 107, 0.55);
-      color: var(--danger);
-    }
-
-    .callout {
-      border: 1px solid rgba(255, 204, 102, 0.6);
-      background: rgba(255, 204, 102, 0.08);
-      border-radius: 10px;
-      padding: 10px 12px;
-      margin-top: 10px;
-    }
-
-    .callout .title {
-      color: var(--warn);
-      font-weight: 700;
-      font-size: 13px;
-      margin: 0 0 6px 0;
-    }
-
-    .callout .text {
-      color: var(--text);
-      font-size: 13px;
-      margin: 0;
-    }
-
-    .kbd {
-      font-family: var(--mono);
-      font-size: 12px;
-      padding: 1px 7px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: rgba(0, 0, 0, 0.12);
-      color: var(--text);
-      white-space: nowrap;
-    }
-
-    pre {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-family: var(--mono);
-      font-size: 12px;
-    }
-
-    .mono {
-      font-family: var(--mono);
-    }
-
-    .two {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    @media (max-width: 980px) {
-      .two {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-family: var(--mono);
-      font-size: 12px;
-    }
-
-    th,
-    td {
-      border-bottom: 1px solid var(--border);
-      padding: 8px 6px;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      color: var(--muted);
-      font-weight: 600;
-      font-size: 12px;
-      letter-spacing: 0.2px;
-      background: var(--tableHeadBg);
-    }
-
-    tbody tr:nth-child(even) td {
-      background: var(--tableRowAltBg);
-    }
-
-    .th-wrap {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .bulk {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .bulk label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      color: var(--muted);
-      font-weight: 400;
-      user-select: none;
-      white-space: nowrap;
-    }
-
-    .bulk select {
-      width: auto;
-      min-width: 140px;
-      padding: 4px 6px;
-      font-size: 11px;
-    }
-
-    button.mini {
-      padding: 4px 8px;
-      font-size: 11px;
-      border-radius: 7px;
-    }
-
-    .sortbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      margin-top: 10px;
-    }
-
-    .sortbar label {
-      font-size: 12px;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    .sortbar select {
-      width: auto;
-      min-width: 220px;
-      padding: 6px 8px;
-      font-size: 12px;
-    }
-
-    .sortbar .dir {
-      width: auto;
-      min-width: 120px;
-    }
-
-    th.sortable {
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .sort-indicator {
-      margin-left: 6px;
-      color: var(--muted);
-      font-weight: 600;
-    }
-
-    td input[type="text"],
-    td input[type="number"],
-    td select {
-      width: 100%;
-      padding: 6px 8px;
-      font-size: 12px;
-    }
-
-    .btn-danger {
-      border-color: rgba(255, 107, 107, 0.6);
-      background: rgba(255, 107, 107, 0.12);
-      color: var(--text);
-    }
-
-    .btn-danger:hover {
-      background: rgba(255, 107, 107, 0.18);
-      border-color: rgba(255, 107, 107, 0.7);
-    }
-
-    .pill {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      font-size: 11px;
-      color: var(--muted);
-      font-family: var(--mono);
-    }
-
-    .pill.ok {
-      border-color: rgba(47, 191, 113, 0.55);
-      color: var(--ok);
-    }
-
-    .pill.warn {
-      border-color: rgba(255, 204, 102, 0.55);
-      color: var(--warn);
-    }
-
-    .pill.err {
-      border-color: rgba(255, 107, 107, 0.55);
-      color: var(--danger);
-    }
-
-    .disabled {
-      opacity: 0.55;
-      pointer-events: none;
-      filter: grayscale(0.15);
-    }
-  </style>
+  <title>Zones (Node-RED)</title>
+  <link rel="stylesheet" href="./alarm-tools/assets/alarm-vue-shell.css" />
+  <link rel="stylesheet" href="./alarm-tools/assets/alarm-tools-pages.css" />
 </head>
 
-<body>
-  <header>
-    <h1>Alarm JSON Mapper</h1>
-    <p>
-      Paste a sample incoming message (e.g. KNX Ultimate) and map its fields
-      to what the Alarm node needs (topic/value), or paste an ETS Group
-      Addresses export (TSV) to generate zones in batch.
-    </p>
-  </header>
+<body class="alarm-mapper-page">
+  <div id="alarm-vue-shell" class="alarm-page-shell" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+    <aside class="alarm-sidebar" v-if="!embedMode">
+      <div class="alarm-sidebar-brand">
+        <span class="alarm-brand-mark">AU</span>
+        <div class="alarm-sidebar-copy">
+          <p class="eyebrow">Alarm Ultimate</p>
+        </div>
+        <button type="button" class="alarm-sidebar-collapse" @click="toggleSidebar" :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+          {{ sidebarCollapsed ? '+' : '-' }}
+        </button>
+      </div>
+      <nav class="alarm-nav">
+        <a class="alarm-nav-link" :class="{ active: currentPage === 'panel' }" :href="panelUrl">
+          <span class="alarm-nav-icon" aria-hidden="true">
+            <svg class="alarm-nav-svg" viewBox="0 0 24 24">
+              <path d="M4 6h10a2 2 0 1 0 0-2H4a1 1 0 0 0 0 2zm0 7h4a2 2 0 1 0 0-2H4a1 1 0 0 0 0 2zm0 7h10a2 2 0 1 0 0-2H4a1 1 0 0 0 0 2zM18 5a2 2 0 1 0 2-2 2 2 0 0 0-2 2zm-6 7a2 2 0 1 0 2-2 2 2 0 0 0-2 2zm6 7a2 2 0 1 0 2-2 2 2 0 0 0-2 2z" />
+            </svg>
+          </span>
+          <span class="alarm-nav-copy">
+            <span class="alarm-nav-title">Control Panel</span>
+          </span>
+        </a>
+        <a class="alarm-nav-link" :class="{ active: currentPage === 'mapper' }" :href="mapperUrl">
+          <span class="alarm-nav-icon" aria-hidden="true">
+            <svg class="alarm-nav-svg" viewBox="0 0 24 24">
+              <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
+            </svg>
+          </span>
+          <span class="alarm-nav-copy">
+            <span class="alarm-nav-title">Zones</span>
+          </span>
+        </a>
+        <a class="alarm-nav-link" :class="{ active: currentPage === 'settings' }" :href="settingsUrl">
+          <span class="alarm-nav-icon" aria-hidden="true">
+            <svg class="alarm-nav-svg" viewBox="0 0 24 24">
+              <path d="M19.14 12.94c.03-.31.05-.62.05-.94s-.02-.63-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.22 7.22 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.49-.42h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.58.23-1.13.55-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.03.31-.05.62-.05.94s.02.63.05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.5.39 1.05.71 1.63.94l.36 2.54c.04.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.58-.23 1.13-.55 1.63-.94l2.39.96c.24.1.51.01.64-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5z" />
+            </svg>
+          </span>
+          <span class="alarm-nav-copy">
+            <span class="alarm-nav-title">Settings</span>
+          </span>
+        </a>
+      </nav>
+      <p class="alarm-sidebar-footer">Alarm tools</p>
+    </aside>
 
-  <main>
-    <section class="card">
-      <h2>Zones</h2>
-      <div class="buttons">
-        <button id="btn-zone-add">Add zone</button>
-        <button class="primary" id="btn-wizard-toggle">Import zones wizard</button>
-        <button id="btn-zones-export" type="button">Export JSON</button>
-        <button id="btn-zones-import" type="button">Import JSON</button>
-        <input type="file" id="zones-import-file" accept="application/json,.json" style="display:none;" />
-      </div>
-      <div class="sortbar">
-        <label for="sort-key">Sort zones</label>
-        <select id="sort-key">
-          <option value="topic">Topic</option>
-          <option value="name">Name</option>
-          <option value="kind">Kind</option>
-          <option value="sup_enabled">Supervision: On</option>
-          <option value="sup_timeout">Supervision: Timeout</option>
-          <option value="sup_blockArm">Supervision: Block arm</option>
-          <option value="entry">Entry</option>
-          <option value="bypassable">Bypassable</option>
-          <option value="chime">Chime</option>
-        </select>
-        <select id="sort-dir" class="dir">
-          <option value="asc">Ascending</option>
-          <option value="desc">Descending</option>
-        </select>
-        <button type="button" id="btn-sort-apply" class="mini">Apply</button>
-      </div>
-      <p id="zone-context" class="hint"></p>
-      <div id="zone-apply-reminder" class="callout" style="display:none;">
-        <p class="title">Important / Importante — save your changes</p>
-        <p class="text" id="zone-apply-text"></p>
-      </div>
-      <p class="hint" style="margin-top:4px;">
-        Connection: <span id="zone-connection" class="pill">Not connected</span>
-      </p>
-      <p id="zone-autosave" class="hint" style="display:none;"></p>
-      <div style="overflow:auto; border:1px solid var(--border); border-radius:10px;">
-        <table>
-          <thead>
-            <tr>
-              <th id="th-topic" class="sortable">Topic<span class="sort-indicator" id="sort-ind-topic"></span></th>
-              <th id="th-name" class="sortable" style="width: 220px;">Name<span class="sort-indicator"
-                  id="sort-ind-name"></span></th>
-              <th style="width: 140px;">
-                <div class="th-wrap">
-                  <div id="th-kind" class="sortable" title="Click to sort by Kind">
-                    Kind<span class="sort-indicator" id="sort-ind-kind"></span>
-                  </div>
-                  <div class="bulk">
-                    <select id="bulk-kind" aria-label="Apply kind to all zones">
-                      <option value="">(apply to all…)</option>
-                      <option value="perimeter">Perimeter</option>
-                      <option value="entry">Entry</option>
-                      <option value="24h">24h</option>
-                      <option value="tamper">Tamper</option>
-                      <option value="fire">Fire</option>
+    <section class="alarm-workspace">
+      <header class="alarm-topbar" v-if="!embedMode">
+        <p class="eyebrow">Alarm Ultimate</p>
+        <h2>{{ pageTitle }}</h2>
+      </header>
+
+      <div class="alarm-content">
+        <main>
+          <section class="card" id="wizard-card">
+            <h2>Import Wizard</h2>
+            <div class="buttons">
+              <button class="primary" id="btn-wizard-toggle">Import zones wizard</button>
+            </div>
+            <div id="wizard" style="display:none;">
+              <div class="grid">
+                <section class="card" id="wizard-step1">
+                  <h2>Step 1 — Paste data</h2>
+                  <textarea id="input" spellcheck="false"
+                    placeholder="Paste JSON here (message/HA export) or TSV (ETS export).&#10;&#10;Tip: this tool also accepts JS-style objects with unquoted keys and // comments."></textarea>
+                  <div class="buttons">
+                    <select id="sampleKind" style="max-width: 260px;">
+                      <option value="">(optional) load a sample…</option>
+                      <option value="knx">JSON message (KNX)</option>
+                      <option value="ets">KNX ETS csv file</option>
+                      <option value="ha">Home Assistant states (JSON)</option>
+                      <option value="ha_registry">Home Assistant entity registry (JSON)</option>
                     </select>
-                    <button type="button" class="mini" id="btn-bulk-kind">Apply</button>
+                    <button id="btn-load-sample">Load sample</button>
+                    <button id="btn-clear">Clear</button>
+                    <button class="primary" id="btn-parse">Parse / detect</button>
                   </div>
-                </div>
-              </th>
-              <th style="width: 260px;">
-                <div class="th-wrap">
-                  <div id="th-sup" class="sortable"
-                    title="Click to sort by Supervision On. Shift-click: Timeout. Alt/Option-click: Block arm.">
-                    Supervision<span class="sort-indicator" id="sort-ind-sup"></span>
+                  <p class="hint">
+                    Parse detects the format and unlocks the next step.
+                  </p>
+                  <div id="parse-status" class="status warn" style="display: none"></div>
+                </section>
+
+                <section class="card disabled" id="wizard-step2">
+                  <h2>Step 2 — Map & generate</h2>
+                  <div id="ets-hint" class="status ok" style="display: none"></div>
+                  <div id="ha-hint" class="status ok" style="display: none"></div>
+                  <div id="ets-mapping" style="display: none">
+                    <div class="row">
+                      <label for="etsAddressFilter">ETS address filter</label>
+                      <input type="text" id="etsAddressFilter"
+                        placeholder="Examples: 0/0/*  •  0/1/??  •  */7/*  (comma or newline separated)" />
+                    </div>
+                    <div class="row">
+                      <label for="etsNameFilter">ETS name filter</label>
+                      <input type="text" id="etsNameFilter"
+                        placeholder='Optional. Examples: Front door • *garage* (supports * and ?)' />
+                    </div>
+                    <p class="hint">
+                      Address patterns are matched against the ETS <span class="mono">Address</span> column (e.g.
+                      <span class="mono">0/0/1</span>). Name filter is matched against <span class="mono">Description</span>,
+                      fallback to <span class="mono">Group name</span>.
+                    </p>
                   </div>
-                  <div class="bulk">
-                    <label><input type="checkbox" id="bulk-sup-enabled" /> On (all)</label>
-                    <label><input type="checkbox" id="bulk-sup-blockArm" /> Block arm (all)</label>
+                  <div id="ha-mapping" style="display: none">
+                    <div class="row">
+                      <label for="haEntityFilter">HA entity filter</label>
+                      <input type="text" id="haEntityFilter"
+                        placeholder="Examples: binary_sensor.*door*  •  *_pir  •  switch.*  (comma or newline separated)" />
+                    </div>
+                    <div class="row">
+                      <label for="haNameFilter">HA name filter</label>
+                      <input type="text" id="haNameFilter"
+                        placeholder='Optional. Examples: Front door • *garage* (supports * and ?)' />
+                    </div>
+                    <div class="row">
+                      <label for="haDomains">HA domains</label>
+                      <input type="text" id="haDomains"
+                        placeholder="Optional. Example: binary_sensor,input_boolean,switch (default: boolean-like domains)" />
+                    </div>
+                    <div class="row">
+                      <label for="haIncludeDisabled">Include disabled</label>
+                      <input type="checkbox" id="haIncludeDisabled" style="width:auto; margin-top:7px;" />
+                    </div>
+                    <p class="hint">
+                      Paste Home Assistant JSON (e.g. the array returned by <span class="mono">/api/states</span>). The zone
+                      topic
+                      will be the <span class="mono">entity_id</span>. Names use <span
+                        class="mono">attributes.friendly_name</span>
+                      if present.
+                    </p>
                   </div>
-                </div>
-              </th>
-              <th style="width: 90px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="zone-table-body"></tbody>
-        </table>
+                  <div id="json-mapping">
+                    <div class="row">
+                      <label for="topicPath">Topic path</label>
+                      <select id="topicPath"></select>
+                    </div>
+                    <div class="row">
+                      <label for="valuePath">Value path</label>
+                      <select id="valuePath"></select>
+                    </div>
+                    <div class="row">
+                      <label for="namePath">Zone name path</label>
+                      <select id="namePath"></select>
+                    </div>
+                  </div>
+                  <p class="hint">
+                    Alarm expects zone messages with
+                    <span class="mono">msg.topic</span> and a boolean value in the
+                    configured “With Input” property (default
+                    <span class="mono">payload</span>).
+                  </p>
+                  <div class="buttons">
+                    <label class="mono" style="display:flex; align-items:center; gap:8px;">
+                      <input type="checkbox" id="appendZones" checked />
+                      Append to zone list
+                    </label>
+                    <button class="primary" id="btn-generate">Generate zones</button>
+                  </div>
+                  <div id="gen-status" class="status warn" style="display: none"></div>
+                </section>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>Zones</h2>
+            <div class="buttons">
+              <button id="btn-zone-add">Add zone</button>
+            </div>
+            <div class="sortbar">
+              <label for="sort-key">Sort zones</label>
+              <select id="sort-key">
+                <option value="topic">Topic</option>
+                <option value="name">Name</option>
+                <option value="kind">Kind</option>
+                <option value="sup_enabled">Supervision: On</option>
+                <option value="sup_timeout">Supervision: Timeout</option>
+                <option value="sup_blockArm">Supervision: Block arm</option>
+                <option value="entry">Entry</option>
+                <option value="bypassable">Bypassable</option>
+                <option value="chime">Chime</option>
+              </select>
+              <select id="sort-dir" class="dir">
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
+              <button type="button" id="btn-sort-apply" class="mini">Apply</button>
+            </div>
+            <p id="zone-context" class="hint"></p>
+            <div id="zone-apply-reminder" class="callout" style="display:none;">
+              <p class="title">Important / Importante — save your changes</p>
+              <p class="text" id="zone-apply-text"></p>
+            </div>
+            <p class="hint" style="margin-top:4px;">
+              Connection: <span id="zone-connection" class="pill">Not connected</span>
+            </p>
+            <p id="zone-autosave" class="hint" style="display:none;"></p>
+            <div style="overflow:auto; border:1px solid var(--border); border-radius:10px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th id="th-topic" class="sortable">Topic<span class="sort-indicator" id="sort-ind-topic"></span></th>
+                    <th id="th-name" class="sortable" style="width: 220px;">Name<span class="sort-indicator"
+                        id="sort-ind-name"></span></th>
+                    <th style="width: 140px;">
+                      <div class="th-wrap">
+                        <div id="th-kind" class="sortable" title="Click to sort by Kind">
+                          Kind<span class="sort-indicator" id="sort-ind-kind"></span>
+                        </div>
+                        <div class="bulk">
+                          <select id="bulk-kind" aria-label="Apply kind to all zones">
+                            <option value="">(apply to all…)</option>
+                            <option value="perimeter">Perimeter</option>
+                            <option value="entry">Entry</option>
+                            <option value="24h">24h</option>
+                            <option value="tamper">Tamper</option>
+                            <option value="fire">Fire</option>
+                          </select>
+                          <button type="button" class="mini" id="btn-bulk-kind">Apply</button>
+                        </div>
+                      </div>
+                    </th>
+                    <th style="width: 260px;">
+                      <div class="th-wrap">
+                        <div id="th-sup" class="sortable"
+                          title="Click to sort by Supervision On. Shift-click: Timeout. Alt/Option-click: Block arm.">
+                          Supervision<span class="sort-indicator" id="sort-ind-sup"></span>
+                        </div>
+                        <div class="bulk">
+                          <label><input type="checkbox" id="bulk-sup-enabled" /> On (all)</label>
+                          <label><input type="checkbox" id="bulk-sup-blockArm" /> Block arm (all)</label>
+                        </div>
+                      </div>
+                    </th>
+                    <th style="width: 90px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="zone-table-body"></tbody>
+              </table>
+            </div>
+            <div id="zone-list-status" class="status warn" style="display:none; margin-top:10px;"></div>
+          </section>
+        </main>
       </div>
-      <div id="zone-list-status" class="status warn" style="display:none; margin-top:10px;"></div>
     </section>
+  </div>
 
-    <div id="wizard" style="display:none;">
-      <div class="grid">
-        <section class="card" id="wizard-step1">
-          <h2>Step 1 — Paste data</h2>
-          <textarea id="input" spellcheck="false"
-            placeholder="Paste JSON here (message/HA export) or TSV (ETS export).&#10;&#10;Tip: this tool also accepts JS-style objects with unquoted keys and // comments."></textarea>
-          <div class="buttons">
-            <select id="sampleKind" style="max-width: 260px;">
-              <option value="">(optional) load a sample…</option>
-              <option value="knx">JSON message (KNX)</option>
-              <option value="ets">ETS export (TSV)</option>
-              <option value="ha">Home Assistant states (JSON)</option>
-              <option value="ha_registry">Home Assistant entity registry (JSON)</option>
-            </select>
-            <button id="btn-load-sample">Load sample</button>
-            <button id="btn-clear">Clear</button>
-            <button class="primary" id="btn-parse">Parse / detect</button>
-          </div>
-          <p class="hint">
-            Parse detects the format and unlocks the next step.
-          </p>
-          <div id="parse-status" class="status warn" style="display: none"></div>
-        </section>
-
-        <section class="card disabled" id="wizard-step2">
-          <h2>Step 2 — Map & generate</h2>
-          <div id="ets-hint" class="status ok" style="display: none"></div>
-          <div id="ha-hint" class="status ok" style="display: none"></div>
-          <div id="ets-mapping" style="display: none">
-            <div class="row">
-              <label for="etsAddressFilter">ETS address filter</label>
-              <input type="text" id="etsAddressFilter"
-                placeholder="Examples: 0/0/*  •  0/1/??  •  */7/*  (comma or newline separated)" />
-            </div>
-            <div class="row">
-              <label for="etsNameFilter">ETS name filter</label>
-              <input type="text" id="etsNameFilter"
-                placeholder='Optional. Examples: Front door • *garage* (supports * and ?)' />
-            </div>
-            <p class="hint">
-              Address patterns are matched against the ETS <span class="mono">Address</span> column (e.g.
-              <span class="mono">0/0/1</span>). Name filter is matched against <span class="mono">Description</span>,
-              fallback to <span class="mono">Group name</span>.
-            </p>
-          </div>
-          <div id="ha-mapping" style="display: none">
-            <div class="row">
-              <label for="haEntityFilter">HA entity filter</label>
-              <input type="text" id="haEntityFilter"
-                placeholder="Examples: binary_sensor.*door*  •  *_pir  •  switch.*  (comma or newline separated)" />
-            </div>
-            <div class="row">
-              <label for="haNameFilter">HA name filter</label>
-              <input type="text" id="haNameFilter"
-                placeholder='Optional. Examples: Front door • *garage* (supports * and ?)' />
-            </div>
-            <div class="row">
-              <label for="haDomains">HA domains</label>
-              <input type="text" id="haDomains"
-                placeholder="Optional. Example: binary_sensor,input_boolean,switch (default: boolean-like domains)" />
-            </div>
-            <div class="row">
-              <label for="haIncludeDisabled">Include disabled</label>
-              <input type="checkbox" id="haIncludeDisabled" style="width:auto; margin-top:7px;" />
-            </div>
-            <p class="hint">
-              Paste Home Assistant JSON (e.g. the array returned by <span class="mono">/api/states</span>). The zone
-              topic
-              will be the <span class="mono">entity_id</span>. Names use <span
-                class="mono">attributes.friendly_name</span>
-              if present.
-            </p>
-          </div>
-          <div id="json-mapping">
-            <div class="row">
-              <label for="topicPath">Topic path</label>
-              <select id="topicPath"></select>
-            </div>
-            <div class="row">
-              <label for="valuePath">Value path</label>
-              <select id="valuePath"></select>
-            </div>
-            <div class="row">
-              <label for="namePath">Zone name path</label>
-              <select id="namePath"></select>
-            </div>
-          </div>
-          <p class="hint">
-            Alarm expects zone messages with
-            <span class="mono">msg.topic</span> and a boolean value in the
-            configured “With Input” property (default
-            <span class="mono">payload</span>).
-          </p>
-          <div class="buttons">
-            <label class="mono" style="display:flex; align-items:center; gap:8px;">
-              <input type="checkbox" id="appendZones" checked />
-              Append to zone list
-            </label>
-            <button class="primary" id="btn-generate">Generate zones</button>
-          </div>
-          <div id="gen-status" class="status warn" style="display: none"></div>
-        </section>
-      </div>
-    </div>
-  </main>
+  <script src="./alarm-tools/assets/vue.global.prod.js"></script>
+  <script src="./alarm-tools/assets/alarm-vue-shell.js"></script>
+  <script>
+    window.__alarmMapperVueShell = typeof window.createAlarmVueShell === "function"
+      ? window.createAlarmVueShell({
+          rootId: "alarm-vue-shell",
+          currentPage: "mapper",
+          pageTitle: "Zones",
+          pageSubtitle: ""
+        })
+      : null;
+  </script>
 
   <script>
     const els = {
@@ -682,9 +298,6 @@
       btnGenerate: document.getElementById("btn-generate"),
       btnZoneAdd: document.getElementById("btn-zone-add"),
       btnWizardToggle: document.getElementById("btn-wizard-toggle"),
-      btnZonesExport: document.getElementById("btn-zones-export"),
-      btnZonesImport: document.getElementById("btn-zones-import"),
-      zonesImportFile: document.getElementById("zones-import-file"),
       zoneContext: document.getElementById("zone-context"),
       zoneApplyReminder: document.getElementById("zone-apply-reminder"),
       zoneApplyText: document.getElementById("zone-apply-text"),
@@ -828,6 +441,7 @@
     let editorConnected = false;
     let isEditingZoneTable = false;
     const INPUT_STORAGE_KEY = "alarm-ultimate:json-mapper:step1";
+    const DEFAULT_SUPERVISION_TIMEOUT_SECONDS = 120;
     let inputSaveTimer = null;
 
     function saveStep1InputImmediate(text) {
@@ -989,10 +603,12 @@
         if (enabled) {
           z.supervision = {
             enabled: true,
-            timeoutSeconds: Number.isFinite(timeoutSeconds) && timeoutSeconds > 0 ? timeoutSeconds : null,
+            timeoutSeconds:
+              Number.isFinite(timeoutSeconds) && timeoutSeconds > 0
+                ? timeoutSeconds
+                : DEFAULT_SUPERVISION_TIMEOUT_SECONDS,
             blockArm,
           };
-          if (z.supervision.timeoutSeconds === null) delete z.supervision.timeoutSeconds;
         } else if (blockArm === false) {
           // Allow configuring "Block arm" independently of supervision enablement.
           // Only keep it when explicitly set to false (default is true).
@@ -1073,7 +689,8 @@
         if (sup && sup.enabled === true) {
           const t = Number(sup.timeoutSeconds);
           if (!(Number.isFinite(t) && t > 0)) {
-            zone.__errors.push("Supervision enabled but timeoutSeconds is missing/invalid.");
+            // Keep working without errors: default to 120s when timeout is blank/invalid.
+            sup.timeoutSeconds = DEFAULT_SUPERVISION_TIMEOUT_SECONDS;
           }
         }
       });
@@ -1113,7 +730,7 @@
       const sup = zone && zone.supervision && typeof zone.supervision === "object" ? zone.supervision : null;
       if (!sup || sup.enabled !== true) return null;
       const t = Number(sup.timeoutSeconds);
-      return Number.isFinite(t) && t > 0 ? t : null;
+      return Number.isFinite(t) && t > 0 ? t : DEFAULT_SUPERVISION_TIMEOUT_SECONDS;
     }
 
     const sortState = { key: "", dir: "asc" };
@@ -1328,8 +945,7 @@
         const tdSup = document.createElement("td");
         const sup = zone && zone.supervision && typeof zone.supervision === "object" ? zone.supervision : null;
         const supEnabled = Boolean(sup && sup.enabled === true);
-        const supTimeout =
-          sup && sup.enabled === true && Number.isFinite(Number(sup.timeoutSeconds)) ? String(Number(sup.timeoutSeconds)) : "";
+        const supTimeout = supEnabled ? String(effectiveSupTimeoutSeconds(zone)) : "";
         const supBlockArm =
           sup && Object.prototype.hasOwnProperty.call(sup, "blockArm") ? !isFalseLike(sup.blockArm) : true;
 
@@ -1350,7 +966,7 @@
         supTimeoutInput.type = "number";
         supTimeoutInput.min = "0";
         supTimeoutInput.step = "1";
-        supTimeoutInput.placeholder = "120";
+        supTimeoutInput.placeholder = String(DEFAULT_SUPERVISION_TIMEOUT_SECONDS);
         supTimeoutInput.value = supTimeout;
         supTimeoutInput.dataset.field = "supTimeout";
         supTimeoutInput.disabled = !supEnabled;
@@ -1488,41 +1104,6 @@
     function hideStatus(el) {
       el.style.display = "none";
       el.textContent = "";
-    }
-
-    function sanitizeFilenamePart(input) {
-      const raw = String(input || "").trim();
-      if (!raw) return "";
-      return raw
-        .replace(/[^A-Za-z0-9._-]+/g, "-")
-        .replace(/-+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 60);
-    }
-
-    function downloadTextFile(filename, text, mimeType) {
-      const name = String(filename || "").trim() || "download.txt";
-      const type = String(mimeType || "text/plain;charset=utf-8");
-      const blob = new Blob([String(text || "")], { type });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = name;
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        try {
-          URL.revokeObjectURL(url);
-        } catch (_err) {
-          // ignore
-        }
-        try {
-          a.remove();
-        } catch (_err) {
-          // ignore
-        }
-      }, 0);
     }
 
     function normalizeLenientJson(input) {
@@ -2443,7 +2024,15 @@
           }
           zone.supervision.enabled = true;
           if (!Object.prototype.hasOwnProperty.call(zone.supervision, "blockArm")) zone.supervision.blockArm = true;
-          if (timeoutEl) timeoutEl.disabled = false;
+          if (!Number.isFinite(Number(zone.supervision.timeoutSeconds)) || Number(zone.supervision.timeoutSeconds) <= 0) {
+            zone.supervision.timeoutSeconds = DEFAULT_SUPERVISION_TIMEOUT_SECONDS;
+          }
+          if (timeoutEl) {
+            timeoutEl.disabled = false;
+            if (!String(timeoutEl.value || "").trim()) {
+              timeoutEl.value = String(DEFAULT_SUPERVISION_TIMEOUT_SECONDS);
+            }
+          }
         } else {
           if (zone.supervision && typeof zone.supervision === "object") {
             zone.supervision.enabled = false;
@@ -2470,6 +2059,18 @@
           }
           zone.supervision.blockArm = checked;
         }
+        refreshZonesMeta();
+      }
+
+      if (field === "supTimeout") {
+        if (!zone.supervision || typeof zone.supervision !== "object") {
+          zone.supervision = { enabled: true };
+        }
+        zone.supervision.enabled = true;
+        const t = Number(target.value);
+        zone.supervision.timeoutSeconds =
+          Number.isFinite(t) && t > 0 ? t : DEFAULT_SUPERVISION_TIMEOUT_SECONDS;
+        target.value = String(zone.supervision.timeoutSeconds);
         refreshZonesMeta();
       }
     });
@@ -2520,7 +2121,7 @@
         if (els.zoneApplyReminder && els.zoneApplyText) {
           els.zoneApplyReminder.style.display = "";
           els.zoneApplyText.innerHTML =
-            `Changes made here are synced into the Node-RED edit dialog, but they are <b>not saved</b> until you click <span class="kbd">Done</span> in the editor. ` +
+            `Changes made here are synced into the Node-RED edit dialog, but they are <b>not saved</b> until you click <span class="kbd">Done</span> in the Node-RED node editor. ` +
             `If you close the dialog or click <span class="kbd">Cancel</span>, your zone changes will be lost.`;
         }
         return;
@@ -2546,71 +2147,6 @@
       );
     }
 
-    if (els.btnZonesExport) {
-      els.btnZonesExport.addEventListener("click", () => {
-        const payload = syncJsonFromModel();
-        const safeName = sanitizeFilenamePart(page.alarmNodeName);
-        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-        const filename = `alarm-ultimate-zones${safeName ? `-${safeName}` : ""}-${stamp}.json`;
-        downloadTextFile(filename, JSON.stringify(payload, null, 2) + "\n", "application/json;charset=utf-8");
-        showStatus(els.genStatus, "ok", `Exported ${payload.length} zones as ${filename}`);
-      });
-    }
-
-    if (els.btnZonesImport && els.zonesImportFile) {
-      els.btnZonesImport.addEventListener("click", () => {
-        try {
-          els.zonesImportFile.value = "";
-        } catch (_err) {
-          // ignore
-        }
-        els.zonesImportFile.click();
-      });
-
-      els.zonesImportFile.addEventListener("change", () => {
-        const file =
-          els.zonesImportFile && els.zonesImportFile.files && els.zonesImportFile.files[0]
-            ? els.zonesImportFile.files[0]
-            : null;
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            const text = String(reader.result || "");
-            const imported = normalizeZonesJson(text);
-            const existingCount = Array.isArray(zonesModel) ? zonesModel.length : 0;
-            if (existingCount > 0 && imported.length > 0) {
-              const ok = window.confirm(
-                `Replace the current zones (${existingCount}) with the imported ones (${imported.length})?`,
-              );
-              if (!ok) return;
-            }
-            zonesModel = imported.map((z, idx) => cleanZoneForJson(z, idx));
-            renderZones();
-            flushZonesToEditor(true);
-            showStatus(els.genStatus, "ok", `Imported ${imported.length} zones (${file.name}).`);
-          } catch (err) {
-            showStatus(els.genStatus, "err", `Unable to import zones: ${err && err.message ? err.message : err}`);
-          } finally {
-            try {
-              els.zonesImportFile.value = "";
-            } catch (_err) {
-              // ignore
-            }
-          }
-        };
-        reader.onerror = () => {
-          showStatus(els.genStatus, "err", `Unable to read file: ${file.name}`);
-          try {
-            els.zonesImportFile.value = "";
-          } catch (_err) {
-            // ignore
-          }
-        };
-        reader.readAsText(file);
-      });
-    }
     refreshBulkControls();
     setSortIndicators();
 

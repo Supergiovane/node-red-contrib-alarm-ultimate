@@ -748,7 +748,7 @@
   ## Quick start (5 minutes)
 
   1. Add an **Alarm System** node to your flow.
-  2. Click **Manage zones** and create at least one zone (example topic: `sensor/frontdoor`). Use **Export JSON** / **Import JSON** in the web tool to backup/restore your zones.  
+  2. Click **Manage zones** and create at least one zone (example topic: `sensor/frontdoor`). For backup/restore use **Export Zones** / **Import Zones** in the **Settings** web page.  
      **Important:** after editing zones, click **Done** in the Node-RED editor to save (if you click **Cancel**, changes are lost).
   3. Send sensor messages to the Alarm node:
      - open: `msg.topic="sensor/frontdoor"` + `msg.payload=true` (also works: `"open"`, `"on"`, `1`)
@@ -769,10 +769,11 @@
 
   <br/>
 
-  ### WEB PAGE
+  ### Editor and web pages
 
   - **Panel**: `/alarm-ultimate/alarm-panel` (supports `?id=<alarmNodeId>` and `?embed=1&id=<alarmNodeId>`).
-  - **Zones**: use **Manage zones** to open `/alarm-ultimate/alarm-json-mapper` and sync the JSON back into the editor. Click **Done** in the editor to apply/save. Use **Export JSON** / **Import JSON** in the web tool to backup/restore zone definitions.
+  - **Zones**: use **Manage zones** to open `/alarm-ultimate/alarm-json-mapper` and sync zones back into the editor. Click **Done** in the Node-RED node editor to apply/save.
+  - **Settings**: open `/alarm-ultimate/alarm-settings` to **Export Zones** / **Import Zones**.
   - **Name**: optional label shown in the Alarm Panel.
   - **Control topic**: topic that receives commands (and is used as base for some outputs).
   - **With Input**: message property evaluated as sensor value (default `payload`). It must be convertible to boolean (`true/false`, `open/closed`, `on/off`, `1/0`, ...).
@@ -800,11 +801,11 @@
   | Emit restore events          | Emits `zone_restore` when a zone returns to false.                                                                                   |
   | Event log size               | Max stored log entries in node context (0 disables log).                                                                             |
   | Sync other alarms            | Optional: when this node is armed/disarmed, it can arm/disarm other Alarm nodes. The original `msg.code` is forwarded.               |
-  | Zones                        | Zone definitions. Use **Manage zones** (web tool) to edit advanced JSON (including optional supervision). Use **Export JSON** / **Import JSON** in the web tool to backup/restore. |
+  | Zones                        | Zone definitions. Use **Manage zones** to edit them in the web page (including optional supervision). For backup/restore use **Settings** → **Export Zones / Import Zones**. |
 
   <br/>
 
-  ## Zones JSON (advanced)
+  ## Zones (advanced, optional)
 
   Each zone can optionally enable **sensor supervision** (per-zone): if no valid sensor updates are received within `timeoutSeconds`, the node emits `supervision_lost` (supervision starts immediately when the node runs, and `supervision_restored` is emitted on the next valid update).
 
@@ -827,11 +828,11 @@
 
   <br/>
 
-  ## Output
+  ## Output reference
 
   The node has **9 outputs** (pins).
 
-  Important: **Output #1 (All messages)** is a *superset* of all other outputs. It can emit:
+  Important: **Output #1 (All messages)** includes everything from the other outputs. It can emit:
 
   - a single message, or
   - an array of messages (for example, when the node emits an event **and** a siren update at the same time).
@@ -889,7 +890,7 @@
 
   <br/>
 
-  ## Events (`msg.event`)
+  ## Event reference (`msg.event`, optional)
 
   Arming / state:
 
@@ -921,7 +922,7 @@
 
   <br/>
 
-  ## Control messages (`msg.topic === controlTopic`)
+  ## Control message reference (`msg.topic === controlTopic`)
 
   Arm:
 
@@ -937,11 +938,11 @@
 
   - `msg.command = "status"` or `msg.status = true`
 
-	  Bypass / unbypass (zone topic):
+  Bypass / unbypass (zone topic):
 
   - `msg.command = "bypass"` / `msg.command = "unbypass"`
   - or `msg.bypass = true` / `msg.unbypass = true`
-		  - pass the zone **topic** in `msg.zoneTopic`
+  - pass the zone **topic** in `msg.zoneTopic`
 
   Siren:
 
@@ -963,18 +964,18 @@
 
   <br/>
 
-  ## Zones
+  ## Zone fields
 
-	  Zones must be configured as a JSON array of objects.
+  Zones must be configured as a JSON array of objects.
 
-	  Minimal fields:
+  Minimal fields:
 
-	  - `topic` (exact topic, or a prefix ending with `*`)
+  - `topic` (exact topic, or a prefix ending with `*`)
 
-	  Common fields:
+  Common fields:
 
-		  - `topic`: **unique identifier** of the zone (used for bypass via `msg.zoneTopic`)
-	  - `name`: label used in events (optional; defaults to `topic`)
+  - `topic`: **unique identifier** of the zone (used for bypass via `msg.zoneTopic`)
+  - `name`: label used in events (optional; defaults to `topic`)
   - `type`: `perimeter` (default), `motion`, `tamper`, `fire`, `24h`
   - `entry`: `true` to use entry delay, otherwise triggers instantly
   - `entryDelaySeconds`: overrides the global entry delay
@@ -990,13 +991,13 @@
 
   Example (formatted JSON array):
 
-	  ```json
-	  [
-	    {
-	      "name": "Front door",
-	      "topic": "house/door/front",
-	      "type": "perimeter",
-	      "entry": true,
+  ```json
+  [
+    {
+      "name": "Front door",
+      "topic": "house/door/front",
+      "type": "perimeter",
+      "entry": true,
       "entryDelaySeconds": 30,
       "bypassable": true,
       "chime": true
