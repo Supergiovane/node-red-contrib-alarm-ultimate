@@ -3,6 +3,15 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [1.0.2] - 2026-04-08
+
+### Fixed
+
+- **Tools + adminAuth (OAuth):** fixed `401/Unauthorized` when opening tools pages from the editor with protected Node-RED admin access.
+- **OAuth token handling:** tools now support `access_token` propagation from editor links and keep the token while navigating between tool pages.
+- **Bearer parsing conflict:** fixed `400 Bad Request` when both query `access_token` and `Authorization` header were present by normalizing auth before permission checks.
+- **Control Panel auth fallback:** improved token lookup to support Node-RED token storage keys with `httpAdminRoot` suffix.
+
 ## [1.0.1] - 2026-04-07
 
 ### Changed

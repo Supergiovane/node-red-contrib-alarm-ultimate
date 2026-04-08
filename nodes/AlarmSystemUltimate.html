@@ -267,13 +267,35 @@
         zoneAxProMatchRow.toggle(adapter === "axpro");
       }
 
+      function getEditorAccessToken() {
+        try {
+          const tokens =
+            RED && RED.settings && typeof RED.settings.get === "function"
+              ? RED.settings.get("auth-tokens")
+              : null;
+          return tokens && typeof tokens.access_token === "string"
+            ? tokens.access_token.trim()
+            : "";
+        } catch (_err) {
+          return "";
+        }
+      }
+
+      function withAccessToken(url) {
+        const token = getEditorAccessToken();
+        if (!token) return url;
+        const sep = url.includes("?") ? "&" : "?";
+        return `${url}${sep}access_token=${encodeURIComponent(token)}`;
+      }
+
       function openZonesManager() {
         const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
         const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
         const currentName = String($("#node-input-name").val() || "").trim();
         const namePart = currentName ? `&name=${encodeURIComponent(currentName)}` : "";
         const idPart = nodeId ? `?id=${encodeURIComponent(nodeId)}${namePart}` : "";
-        window.open(`${root}alarm-ultimate/alarm-json-mapper${idPart}`, "_blank");
+        const targetUrl = `${root}alarm-ultimate/alarm-json-mapper${idPart}`;
+        window.open(withAccessToken(targetUrl), "_blank");
       }
 
       $("#node-input-zones-panel").on("click", function (evt) {
@@ -281,8 +303,9 @@
         const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
         const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
         const idPart = nodeId ? `?id=${encodeURIComponent(nodeId)}` : "";
+        const targetUrl = `${root}alarm-ultimate/alarm-panel${idPart}`;
         window.open(
-          `${root}alarm-ultimate/alarm-panel${idPart}`,
+          withAccessToken(targetUrl),
           "_blank",
           "noopener,noreferrer",
         );

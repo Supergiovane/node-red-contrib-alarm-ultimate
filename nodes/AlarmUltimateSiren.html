@@ -31,12 +31,34 @@
       const url = `${root}alarm-ultimate/alarm/nodes`;
       const panelButton = $("#node-input-alarm-panel");
 
+      function getEditorAccessToken() {
+        try {
+          const tokens =
+            RED && RED.settings && typeof RED.settings.get === "function"
+              ? RED.settings.get("auth-tokens")
+              : null;
+          return tokens && typeof tokens.access_token === "string"
+            ? tokens.access_token.trim()
+            : "";
+        } catch (_err) {
+          return "";
+        }
+      }
+
+      function withAccessToken(urlValue) {
+        const token = getEditorAccessToken();
+        if (!token) return urlValue;
+        const sep = urlValue.includes("?") ? "&" : "?";
+        return `${urlValue}${sep}access_token=${encodeURIComponent(token)}`;
+      }
+
       panelButton.off("click").on("click", (evt) => {
         evt.preventDefault();
         const alarmId = alarmSelect.val() || this.alarmId || "";
         const idPart = alarmId ? `?id=${encodeURIComponent(alarmId)}` : "";
+        const targetUrl = `${root}alarm-ultimate/alarm-panel${idPart}`;
         window.open(
-          `${root}alarm-ultimate/alarm-panel${idPart}`,
+          withAccessToken(targetUrl),
           "_blank",
           "noopener,noreferrer",
         );

@@ -26,7 +26,7 @@
 
   function computeTargetUrl(root, page, params, sourceParams) {
     const target = new URLSearchParams();
-    const copyKeys = ['id', 'name', 'embed'];
+    const copyKeys = ['id', 'name', 'embed', 'access_token'];
     for (const key of copyKeys) {
       const value = asText(params.get(key));
       if (value) target.set(key, value);

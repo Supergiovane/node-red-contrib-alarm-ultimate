@@ -450,9 +450,28 @@
 
 	      function authHeaders() {
 	        try {
-	          const raw = localStorage.getItem("auth-tokens");
-	          if (!raw) return {};
-	          const tokens = JSON.parse(raw);
+	          const tokenFromQuery =
+	            params && typeof params.get === "function" ? String(params.get("access_token") || "").trim() : "";
+	          if (tokenFromQuery) {
+	            return { Authorization: `Bearer ${tokenFromQuery}` };
+	          }
+
+	          const root = httpAdminRoot();
+	          const rootNoSlash = root.endsWith("/") ? root.slice(0, -1) : root;
+	          const suffix = rootNoSlash ? rootNoSlash.replace(/\//g, "-") : "";
+	          const candidates = [`auth-tokens${suffix}`, "auth-tokens"];
+	          let tokens = null;
+
+	          for (const key of candidates) {
+	            const raw = localStorage.getItem(key);
+	            if (!raw) continue;
+	            const parsed = JSON.parse(raw);
+	            if (parsed && parsed.access_token) {
+	              tokens = parsed;
+	              break;
+	            }
+	          }
+
 	          if (!tokens || !tokens.access_token) return {};
 	          return { Authorization: `Bearer ${tokens.access_token}` };
 	        } catch (err) {

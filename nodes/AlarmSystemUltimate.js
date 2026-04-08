@@ -86,6 +86,37 @@ module.exports = function (RED) {
         ? RED.auth.needsPermission('AlarmSystemUltimate.write')
         : (req, res, next) => next();
 
+    function applyAccessTokenFromQuery(req) {
+      const token =
+        req &&
+        req.query &&
+        typeof req.query.access_token === 'string' &&
+        req.query.access_token.trim().length > 0
+          ? req.query.access_token.trim()
+          : '';
+      if (!token) {
+        return;
+      }
+      if (!req.headers || typeof req.headers !== 'object') {
+        req.headers = {};
+      }
+      const authHeader =
+        typeof req.headers.authorization === 'string' ? req.headers.authorization.trim() : '';
+      if (!authHeader && token) {
+        req.headers.authorization = `Bearer ${token}`;
+      }
+      // passport-http-bearer returns 400 if token is present in both header and query.
+      // Normalize to header-only for this request.
+      if (req.query && Object.prototype.hasOwnProperty.call(req.query, 'access_token')) {
+        delete req.query.access_token;
+      }
+    }
+
+    function needsReadWithQueryToken(req, res, next) {
+      applyAccessTokenFromQuery(req);
+      return needsRead(req, res, next);
+    }
+
     function sendToolFile(res, filename) {
       const filePath = path.join(__dirname, '..', 'tools', filename);
       res.set('Cache-Control', 'no-store, max-age=0');
@@ -113,19 +144,19 @@ module.exports = function (RED) {
       });
     }
 
-    RED.httpAdmin.get('/alarm-ultimate/alarm-json-mapper', needsRead, (req, res) => {
+    RED.httpAdmin.get('/alarm-ultimate/alarm-json-mapper', needsReadWithQueryToken, (req, res) => {
       sendToolFile(res, 'alarm-json-mapper.html');
     });
 
-    RED.httpAdmin.get('/alarm-ultimate/alarm-panel', needsRead, (req, res) => {
+    RED.httpAdmin.get('/alarm-ultimate/alarm-panel', needsReadWithQueryToken, (req, res) => {
       sendToolFile(res, 'alarm-panel.html');
     });
 
-    RED.httpAdmin.get('/alarm-ultimate/alarm-settings', needsRead, (req, res) => {
+    RED.httpAdmin.get('/alarm-ultimate/alarm-settings', needsReadWithQueryToken, (req, res) => {
       sendToolFile(res, 'alarm-settings.html');
     });
 
-    RED.httpAdmin.get('/alarm-ultimate/alarm-tools/assets/:file', needsRead, (req, res) => {
+    RED.httpAdmin.get('/alarm-ultimate/alarm-tools/assets/:file', (req, res) => {
       sendToolAssetFile(res, req.params.file);
     });
 
