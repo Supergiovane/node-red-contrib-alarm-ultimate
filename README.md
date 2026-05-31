@@ -29,7 +29,7 @@ Includes:
   - `AlarmUltimateSiren`: output-only siren state splitter.
 - Web tools: Zones JSON mapper + web Alarm Panel (embeddable in Node-RED Dashboard).
 
-`AlarmSystemUltimate` is now stable.
+
 
 See the [Changelog](CHANGELOG.MD) for release notes.
 
