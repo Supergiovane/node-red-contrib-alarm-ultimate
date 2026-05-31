@@ -31,6 +31,8 @@ Includes:
 
 `AlarmSystemUltimate` is now stable.
 
+See the [Changelog](CHANGELOG.MD) for release notes.
+
 ## Table of contents
 
 - [Install](#install)
@@ -41,6 +43,7 @@ Includes:
 - [Examples](#examples)
 - [Advanced integration reference (optional)](#advanced-integration-reference-optional)
 - [Contributing (optional)](#contributing-optional)
+- [Changelog](CHANGELOG.MD)
 
 ## Install
 
