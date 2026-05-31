@@ -143,6 +143,7 @@
                 <button id="btnLogFilterZones" type="button">ZONES</button>
                 <button id="btnLogFilterErrors" type="button">ERRORS</button>
                 <button id="btnLogDownload" type="button">Download JSON</button>
+                <button id="btnLogClear" type="button">Clear log</button>
               </div>
               <div style="overflow:auto; margin-top:10px;">
                 <table>
@@ -195,6 +196,7 @@
 	        btnLogFilterZones: document.getElementById("btnLogFilterZones"),
 	        btnLogFilterErrors: document.getElementById("btnLogFilterErrors"),
 	        btnLogDownload: document.getElementById("btnLogDownload"),
+	        btnLogClear: document.getElementById("btnLogClear"),
 	        code: document.getElementById("code"),
 	        cmdStatus: document.getElementById("cmdStatus"),
 	        btnArm: document.getElementById("btnArm"),
@@ -1261,6 +1263,32 @@
 		              a.remove();
 		            } catch (_err) {}
 		          }, 0);
+		        });
+		      }
+
+		      if (els.btnLogClear) {
+		        els.btnLogClear.addEventListener("click", async () => {
+		          const ids = Array.from(selectedIds);
+		          if (!ids.length) return;
+		          if (!window.confirm("Delete the log for the selected alarm(s)? This cannot be undone.")) {
+		            return;
+		          }
+		          try {
+		            await sendCommand({ command: "clearlog" });
+		            const nameById = new Map(
+		              ids.map((id) => [id, nodesList.find((n) => n && n.id === id)?.name || id]),
+		            );
+		            ids.forEach((id) => {
+		              logsById.set(id, []);
+		              logLastTsById.delete(id);
+		            });
+		            renderLogs(nameById);
+		            if (els.cmdStatus.style.display === "none") {
+		              showCmdStatus(`Log cleared for ${ids.length} node(s).`, "ok");
+		            }
+		          } catch (err) {
+		            showCmdStatus(err.message, "err");
+		          }
 		        });
 		      }
 

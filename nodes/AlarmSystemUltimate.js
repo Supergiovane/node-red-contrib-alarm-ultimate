@@ -243,6 +243,9 @@ module.exports = function (RED) {
     const sirenLatchUntilDisarm = config.sirenLatchUntilDisarm === true || Number(config.sirenDurationSeconds) === 0;
 
     const maxLogEntries = clampInt(config.maxLogEntries, 50, 0, 500);
+    // 0 = keep forever; otherwise drop log entries older than this many days.
+    // Defaults to 365 for nodes saved before this option existed.
+    const logRetentionDays = clampInt(config.logRetentionDays, 365, 0, 3650);
     const persistState = config.persistState !== false;
 
     const zoneInputAdapter =
@@ -634,6 +637,10 @@ module.exports = function (RED) {
 	      }
 	      if (Array.isArray(saved.log)) {
 	        next.log = saved.log.slice(-maxLogEntries);
+	        if (logRetentionDays) {
+	          const cutoff = Date.now() - logRetentionDays * 24 * 60 * 60 * 1000;
+	          next.log = next.log.filter((e) => Number(e && e.ts) >= cutoff);
+	        }
 	      }
 	      return next;
 	    }
@@ -859,6 +866,27 @@ module.exports = function (RED) {
       stopStatusIntervalIfIdle();
     }
 
+    // Drop log entries older than the configured retention window.
+    // Returns true if anything was removed. No-op when retention is disabled (0).
+    function pruneLogByAge() {
+      if (!logRetentionDays || !Array.isArray(state.log) || !state.log.length) {
+        return false;
+      }
+      const cutoff = now() - logRetentionDays * 24 * 60 * 60 * 1000;
+      const before = state.log.length;
+      state.log = state.log.filter((e) => Number(e && e.ts) >= cutoff);
+      return state.log.length !== before;
+    }
+
+    function clearLog() {
+      if (!Array.isArray(state.log) || !state.log.length) {
+        return false;
+      }
+      state.log = [];
+      persist();
+      return true;
+    }
+
     function pushLog(event) {
       if (!maxLogEntries) {
         return;
@@ -867,6 +895,7 @@ module.exports = function (RED) {
       if (state.log.length > maxLogEntries) {
         state.log.splice(0, state.log.length - maxLogEntries);
       }
+      pruneLogByAge();
       persist();
     }
 
@@ -1840,6 +1869,11 @@ module.exports = function (RED) {
 
       if (msg.status === true || command === 'status') {
         emitStatus(msg);
+        return true;
+      }
+
+      if (command === 'clearlog' || command === 'clear_log' || msg.clearLog === true) {
+        clearLog();
         return true;
       }
 

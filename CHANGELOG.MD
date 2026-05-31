@@ -3,6 +3,17 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [1.0.3] - 2026-05-31
+
+### Added
+
+- **Log retention (days):** new Alarm System option to automatically drop log entries older than the configured number of days. Defaults to `365` (also for nodes saved before this option existed); `0` keeps the log forever. Pruning runs when new events are logged and on restart.
+- **Clear log:** new **Clear log** button in the Control Panel web page (next to **Download JSON**) and matching `clearlog` control command (`msg.command = "clearlog"` / `msg.clearLog = true`) to empty the event log without touching state, bypass list or timers.
+
+### Changed
+
+- **Settings:** renamed the **Event log size** option to **Max log entries** (internal property `maxLogEntries` unchanged).
+
 ## [1.0.2] - 2026-04-08
 
 ### Fixed

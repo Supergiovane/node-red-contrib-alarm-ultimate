@@ -32,6 +32,7 @@
       sirenOffPayloadType: { value: "bool" },
       emitRestoreEvents: { value: false },
       maxLogEntries: { value: 50, validate: RED.validators.number() },
+      logRetentionDays: { value: 365, validate: RED.validators.number() },
       zones: { value: "" },
       zoneInputAdapter: { value: "default" },
       zoneAxProZoneNameMatch: { value: "exact" },
@@ -756,9 +757,16 @@
 
 		      <div class="form-row">
 		        <label for="node-input-maxLogEntries"
-		          ><i class="fa fa-list"></i> Event log size</label
+		          ><i class="fa fa-list"></i> Max log entries</label
 		        >
 		        <input type="number" id="node-input-maxLogEntries" min="0" max="500" />
+		      </div>
+
+		      <div class="form-row">
+		        <label for="node-input-logRetentionDays"
+		          ><i class="fa fa-calendar-times-o"></i> Log retention (days)</label
+		        >
+		        <input type="number" id="node-input-logRetentionDays" min="0" max="3650" placeholder="0 = keep forever" />
 		      </div>
 		    </div>
 		  </div>
@@ -822,7 +830,8 @@
   | Siren duration (s)           | Auto stop duration (`0` = latch until disarm).                                                                                       |
   | Latch siren until disarm     | Forces siren to remain on until disarm (ignores duration).                                                                           |
   | Emit restore events          | Emits `zone_restore` when a zone returns to false.                                                                                   |
-  | Event log size               | Max stored log entries in node context (0 disables log).                                                                             |
+  | Max log entries              | Max stored log entries in node context (0 disables log).                                                                             |
+  | Log retention (days)         | Drops log entries older than this many days (default `365`, `0` = keep forever). Pruned when new events are logged and on restart.    |
   | Sync other alarms            | Optional: when this node is armed/disarmed, it can arm/disarm other Alarm nodes. The original `msg.code` is forwarded.               |
   | Zones                        | Zone definitions. Use **Manage zones** to edit them in the web page (including optional supervision). For backup/restore use **Settings** → **Export Zones / Import Zones**. |
 
@@ -979,6 +988,10 @@
   Reset:
 
   - `msg.command = "reset"` or `msg.reset = true` (clears state, bypass list, log and timers)
+
+  Clear log only:
+
+  - `msg.command = "clearlog"` or `msg.clearLog = true` (empties the event log, keeps state/bypass/timers). Also available as **Clear log** in the Control Panel web page.
 
   Codes:
 

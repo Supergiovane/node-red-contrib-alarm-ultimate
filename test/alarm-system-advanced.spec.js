@@ -287,4 +287,55 @@ describe('AlarmSystemUltimate node (advanced)', function () {
         }
       });
   });
+
+  it('clears the event log on a clearlog command', function (done) {
+    const flowId = 'alarm-clearlog1';
+    const flow = [
+      { id: flowId, type: 'tab', label: flowId },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        name: 'ClearLogAlarm',
+        controlTopic: 'alarm',
+        exitDelaySeconds: 0,
+        requireCodeForDisarm: false,
+        persistState: false,
+        zones: JSON.stringify([{ topic: 'sensor/frontdoor', type: 'perimeter' }]),
+        wires: [['events'], [], [], [], [], [], [], [], []],
+      },
+      { id: 'events', type: 'helper', z: flowId },
+    ];
+
+    loadAlarm(flow)
+      .then(() => {
+        const alarm = helper.getNode('alarm');
+        const events = helper.getNode('events');
+
+        alarm.receive({ topic: 'alarm', command: 'arm' });
+        return waitForEvent(events, 'armed', 1200).then(() => ({ alarm, events }));
+      })
+      .then(({ alarm, events }) => {
+        alarm.receive({ topic: 'alarm', command: 'status' });
+        return waitForEvent(events, 'status', 1200).then((msg) => ({ alarm, events, msg }));
+      })
+      .then(({ alarm, events, msg }) => {
+        expect(msg).to.have.nested.property('payload.state.log').that.is.an('array');
+        expect(msg.payload.state.log.length).to.be.greaterThan(0);
+
+        alarm.receive({ topic: 'alarm', command: 'clearlog' });
+        setTimeout(() => alarm.receive({ topic: 'alarm', command: 'status' }), 20);
+        return waitForEvent(events, 'status', 1200);
+      })
+      .then((msg) => {
+        try {
+          expect(msg).to.have.nested.property('payload.state.log').that.is.an('array');
+          expect(msg.payload.state.log).to.have.lengthOf(0);
+          done();
+        } catch (err) {
+          done(err);
+        }
+      })
+      .catch(done);
+  });
 });
