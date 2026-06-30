@@ -37,8 +37,16 @@ function createMqttBridge(options) {
   const publishZones = opts.publishZones === true && zones.length > 0;
   const getZoneStates = typeof opts.getZoneStates === 'function' ? opts.getZoneStates : () => ({});
 
-  const id = String((node && node.id) || 'alarm').replace(/[^A-Za-z0-9_-]/g, '');
   const name = (node && node.name) || 'Alarm Ultimate';
+  // Topics and Home Assistant ids are derived from the node NAME (clearer than the internal node id),
+  // slugified to a topic-safe form. Falls back to the sanitized node id when the node has no name.
+  const slug = String((node && node.name) || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  const id = slug || String((node && node.id) || 'alarm').replace(/[^A-Za-z0-9_-]/g, '');
   const uniqueId = `alarm_ultimate_${id}`;
 
   const root = `${baseTopic}/${id}`;
@@ -46,6 +54,10 @@ function createMqttBridge(options) {
   const commandTopic = `${root}/command`;
   const availabilityTopic = `${root}/availability`;
   const discoveryTopic = `${discoveryPrefix}/alarm_control_panel/${id}/config`;
+  // Home Assistant birth topic(s): when HA (re)starts or its MQTT integration is re-added it
+  // publishes "online" here, and devices must re-announce their discovery. Default is
+  // homeassistant/status; also cover the configured discovery prefix in case it differs.
+  const birthTopics = Array.from(new Set(['homeassistant/status', `${discoveryPrefix}/status`]));
 
   let client = null;
   let closed = false;
@@ -153,9 +165,27 @@ function createMqttBridge(options) {
     });
   }
 
+  // (Re)publish availability, discovery and current state. Called on connect and whenever Home
+  // Assistant comes online, so the alarm reappears after an HA restart or after the MQTT
+  // integration is removed and re-added (without restarting the Node-RED node).
+  function announce() {
+    publishRaw(availabilityTopic, 'online', true);
+    if (discovery) publishRaw(discoveryTopic, JSON.stringify(buildDiscoveryConfig()), true);
+    publishAllZones();
+    if (lastState) publishRaw(stateTopic, lastState, true);
+    log(`announced discovery (panel${discovery ? '' : ' OFF'}${publishZones ? `, ${zones.length} zone(s)` : ', zones OFF'})`);
+  }
+
   function handleIncoming(topic, buf) {
-    if (topic !== commandTopic) return;
     const text = buf == null ? '' : buf.toString();
+
+    // Home Assistant birth message: re-announce everything when HA comes online.
+    if (birthTopics.includes(topic)) {
+      if (text.trim().toLowerCase() === 'online') announce();
+      return;
+    }
+
+    if (topic !== commandTopic) return;
     let parsed = ha.parseHaCommand(text);
     if (!parsed && text && text.trim().startsWith('{')) {
       try {
@@ -195,15 +225,13 @@ function createMqttBridge(options) {
 
     client.on('connect', () => {
       log(`connected to ${url}`);
-      publishRaw(availabilityTopic, 'online', true);
-      if (discovery) publishRaw(discoveryTopic, JSON.stringify(buildDiscoveryConfig()), true);
-      publishAllZones();
+      announce();
       try {
         client.subscribe(commandTopic, { qos: 0 });
+        birthTopics.forEach((t) => client.subscribe(t, { qos: 0 }));
       } catch (_err) {
         // best-effort
       }
-      if (lastState) publishRaw(stateTopic, lastState, true);
       onStatus({ state: 'connected' });
     });
     client.on('message', handleIncoming);

@@ -88,6 +88,11 @@
 	      tabs.addTab({ id: "node-input-au-tab-advanced", label: "Advanced" });
 	      tabs.activateTab("node-input-au-tab-general");
 
+	      // Default these on for nodes saved before the option existed (undefined === enabled at runtime),
+	      // so the checkbox visually matches the actual default.
+	      if (this.mqttDiscovery === undefined) $("#node-input-mqttDiscovery").prop("checked", true);
+	      if (this.mqttPublishZones === undefined) $("#node-input-mqttPublishZones").prop("checked", true);
+
 	      const mqttEnabledField = $("#node-input-mqttEnabled");
 	      function refreshMqttFields() {
 	        const on = mqttEnabledField.is(":checked");
@@ -820,10 +825,11 @@
 		      </div>
 
 		      <div class="form-tips" style="margin-top: 6px;">
-		        Topics (per Alarm node): <code>&lt;base&gt;/&lt;nodeId&gt;/state</code>,
-		        <code>/command</code>, <code>/availability</code>. HA states: <code>disarmed</code>,
-		        <code>arming</code>, <code>pending</code>, <code>triggered</code>, <code>armed_away</code>,
-		        <code>armed_home</code>.
+		        Topics (per Alarm node): <code>&lt;base&gt;/&lt;name&gt;/state</code>,
+		        <code>/command</code>, <code>/availability</code> — where <code>&lt;name&gt;</code> is this
+		        node's <b>name</b> (lower-case, spaces → <code>_</code>; falls back to the node id if unnamed).
+		        HA states: <code>disarmed</code>, <code>arming</code>, <code>pending</code>,
+		        <code>triggered</code>, <code>armed_away</code>, <code>armed_home</code>.
 		      </div>
 		    </div>
 
@@ -859,6 +865,21 @@
 
 <script type="text/markdown" data-help-name="AlarmSystemUltimate">
   <p>Alarm control panel node with a single armed/disarmed state, zones, entry/exit delays, bypass, chime, tamper/fire/24h zones, siren control, status and event log.</p>
+
+  ## Compatibility
+
+  <p>
+    <img src="resources/node-red-contrib-alarm-ultimate/mqtt-logo.svg" alt="MQTT" height="28" style="vertical-align:middle; margin-right:14px;" />
+    <img src="resources/node-red-contrib-alarm-ultimate/home-assistant-logo.png" alt="Home Assistant" height="28" style="vertical-align:middle;" />
+  </p>
+
+  This node integrates natively with **MQTT** and **Home Assistant** (no extra flow nodes required). Enable it in the **MQTT / HA** tab:
+
+  - **MQTT bridge:** publishes the alarm state, accepts arm/disarm/trigger commands, and tracks availability (Last Will) directly on your broker.
+  - **Home Assistant MQTT Discovery:** auto-registers the alarm as an `alarm_control_panel` entity.
+  - **Zones in Home Assistant:** each zone is exposed as a `binary_sensor`, grouped under the same device.
+
+  You can also integrate via standard Node-RED `mqtt in`/`mqtt out` nodes or the **Alarm State** node's *Home Assistant* adapter. See `examples/` for ready-to-import flows.
 
   ## Quick start (5 minutes)
 
@@ -925,13 +946,15 @@
 
   In the **MQTT / HA** tab you can enable a built-in MQTT bridge. No extra flow nodes are required.
 
+  Topics and Home Assistant ids use the **node name** (`<name>`), slugified to a topic-safe form (lower-case, spaces and other characters become `_`). If the node has no name, the internal node id is used as a fallback. Give each Alarm node a unique name so its MQTT topics and HA entities stay clear and unique.
+
   - **Broker URL**: e.g. `mqtt://localhost:1883` (use `mqtts://` for TLS). Username/password are stored as credentials.
-  - **Base topic**: per-node topics are published under `<base>/<nodeId>/`:
+  - **Base topic**: per-node topics are published under `<base>/<name>/`:
     - `…/state` (retained): Home Assistant `alarm_control_panel` state (`disarmed`, `arming`, `pending`, `triggered`, `armed_away`, `armed_home`).
     - `…/command`: accepts `ARM_AWAY`, `ARM_HOME`, `ARM_NIGHT`, `DISARM`, `TRIGGER` (plain string or `{ "action": "ARM_AWAY", "code": "1234" }`).
     - `…/availability`: `online` / `offline` (Last Will).
-  - **HA discovery**: when on, publishes a retained MQTT Discovery config to `<prefix>/alarm_control_panel/<nodeId>/config`, so the alarm appears in Home Assistant automatically (default prefix `homeassistant`).
-  - **Publish zones**: when on (and discovery is enabled), each zone is also exposed as a Home Assistant `binary_sensor` (`<prefix>/binary_sensor/<nodeId>_<zone>/config`), grouped under the same device. Zone state is published (retained) to `<base>/<nodeId>/zone/<zone>/state` as `open`/`closed`, with a `device_class` derived from the zone type (perimeter→opening, motion→motion, fire→smoke, tamper→tamper, 24h→safety).
+  - **HA discovery**: when on, publishes a retained MQTT Discovery config to `<prefix>/alarm_control_panel/<name>/config`, so the alarm appears in Home Assistant automatically (default prefix `homeassistant`).
+  - **Publish zones**: when on (and discovery is enabled), each zone is also exposed as a Home Assistant `binary_sensor` (`<prefix>/binary_sensor/<name>_<zone>/config`), grouped under the same device. Zone state is published (retained) to `<base>/<name>/zone/<zone>/state` as `open`/`closed`, with a `device_class` derived from the zone type (perimeter→opening, motion→motion, fire→smoke, tamper→tamper, 24h→safety).
 
   The bridge runs alongside the normal `msg.topic`-based inputs/outputs; you can use either or both.
 
