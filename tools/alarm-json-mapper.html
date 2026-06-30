@@ -7,6 +7,42 @@
   <title>Zones (Node-RED)</title>
   <link rel="stylesheet" href="./alarm-tools/assets/alarm-vue-shell.css" />
   <link rel="stylesheet" href="./alarm-tools/assets/alarm-tools-pages.css" />
+  <style>
+    /* Beginner-first polish, scoped to this page only. */
+
+    /* Show "Your zones" first; the importer becomes a secondary block below. */
+    .alarm-mapper-page #zones-card { order: 1; }
+    .alarm-mapper-page #wizard-card { order: 2; }
+
+    /* Zones card = the main task. */
+    .alarm-mapper-page #zones-card h2 { font-size: 16px; }
+    .alarm-mapper-page .section-intro { color: var(--muted); font-size: 12px; margin: -2px 0 12px; line-height: 1.4; }
+    .alarm-mapper-page #btn-zone-add { font-size: 13px; padding: 10px 16px; font-weight: 600; }
+
+    /* Importer card = secondary, lighter, clearly optional. */
+    .alarm-mapper-page #wizard-card { background: rgba(0, 0, 0, 0.015); }
+    .alarm-mapper-page #wizard-card > h2 { font-size: 13px; color: var(--muted); }
+
+    /* Collapsible "Advanced filters" inside the importer. */
+    .alarm-mapper-page details.adv-filters {
+      margin: 6px 0 2px;
+      border: 1px solid var(--line);
+      border-radius: var(--soft-radius);
+      background: #fff;
+    }
+    .alarm-mapper-page details.adv-filters > summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: var(--muted);
+      user-select: none;
+    }
+    .alarm-mapper-page details.adv-filters > summary::-webkit-details-marker { display: none; }
+    .alarm-mapper-page details.adv-filters > summary::before { content: "\25B8\00a0"; }
+    .alarm-mapper-page details.adv-filters[open] > summary::before { content: "\25BE\00a0"; }
+    .alarm-mapper-page details.adv-filters > .adv-body { padding: 2px 10px 10px; }
+  </style>
 </head>
 
 <body class="alarm-mapper-page">
@@ -65,9 +101,10 @@
       <div class="alarm-content">
         <main>
           <section class="card" id="wizard-card">
-            <h2>Import Wizard</h2>
+            <h2>Import many zones at once</h2>
+            <p class="section-intro">Optional. Bulk-create zones from a KNX, Home Assistant or JSON sample instead of adding them one by one.</p>
             <div class="buttons">
-              <button class="primary" id="btn-wizard-toggle">Import zones wizard</button>
+              <button id="btn-wizard-toggle">Open importer</button>
             </div>
             <div id="wizard" style="display:none;">
               <div class="grid">
@@ -98,49 +135,59 @@
                   <div id="ets-hint" class="status ok" style="display: none"></div>
                   <div id="ha-hint" class="status ok" style="display: none"></div>
                   <div id="ets-mapping" style="display: none">
-                    <div class="row">
-                      <label for="etsAddressFilter">ETS address filter</label>
-                      <input type="text" id="etsAddressFilter"
-                        placeholder="Examples: 0/0/*  •  0/1/??  •  */7/*  (comma or newline separated)" />
-                    </div>
-                    <div class="row">
-                      <label for="etsNameFilter">ETS name filter</label>
-                      <input type="text" id="etsNameFilter"
-                        placeholder='Optional. Examples: Front door • *garage* (supports * and ?)' />
-                    </div>
-                    <p class="hint">
-                      Address patterns are matched against the ETS <span class="mono">Address</span> column (e.g.
-                      <span class="mono">0/0/1</span>). Name filter is matched against <span class="mono">Description</span>,
-                      fallback to <span class="mono">Group name</span>.
-                    </p>
+                    <details class="adv-filters">
+                      <summary>Advanced filters (optional)</summary>
+                      <div class="adv-body">
+                        <div class="row">
+                          <label for="etsAddressFilter">ETS address filter</label>
+                          <input type="text" id="etsAddressFilter"
+                            placeholder="Examples: 0/0/*  •  0/1/??  •  */7/*  (comma or newline separated)" />
+                        </div>
+                        <div class="row">
+                          <label for="etsNameFilter">ETS name filter</label>
+                          <input type="text" id="etsNameFilter"
+                            placeholder='Optional. Examples: Front door • *garage* (supports * and ?)' />
+                        </div>
+                        <p class="hint">
+                          Address patterns are matched against the ETS <span class="mono">Address</span> column (e.g.
+                          <span class="mono">0/0/1</span>). Name filter is matched against <span class="mono">Description</span>,
+                          fallback to <span class="mono">Group name</span>.
+                        </p>
+                      </div>
+                    </details>
                   </div>
                   <div id="ha-mapping" style="display: none">
-                    <div class="row">
-                      <label for="haEntityFilter">HA entity filter</label>
-                      <input type="text" id="haEntityFilter"
-                        placeholder="Examples: binary_sensor.*door*  •  *_pir  •  switch.*  (comma or newline separated)" />
-                    </div>
-                    <div class="row">
-                      <label for="haNameFilter">HA name filter</label>
-                      <input type="text" id="haNameFilter"
-                        placeholder='Optional. Examples: Front door • *garage* (supports * and ?)' />
-                    </div>
-                    <div class="row">
-                      <label for="haDomains">HA domains</label>
-                      <input type="text" id="haDomains"
-                        placeholder="Optional. Example: binary_sensor,input_boolean,switch (default: boolean-like domains)" />
-                    </div>
-                    <div class="row">
-                      <label for="haIncludeDisabled">Include disabled</label>
-                      <input type="checkbox" id="haIncludeDisabled" style="width:auto; margin-top:7px;" />
-                    </div>
-                    <p class="hint">
-                      Paste Home Assistant JSON (e.g. the array returned by <span class="mono">/api/states</span>). The zone
-                      topic
-                      will be the <span class="mono">entity_id</span>. Names use <span
-                        class="mono">attributes.friendly_name</span>
-                      if present.
-                    </p>
+                    <details class="adv-filters">
+                      <summary>Advanced filters (optional)</summary>
+                      <div class="adv-body">
+                        <div class="row">
+                          <label for="haEntityFilter">HA entity filter</label>
+                          <input type="text" id="haEntityFilter"
+                            placeholder="Examples: binary_sensor.*door*  •  *_pir  •  switch.*  (comma or newline separated)" />
+                        </div>
+                        <div class="row">
+                          <label for="haNameFilter">HA name filter</label>
+                          <input type="text" id="haNameFilter"
+                            placeholder='Optional. Examples: Front door • *garage* (supports * and ?)' />
+                        </div>
+                        <div class="row">
+                          <label for="haDomains">HA domains</label>
+                          <input type="text" id="haDomains"
+                            placeholder="Optional. Example: binary_sensor,input_boolean,switch (default: boolean-like domains)" />
+                        </div>
+                        <div class="row">
+                          <label for="haIncludeDisabled">Include disabled</label>
+                          <input type="checkbox" id="haIncludeDisabled" style="width:auto; margin-top:7px;" />
+                        </div>
+                        <p class="hint">
+                          Paste Home Assistant JSON (e.g. the array returned by <span class="mono">/api/states</span>). The zone
+                          topic
+                          will be the <span class="mono">entity_id</span>. Names use <span
+                            class="mono">attributes.friendly_name</span>
+                          if present.
+                        </p>
+                      </div>
+                    </details>
                   </div>
                   <div id="json-mapping">
                     <div class="row">
@@ -175,29 +222,12 @@
             </div>
           </section>
 
-          <section class="card">
-            <h2>Zones</h2>
+          <section class="card" id="zones-card">
+            <h2>Your zones</h2>
+            <p class="section-intro">These are the sensors your alarm watches. Add or edit them here, then click <b>Done</b> in the Node-RED editor to save.</p>
             <div class="buttons">
-              <button id="btn-zone-add">Add zone</button>
-            </div>
-            <div class="sortbar">
-              <label for="sort-key">Sort zones</label>
-              <select id="sort-key">
-                <option value="topic">Topic</option>
-                <option value="name">Name</option>
-                <option value="kind">Kind</option>
-                <option value="sup_enabled">Supervision: On</option>
-                <option value="sup_timeout">Supervision: Timeout</option>
-                <option value="sup_blockArm">Supervision: Block arm</option>
-                <option value="entry">Entry</option>
-                <option value="bypassable">Bypassable</option>
-                <option value="chime">Chime</option>
-              </select>
-              <select id="sort-dir" class="dir">
-                <option value="asc">Ascending</option>
-                <option value="desc">Descending</option>
-              </select>
-              <button type="button" id="btn-sort-apply" class="mini">Apply</button>
+              <button class="primary" id="btn-zone-add">+ Add zone</button>
+              <button type="button" class="primary" id="btn-goto-importer">Import zones wizard</button>
             </div>
             <p id="zone-context" class="hint"></p>
             <div id="zone-apply-reminder" class="callout" style="display:none;">
@@ -1950,7 +1980,7 @@
       const nextOpen = forceOpen === true ? true : forceOpen === false ? false : !isOpen;
       els.wizard.style.display = nextOpen ? "" : "none";
       if (els.btnWizardToggle) {
-        els.btnWizardToggle.textContent = nextOpen ? "Hide import wizard" : "Import zones wizard";
+        els.btnWizardToggle.textContent = nextOpen ? "Hide importer" : "Open importer";
       }
       if (nextOpen) {
         setTimeout(() => {
@@ -1966,6 +1996,24 @@
 
     if (els.btnWizardToggle) {
       els.btnWizardToggle.addEventListener("click", () => toggleWizard());
+    }
+
+    // Shortcut from the Zones card: open the importer and scroll to its section.
+    const btnGotoImporter = document.getElementById("btn-goto-importer");
+    if (btnGotoImporter) {
+      btnGotoImporter.addEventListener("click", () => {
+        toggleWizard(true);
+        setTimeout(() => {
+          const card = document.getElementById("wizard-card");
+          if (card) {
+            try {
+              card.scrollIntoView({ behavior: "smooth", block: "start" });
+            } catch (_err) {
+              card.scrollIntoView();
+            }
+          }
+        }, 60);
+      });
     }
 
     // Use input for text fields, change for selects.
