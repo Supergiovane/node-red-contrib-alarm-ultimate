@@ -346,6 +346,52 @@ describe('Embedded adapters (Alarm State) + Alarm zone input adapters', function
       .catch(done);
   });
 
+  it('AlarmSystemUltimate (Zone input adapter = Home Assistant) accepts a raw state_changed event', function (done) {
+    const flowId = 'embedded-zone-ha-in';
+    const flow = [
+      { id: flowId, type: 'tab', label: flowId },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm',
+        zoneInputAdapter: 'homeassistant',
+        exitDelaySeconds: 0,
+        entryDelaySeconds: 0,
+        sirenDurationSeconds: 0,
+        requireCodeForDisarm: false,
+        zones: '[{"topic":"binary_sensor.front_door","type":"perimeter","entry":false}]',
+        wires: [['alarmOut'], [], [], [], [], [], [], [], []],
+      },
+      { id: 'alarmOut', type: 'helper', z: flowId },
+    ];
+
+    loadFlow([alarmNode], flow, {})
+      .then(() => {
+        const alarm = helper.getNode('alarm');
+        const alarmOut = helper.getNode('alarmOut');
+
+        let finished = false;
+        alarmOut.on('input', (msg) => {
+          if (finished) return;
+          try {
+            if (!msg || msg.event !== 'zone_open') return;
+            expect(msg.payload.open).to.equal(true);
+            expect(msg.payload.zone.topic).to.equal('binary_sensor.front_door');
+            finished = true;
+            done();
+          } catch (err) {
+            finished = true;
+            done(err);
+          }
+        });
+
+        // Raw HA state_changed shape (entity_id + new_state.state), no pre-mapping needed.
+        alarm.receive({ payload: { entity_id: 'binary_sensor.front_door', new_state: { state: 'on' } } });
+      })
+      .catch(done);
+  });
+
   it('AlarmSystemUltimate (Zone input adapter = KNX) maps knx.destination to zone topic', function (done) {
     const flowId = 'embedded-zone-knx-in';
     const flow = [

@@ -5,6 +5,7 @@ const path = require('path');
 
 const { alarmInstances, alarmEmitter } = require('./lib/alarm-registry.js');
 const { attachAlarmUltimateEnvelope } = require('./lib/alarm-ultimate-envelope.js');
+const utils = require('./utils.js');
 
 function getAnyFromObject(obj, propertyPath) {
   const root = obj && typeof obj === 'object' ? obj : null;
@@ -2155,8 +2156,58 @@ module.exports = function (RED) {
       return { zone, value: open };
     }
 
+    // Resolve a Home Assistant sensor update to { zone, value }.
+    // Accepts either a pre-mapped message (msg.topic = entity_id + boolean/state payload, as the
+    // default adapter expects) or a raw `state_changed` event (entity_id + new_state.state anywhere
+    // in payload/data). The zone `topic` must match the Home Assistant entity_id.
+    function resolveHomeAssistantZoneUpdate(msg) {
+      const payload = getAnyFromObject(msg, payloadPropName);
+      const payloadObj = payload && typeof payload === 'object' ? payload : null;
+      const data = msg && typeof msg.data === 'object' ? msg.data : null;
+
+      // Entity id (zone identifier).
+      const entityId =
+        (typeof msg.topic === 'string' && msg.topic.trim()) ||
+        (payloadObj && typeof payloadObj.entity_id === 'string' && payloadObj.entity_id.trim()) ||
+        (payloadObj && payloadObj.new_state && typeof payloadObj.new_state.entity_id === 'string' && payloadObj.new_state.entity_id.trim()) ||
+        (data && typeof data.entity_id === 'string' && data.entity_id.trim()) ||
+        (typeof msg.entity_id === 'string' && msg.entity_id.trim()) ||
+        '';
+      if (!entityId) return null;
+
+      const zone = findZone(entityId);
+      if (!zone) return null;
+
+      // Raw state: a primitive payload, otherwise the HA new_state.state string.
+      let rawState;
+      if (typeof payload === 'string' || typeof payload === 'number' || typeof payload === 'boolean') {
+        rawState = payload;
+      } else if (payloadObj && payloadObj.new_state && payloadObj.new_state.state !== undefined) {
+        rawState = payloadObj.new_state.state;
+      } else if (payloadObj && payloadObj.state !== undefined) {
+        rawState = payloadObj.state;
+      } else if (data && data.new_state && data.new_state.state !== undefined) {
+        rawState = data.new_state.state;
+      } else {
+        return null;
+      }
+
+      // "unavailable"/"unknown" (and anything not in the translation table) yield undefined: skip.
+      // The second argument must be explicitly null to use the default translation table.
+      const value = utils.ToBoolean(rawState, null);
+      if (typeof value !== 'boolean') return null;
+      return { zone, value };
+    }
+
     function handleSensorMessage(msg) {
       const inMsg = msg && typeof msg === 'object' ? msg : {};
+
+      if (zoneInputAdapter === 'homeassistant') {
+        const parsed = resolveHomeAssistantZoneUpdate(inMsg);
+        if (!parsed) return;
+        applyZoneSensorValue(parsed.zone, parsed.value, inMsg);
+        return;
+      }
 
       if (zoneInputAdapter === 'knx') {
         const destination =

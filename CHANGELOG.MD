@@ -3,6 +3,12 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [1.1.2] - 2026-06-30
+
+### Added
+
+- **Home Assistant zone input adapter:** new `Home Assistant` option in **Zones → Zone input adapter**. It matches zones by Home Assistant `entity_id` and accepts either a pre-mapped message (`msg.topic` + state payload) or a raw `state_changed` event (reads `entity_id` and `new_state.state` from the payload/`data`). States like `on`/`off`, `open`/`closed`, `home`/`not_home` are converted to boolean; `unavailable`/`unknown` are ignored.
+
 ## [1.1.1] - 2026-06-30
 
 ### Fixed
