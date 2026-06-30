@@ -15,11 +15,11 @@ A complete **alarm system** for Node-RED, with a ready-to-use **web control pane
 Create zones, arm/disarm with optional code, entry/exit delays, bypass, chime, panic, siren, 24h/fire/tamper zones and an event log — all configured from a friendly editor, no programming required.
 
 <p align="center">
-  <a href="https://youtu.be/HUPzhVgObBE">
-    <img src="https://img.youtube.com/vi/HUPzhVgObBE/hqdefault.jpg" alt="Alarm Ultimate video (YouTube)" width="640">
+  <a href="https://youtube.com/playlist?list=PL9Yh1bjbLAYrybBZKykfKLDrRAspj9to4&si=j0mLqVMBcHKjBpNY">
+    <img src="https://img.youtube.com/vi/HUPzhVgObBE/hqdefault.jpg" alt="Alarm Ultimate videos (YouTube playlist)" width="640">
   </a>
   <br>
-  <a href="https://youtu.be/HUPzhVgObBE">▶ Watch the 5‑minute intro on YouTube</a>
+  <a href="https://youtube.com/playlist?list=PL9Yh1bjbLAYrybBZKykfKLDrRAspj9to4&si=j0mLqVMBcHKjBpNY">▶ Watch the Alarm Ultimate video playlist on YouTube</a>
 </p>
 
 ### Works great with
