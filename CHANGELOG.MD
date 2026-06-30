@@ -3,6 +3,12 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [1.1.1] - 2026-06-30
+
+### Fixed
+
+- **Zones with a stray `id` field were silently dropped:** the Alarm System node logged `invalid zone config (id field is not supported)` and discarded the whole zone whenever a zone object carried an `id` (very common in imported/exported configs). It now ignores the extra `id` and keeps the zone (`topic` remains the identifier). `topicPattern` is likewise ignored when a usable `topic` is present. The zone JSON mapper tool now strips `id`/`topicPattern` from its exports.
+
 ## [1.1.0] - 2026-06-30
 
 ### Added

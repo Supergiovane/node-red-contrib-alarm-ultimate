@@ -265,6 +265,50 @@ describe('AlarmSystemUltimate node', function () {
     }).catch(done);
   });
 
+  it('keeps a zone that carries a stray "id" field (uses topic as the identifier)', function (done) {
+    const flowId = 'alarm-id-tolerant';
+    const flow = [
+      { id: flowId, type: 'tab', label: flowId },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm',
+        exitDelaySeconds: 0,
+        entryDelaySeconds: 0,
+        sirenDurationSeconds: 0,
+        requireCodeForDisarm: false,
+        zones: JSON.stringify([
+          { id: 'abc-123', name: 'Front', topic: 'sensor/frontdoor', type: 'perimeter', entry: false },
+        ]),
+        wires: [['out'], [], [], [], [], [], [], [], []],
+      },
+      { id: 'out', type: 'helper', z: flowId },
+    ];
+
+    loadAlarm(flow).then(() => {
+      const alarm = helper.getNode('alarm');
+      const out = helper.getNode('out');
+
+      let finished = false;
+      out.on('input', (msg) => {
+        if (finished) return;
+        try {
+          if (msg && msg.event === 'zone_open' && msg.payload && msg.payload.zone) {
+            expect(msg.payload.zone.topic).to.equal('sensor/frontdoor');
+            finished = true;
+            done();
+          }
+        } catch (err) {
+          finished = true;
+          done(err);
+        }
+      });
+
+      alarm.receive({ topic: 'sensor/frontdoor', payload: 'open' });
+    }).catch(done);
+  });
+
   it('emits the "alarm" event on the output', function (done) {
     const flowId = 'alarm5';
     const flow = [

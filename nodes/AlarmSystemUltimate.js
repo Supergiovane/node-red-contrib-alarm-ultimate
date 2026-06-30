@@ -727,13 +727,19 @@ module.exports = function (RED) {
 	      if (typeof zone.topic === 'string') {
 	        zone.topic = zone.topic.trim();
 	      }
-	      if (Object.prototype.hasOwnProperty.call(zone, 'topicPattern')) {
-	        node.log('AlarmSystemUltimate: invalid zone config (topicPattern is not supported). Use topic (exact or prefix ending with *).');
-	        return null;
-	      }
+	      // A stray `id` is harmless metadata (imported/exported configs often carry one);
+	      // `topic` is the zone identifier, so ignore `id` instead of dropping the whole zone.
 	      if (Object.prototype.hasOwnProperty.call(zone, 'id')) {
-	        node.log('AlarmSystemUltimate: invalid zone config (id field is not supported). Use topic as the zone identifier.');
-	        return null;
+	        delete zone.id;
+	      }
+	      // `topicPattern` is not supported: if a usable `topic` is present just ignore the stray
+	      // field, otherwise the zone can't be matched, so skip it with a hint.
+	      if (Object.prototype.hasOwnProperty.call(zone, 'topicPattern')) {
+	        delete zone.topicPattern;
+	        if (!zone.topic) {
+	          node.log('AlarmSystemUltimate: invalid zone config (topicPattern is not supported). Use topic (exact or prefix ending with *).');
+	          return null;
+	        }
 	      }
 	      if (!zone.topic) {
 	        return null;

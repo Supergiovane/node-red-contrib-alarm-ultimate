@@ -572,6 +572,9 @@
 
     function cleanZoneForJson(zone, index) {
       const z = zone && typeof zone === "object" ? { ...zone } : {};
+      // Drop fields the Alarm node does not use as identifiers (keeps exported JSON clean).
+      delete z.id;
+      delete z.topicPattern;
       const name = String(z.name || "").trim();
 
       if (typeof z.topic === "string") z.topic = z.topic.trim();
