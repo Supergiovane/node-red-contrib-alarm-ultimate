@@ -32,6 +32,11 @@ function createMqttBridge(options) {
   const username = typeof opts.username === 'string' && opts.username ? opts.username : undefined;
   const password = typeof opts.password === 'string' && opts.password ? opts.password : undefined;
 
+  // Optional per-zone binary_sensor discovery. `zones` items: { id, name, deviceClass }.
+  const zones = Array.isArray(opts.zones) ? opts.zones : [];
+  const publishZones = opts.publishZones === true && zones.length > 0;
+  const getZoneStates = typeof opts.getZoneStates === 'function' ? opts.getZoneStates : () => ({});
+
   const id = String((node && node.id) || 'alarm').replace(/[^A-Za-z0-9_-]/g, '');
   const name = (node && node.name) || 'Alarm Ultimate';
   const uniqueId = `alarm_ultimate_${id}`;
@@ -46,6 +51,14 @@ function createMqttBridge(options) {
   let closed = false;
   let lastArmMode = null;
   let lastState = null;
+  const lastZoneStates = {};
+
+  function zoneStateTopic(zoneId) {
+    return `${root}/zone/${zoneId}/state`;
+  }
+  function zoneDiscoveryTopic(zoneId) {
+    return `${discoveryPrefix}/binary_sensor/${id}_${zoneId}/config`;
+  }
 
   function log(msg) {
     if (node && typeof node.log === 'function') node.log(`[mqtt] ${msg}`);
@@ -97,6 +110,49 @@ function createMqttBridge(options) {
     publishRaw(stateTopic, state, true);
   }
 
+  function buildZoneDiscovery(zone) {
+    const config = {
+      name: zone.name,
+      unique_id: `${uniqueId}_${zone.id}`,
+      state_topic: zoneStateTopic(zone.id),
+      payload_on: 'open',
+      payload_off: 'closed',
+      availability_topic: availabilityTopic,
+      payload_available: 'online',
+      payload_not_available: 'offline',
+      device: {
+        identifiers: [uniqueId],
+        name,
+        manufacturer: 'node-red-contrib-alarm-ultimate',
+        model: 'Alarm System Ultimate',
+      },
+    };
+    if (zone.deviceClass) config.device_class = zone.deviceClass;
+    return config;
+  }
+
+  // Publish a single zone's open/closed state (retained). No-op when zone discovery is disabled.
+  function publishZoneState(zoneId, open) {
+    if (!publishZones || !zoneId) return;
+    const payload = open === true ? 'open' : 'closed';
+    if (lastZoneStates[zoneId] === payload) return;
+    lastZoneStates[zoneId] = payload;
+    publishRaw(zoneStateTopic(zoneId), payload, true);
+  }
+
+  function publishAllZones() {
+    if (!publishZones) return;
+    for (const zone of zones) {
+      publishRaw(zoneDiscoveryTopic(zone.id), JSON.stringify(buildZoneDiscovery(zone)), true);
+    }
+    const states = getZoneStates() || {};
+    Object.keys(states).forEach((zoneId) => {
+      // Force a publish on (re)connect even if the cached value is unchanged.
+      delete lastZoneStates[zoneId];
+      publishZoneState(zoneId, states[zoneId] === true);
+    });
+  }
+
   function handleIncoming(topic, buf) {
     if (topic !== commandTopic) return;
     const text = buf == null ? '' : buf.toString();
@@ -141,6 +197,7 @@ function createMqttBridge(options) {
       log(`connected to ${url}`);
       publishRaw(availabilityTopic, 'online', true);
       if (discovery) publishRaw(discoveryTopic, JSON.stringify(buildDiscoveryConfig()), true);
+      publishAllZones();
       try {
         client.subscribe(commandTopic, { qos: 0 });
       } catch (_err) {
@@ -206,6 +263,7 @@ function createMqttBridge(options) {
     connect,
     close,
     publishState,
+    publishZoneState,
     topics: { stateTopic, commandTopic, availabilityTopic, discoveryTopic },
   };
 }

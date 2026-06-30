@@ -270,6 +270,7 @@ module.exports = function (RED) {
       typeof config.mqttDiscoveryPrefix === 'string' && config.mqttDiscoveryPrefix.trim().length > 0
         ? config.mqttDiscoveryPrefix.trim()
         : 'homeassistant';
+    const mqttPublishZones = config.mqttPublishZones !== false;
     let mqttBridge = null;
 
     const fileCacheDir =
@@ -1000,6 +1001,71 @@ module.exports = function (RED) {
       if (!mqttBridge) return;
       try {
         mqttBridge.publishState(currentBaseHaState());
+      } catch (_err) {
+        // Best-effort.
+      }
+    }
+
+    // Stable, topic-safe id per zone for Home Assistant binary_sensor discovery.
+    function sanitizeZoneId(value) {
+      return String(value || '')
+        .replace(/[^A-Za-z0-9_-]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+    }
+
+    // Map an alarm zone type to a Home Assistant binary_sensor device_class.
+    function zoneDeviceClass(type) {
+      switch (type) {
+        case 'motion':
+          return 'motion';
+        case 'fire':
+          return 'smoke';
+        case 'tamper':
+          return 'tamper';
+        case '24h':
+          return 'safety';
+        case 'perimeter':
+          return 'opening';
+        default:
+          return null;
+      }
+    }
+
+    const zoneIdByKey = new Map();
+    const mqttZoneMeta = [];
+    zones.forEach((zone, index) => {
+      if (!zone || !zone.key) return;
+      let base = sanitizeZoneId(zone.key) || `zone${index}`;
+      let zoneId = base;
+      let suffix = 1;
+      const taken = new Set(zoneIdByKey.values());
+      while (taken.has(zoneId)) {
+        zoneId = `${base}_${suffix}`;
+        suffix += 1;
+      }
+      zoneIdByKey.set(zone.key, zoneId);
+      mqttZoneMeta.push({ id: zoneId, name: zone.name || zone.key, deviceClass: zoneDeviceClass(zone.type) });
+    });
+
+    function getMqttZoneStates() {
+      const out = {};
+      for (const zone of zones) {
+        if (!zone || !zone.key) continue;
+        const zoneId = zoneIdByKey.get(zone.key);
+        if (!zoneId) continue;
+        const meta = state.zoneState[zone.key];
+        out[zoneId] = !!(meta && meta.active === true);
+      }
+      return out;
+    }
+
+    function publishMqttZoneState(zone, open) {
+      if (!mqttBridge || !zone) return;
+      const zoneId = zoneIdByKey.get(zone.key);
+      if (!zoneId) return;
+      try {
+        mqttBridge.publishZoneState(zoneId, open === true);
       } catch (_err) {
         // Best-effort.
       }
@@ -2055,6 +2121,7 @@ module.exports = function (RED) {
           },
           baseMsg
         );
+        publishMqttZoneState(zone, value === true);
       }
 
       if (changed && emitRestoreEvents && value === false) {
@@ -2265,6 +2332,9 @@ module.exports = function (RED) {
           discoveryPrefix: mqttDiscoveryPrefix,
           username: node.credentials ? node.credentials.mqttUsername : undefined,
           password: node.credentials ? node.credentials.mqttPassword : undefined,
+          zones: mqttZoneMeta,
+          publishZones: mqttPublishZones,
+          getZoneStates: getMqttZoneStates,
           onCommand: handleMqttCommand,
           onStatus: () => {},
         });

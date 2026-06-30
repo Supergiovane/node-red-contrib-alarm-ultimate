@@ -3,6 +3,12 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [1.2.0] - 2026-06-30
+
+### Added
+
+- **Expose zones to Home Assistant:** new **Publish zones** option in the **MQTT / HA** tab (on by default). With MQTT + discovery enabled, each alarm zone is auto-registered as a Home Assistant `binary_sensor` (`<prefix>/binary_sensor/<nodeId>_<zone>/config`), grouped under the same device as the alarm panel. Zone state is published (retained) to `<base>/<nodeId>/zone/<zone>/state` as `open`/`closed`, with a `device_class` mapped from the zone type (perimeter→opening, motion→motion, fire→smoke, tamper→tamper, 24h→safety).
+
 ## [1.1.4] - 2026-06-30
 
 ### Fixed
