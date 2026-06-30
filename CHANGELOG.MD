@@ -3,6 +3,22 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [2.0.0] - 2026-06-30
+
+### Changed
+
+- **MQTT topics & Home Assistant ids now use the node name** (slugified) instead of the internal node id, e.g. `alarm-ultimate/casa/state` and `homeassistant/alarm_control_panel/casa/config`. Falls back to the node id when the node has no name. Give each Alarm node a unique name.
+- **Zones page redesigned (beginner-first):** the zone list is now the main focus with a primary **Add zone** button; the bulk importer is a clearly-labelled secondary section with its advanced ETS/Home Assistant filters tucked under a collapsible **Advanced filters**. Added an **Import zones wizard** shortcut button and removed the redundant sort bar (sorting is available by clicking column headers).
+- **Editor defaults:** **HA discovery** and **Publish zones** show as enabled by default, including for alarm nodes saved before these options existed.
+
+### Fixed
+
+- **Alarm did not reappear in Home Assistant after an HA restart / MQTT integration re-add:** the bridge now listens for the Home Assistant birth message (`homeassistant/status` = `online`) and re-announces the panel, all zones and the current state.
+
+### Docs
+
+- **Simplified, end-user-focused README** (removed developer-only reference sections); added a compatibility section with the MQTT and Home Assistant logos (bundled in `resources/`). Node help updated accordingly.
+
 ## [1.2.0] - 2026-06-30
 
 ### Added
