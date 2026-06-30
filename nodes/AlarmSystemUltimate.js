@@ -2332,5 +2332,10 @@ module.exports = function (RED) {
 	    });
 	  }
 
-  RED.nodes.registerType('AlarmSystemUltimate', AlarmSystemUltimate);
+  RED.nodes.registerType('AlarmSystemUltimate', AlarmSystemUltimate, {
+    credentials: {
+      mqttUsername: { type: 'text' },
+      mqttPassword: { type: 'password' },
+    },
+  });
 };

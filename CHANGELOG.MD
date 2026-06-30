@@ -3,6 +3,12 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [1.1.3] - 2026-06-30
+
+### Fixed
+
+- **MQTT username/password were not saved:** the credentials were declared only in the editor HTML, not in the runtime `registerType`, so Node-RED never stored them and they appeared empty when reopening the node. The runtime now registers the `mqttUsername`/`mqttPassword` credentials, so they persist across edits and restarts.
+
 ## [1.1.2] - 2026-06-30
 
 ### Added
