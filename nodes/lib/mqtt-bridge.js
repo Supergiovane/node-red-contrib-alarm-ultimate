@@ -160,27 +160,44 @@ function createMqttBridge(options) {
 
   function close(done) {
     closed = true;
-    const finish = () => {
+    const c = client;
+    client = null;
+
+    let finished = false;
+    function finish() {
+      if (finished) return;
+      finished = true;
+      clearTimeout(guard);
+      // Force-close the socket and stop reconnection attempts; never wait on the broker.
+      if (c) {
+        try {
+          c.end(true);
+        } catch (_err) {
+          // ignore
+        }
+      }
       if (typeof done === 'function') done();
-    };
-    if (!client) {
+    }
+
+    // Hard cap so stopping/redeploying is never blocked when the broker is slow or unreachable.
+    const guard = setTimeout(finish, 700);
+    if (typeof guard.unref === 'function') guard.unref();
+
+    if (!c) {
       finish();
       return;
     }
-    try {
-      client.publish(availabilityTopic, 'offline', { retain: true, qos: 0 }, () => {
-        try {
-          client.end(false, {}, finish);
-        } catch (_err) {
-          finish();
-        }
-      });
-    } catch (_err) {
+
+    if (c.connected) {
+      // Best-effort retained "offline" before a graceful disconnect (the Last Will only fires on
+      // an ungraceful drop). The guard above bounds how long we wait for it.
       try {
-        client.end(true);
-      } catch (_e) {
-        // ignore
+        c.publish(availabilityTopic, 'offline', { retain: true, qos: 0 }, () => finish());
+      } catch (_err) {
+        finish();
       }
+    } else {
+      // Not connected: nothing can be flushed, so close immediately.
       finish();
     }
   }

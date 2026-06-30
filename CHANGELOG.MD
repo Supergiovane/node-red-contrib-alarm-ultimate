@@ -3,6 +3,12 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [1.1.4] - 2026-06-30
+
+### Fixed
+
+- **Slow stop/deploy when MQTT is enabled:** closing the MQTT bridge waited on the broker. The retained "offline" publish (QoS 0) stayed queued and `client.end()` waited to flush it, so stopping Node-RED or deploying hung for several seconds (until the runtime close timeout) whenever the broker was slow or unreachable. The bridge now force-closes the connection, only attempts the graceful "offline" notice while connected, and caps the whole shutdown at ~700 ms (typically a few ms).
+
 ## [1.1.3] - 2026-06-30
 
 ### Fixed
