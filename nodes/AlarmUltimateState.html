@@ -153,6 +153,7 @@
     <select id="node-input-adapter" style="width: 70%">
       <option value="default">Default</option>
       <option value="homekit">Homekit</option>
+      <option value="homeassistant">Home Assistant</option>
       <option value="axpro">Ax Pro (Hikvision Ultimate)</option>
       <option value="knx">KNX-Ultimate</option>
     </select>
@@ -212,6 +213,17 @@ Examples:
 - `0|1|2` → `arm` (Stay/Away/Night)
 - `3` → `disarm`
 
+### Home Assistant
+
+This adapter accepts the command payloads sent by a Home Assistant `alarm_control_panel` (MQTT or template), as a plain string or under `msg.payload.action`/`command`/`state`:
+
+- `ARM_AWAY` / `ARM_VACATION` / `ARM_CUSTOM_BYPASS` → `arm`
+- `ARM_HOME` / `ARM_NIGHT` → `arm` (the requested mode is remembered for the output state)
+- `DISARM` → `disarm`
+- `TRIGGER` → `panic`
+
+An optional `msg.payload.code` is forwarded as the alarm `code`.
+
 ### Default / KNX-Ultimate
 
 - Default adapter infers `arm`/`disarm` from `msg.payload` when it is a boolean/number/string.
@@ -241,5 +253,6 @@ Only arming/disarming CID codes are handled (other CID events are ignored):
 
 - **Default / Ax Pro**: keeps a boolean `msg.payload` and emits details as root properties.
 - **Homekit**: emits `msg.SecuritySystemTargetState` and `msg.SecuritySystemCurrentState` as root properties (while keeping boolean `msg.payload`).
+- **Home Assistant**: sets `msg.payload` to a HA `alarm_control_panel` state string (`disarmed`, `arming`, `pending`, `triggered`, `armed_away`, `armed_home`). Wire it to an `mqtt out` on the panel's `state_topic`.
 - **KNX-Ultimate**: outputs a boolean `msg.payload` and sets `msg.destination` (defaults to `msg.topic`).
 </script>

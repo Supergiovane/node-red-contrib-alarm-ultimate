@@ -3,6 +3,18 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [1.1.0] - 2026-06-30
+
+### Added
+
+- **Native MQTT bridge (Alarm System):** new optional **MQTT / HA** tab. When enabled, the Alarm connects directly to an MQTT broker (URL + credentials), publishes its state to a retained `…/state` topic, accepts arm/disarm/trigger commands on `…/command`, and tracks availability (`…/availability`, via Last Will). No extra flow nodes required.
+- **Home Assistant MQTT Discovery:** when enabled, the Alarm auto-registers as a Home Assistant `alarm_control_panel` (retained config under `<prefix>/alarm_control_panel/<nodeId>/config`), so it appears in HA with no YAML or template panel. States: `disarmed`, `arming`, `pending`, `triggered`, `armed_away`, `armed_home`.
+- **Home Assistant adapter (Alarm State):** new `Home Assistant` option in the **Adapter** dropdown. In **Input** mode it converts HA commands (`ARM_AWAY`/`ARM_HOME`/`ARM_NIGHT`/`DISARM`/`TRIGGER`, optional `code`) into alarm commands; in **Output** mode it emits the matching HA `alarm_control_panel` state string.
+
+### Changed
+
+- **Node status:** the Alarm System node status now appends a compact open/bypass summary (e.g. `ARMED • 2 open • 1 bypass`) for at-a-glance zone activity.
+
 ## [1.0.4] - 2026-06-30
 
 ### Added

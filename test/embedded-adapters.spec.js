@@ -228,6 +228,124 @@ describe('Embedded adapters (Alarm State) + Alarm zone input adapters', function
       .catch(done);
   });
 
+  it('AlarmUltimateState (Output + Home Assistant) maps alarm events to HA states', function (done) {
+    const flowId = 'embedded-ha-out';
+    const flow = [
+      { id: flowId, type: 'tab', label: flowId },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm',
+        exitDelaySeconds: 0.05,
+        entryDelaySeconds: 0,
+        sirenDurationSeconds: 0,
+        requireCodeForDisarm: false,
+        zones: '[{"topic":"sensor/frontdoor","type":"perimeter","entry":false}]',
+        wires: [[], [], [], [], [], [], [], [], []],
+      },
+      {
+        id: 'stateNode',
+        type: 'AlarmUltimateState',
+        z: flowId,
+        alarmId: 'alarm',
+        io: 'out',
+        adapter: 'homeassistant',
+        outputInitialState: true,
+        wires: [['out']],
+      },
+      { id: 'out', type: 'helper', z: flowId },
+    ];
+
+    loadFlow([alarmNode, alarmStateNode], flow, {})
+      .then(() => {
+        const alarm = helper.getNode('alarm');
+        const out = helper.getNode('out');
+
+        const seen = new Set();
+        let finished = false;
+        out.on('input', (msg) => {
+          if (finished) return;
+          try {
+            if (msg && typeof msg.payload === 'string') seen.add(msg.payload);
+            if (seen.has('arming') && seen.has('armed_away')) {
+              finished = true;
+              done();
+            }
+          } catch (err) {
+            finished = true;
+            done(err);
+          }
+        });
+
+        setTimeout(() => {
+          alarm.receive({ topic: 'alarm', command: 'arm' });
+        }, 50);
+      })
+      .catch(done);
+  });
+
+  it('AlarmUltimateState (Input + Home Assistant) injects HA commands into the selected alarm', function (done) {
+    const flowId = 'embedded-ha-in';
+    const flow = [
+      { id: flowId, type: 'tab', label: flowId },
+      {
+        id: 'alarm',
+        type: 'AlarmSystemUltimate',
+        z: flowId,
+        controlTopic: 'alarm',
+        exitDelaySeconds: 0,
+        entryDelaySeconds: 0,
+        sirenDurationSeconds: 0,
+        requireCodeForDisarm: false,
+        zones: '[{"topic":"sensor/frontdoor","type":"perimeter","entry":false}]',
+        wires: [['alarmOut'], [], [], [], [], [], [], [], []],
+      },
+      { id: 'alarmOut', type: 'helper', z: flowId },
+      {
+        id: 'stateIn',
+        type: 'AlarmUltimateState',
+        z: flowId,
+        alarmId: 'alarm',
+        io: 'in',
+        adapter: 'homeassistant',
+        outputInitialState: false,
+        wires: [[]],
+      },
+    ];
+
+    loadFlow([alarmNode, alarmStateNode], flow, {})
+      .then(() => {
+        const stateIn = helper.getNode('stateIn');
+        const alarmOut = helper.getNode('alarmOut');
+
+        const seen = [];
+        let finished = false;
+        alarmOut.on('input', (msg) => {
+          if (finished) return;
+          if (msg && typeof msg.event === 'string') seen.push(msg.event);
+        });
+
+        stateIn.receive({ payload: 'ARM_AWAY' });
+        setTimeout(() => {
+          stateIn.receive({ payload: { action: 'DISARM' } });
+        }, 60);
+
+        setTimeout(() => {
+          if (finished) return;
+          finished = true;
+          try {
+            expect(seen).to.include('armed');
+            expect(seen).to.include('disarmed');
+            done();
+          } catch (err) {
+            done(err);
+          }
+        }, 250);
+      })
+      .catch(done);
+  });
+
   it('AlarmSystemUltimate (Zone input adapter = KNX) maps knx.destination to zone topic', function (done) {
     const flowId = 'embedded-zone-knx-in';
     const flow = [

@@ -36,6 +36,15 @@
       zones: { value: "" },
       zoneInputAdapter: { value: "default" },
       zoneAxProZoneNameMatch: { value: "exact" },
+      mqttEnabled: { value: false },
+      mqttUrl: { value: "" },
+      mqttBaseTopic: { value: "alarm-ultimate" },
+      mqttDiscovery: { value: true },
+      mqttDiscoveryPrefix: { value: "homeassistant" },
+    },
+    credentials: {
+      mqttUsername: { type: "text" },
+      mqttPassword: { type: "password" },
     },
     inputs: 1,
     outputs: 9,
@@ -74,8 +83,24 @@
 	      tabs.addTab({ id: "node-input-au-tab-security", label: "Security" });
 	      tabs.addTab({ id: "node-input-au-tab-siren", label: "Siren" });
 	      tabs.addTab({ id: "node-input-au-tab-open-zones", label: "Open zones" });
+	      tabs.addTab({ id: "node-input-au-tab-mqtt", label: "MQTT / HA" });
 	      tabs.addTab({ id: "node-input-au-tab-advanced", label: "Advanced" });
 	      tabs.activateTab("node-input-au-tab-general");
+
+	      const mqttEnabledField = $("#node-input-mqttEnabled");
+	      function refreshMqttFields() {
+	        const on = mqttEnabledField.is(":checked");
+	        [
+	          "#node-input-mqttUrl",
+	          "#node-input-mqttUsername",
+	          "#node-input-mqttPassword",
+	          "#node-input-mqttBaseTopic",
+	          "#node-input-mqttDiscovery",
+	          "#node-input-mqttDiscoveryPrefix",
+	        ].forEach((sel) => $(sel).prop("disabled", !on));
+	      }
+	      mqttEnabledField.on("change", refreshMqttFields);
+	      refreshMqttFields();
 	      const bc =
 	        typeof BroadcastChannel === "function"
 	          ? new BroadcastChannel("alarm-ultimate-zones")
@@ -743,6 +768,56 @@
 		      </div>
 		    </div>
 
+		    <div id="node-input-au-tab-mqtt" class="au-tab" style="display:none;">
+		      <div class="form-row">
+		        <label for="node-input-mqttEnabled"><i class="fa fa-rss"></i> Enable MQTT</label>
+		        <input type="checkbox" id="node-input-mqttEnabled" style="width:auto; margin-top:7px;" />
+		      </div>
+
+		      <div class="form-tips" style="margin: 0 0 10px 0;">
+		        Optional native MQTT bridge. When enabled, the Alarm publishes its state and accepts arm/disarm
+		        commands directly on the broker, and (optionally) auto-registers as a Home Assistant
+		        <code>alarm_control_panel</code> via MQTT Discovery — no extra flow nodes required.
+		      </div>
+
+		      <div class="form-row">
+		        <label for="node-input-mqttUrl"><i class="fa fa-server"></i> Broker URL</label>
+		        <input type="text" id="node-input-mqttUrl" placeholder="mqtt://localhost:1883" />
+		      </div>
+
+		      <div class="form-row">
+		        <label for="node-input-mqttUsername"><i class="fa fa-user"></i> Username</label>
+		        <input type="text" id="node-input-mqttUsername" placeholder="(optional)" />
+		      </div>
+
+		      <div class="form-row">
+		        <label for="node-input-mqttPassword"><i class="fa fa-lock"></i> Password</label>
+		        <input type="password" id="node-input-mqttPassword" placeholder="(optional)" />
+		      </div>
+
+		      <div class="form-row">
+		        <label for="node-input-mqttBaseTopic"><i class="fa fa-tag"></i> Base topic</label>
+		        <input type="text" id="node-input-mqttBaseTopic" placeholder="alarm-ultimate" />
+		      </div>
+
+		      <div class="form-row">
+		        <label for="node-input-mqttDiscovery"><i class="fa fa-home"></i> HA discovery</label>
+		        <input type="checkbox" id="node-input-mqttDiscovery" style="width:auto; margin-top:7px;" />
+		      </div>
+
+		      <div class="form-row">
+		        <label for="node-input-mqttDiscoveryPrefix"><i class="fa fa-folder-o"></i> Discovery prefix</label>
+		        <input type="text" id="node-input-mqttDiscoveryPrefix" placeholder="homeassistant" />
+		      </div>
+
+		      <div class="form-tips" style="margin-top: 6px;">
+		        Topics (per Alarm node): <code>&lt;base&gt;/&lt;nodeId&gt;/state</code>,
+		        <code>/command</code>, <code>/availability</code>. HA states: <code>disarmed</code>,
+		        <code>arming</code>, <code>pending</code>, <code>triggered</code>, <code>armed_away</code>,
+		        <code>armed_home</code>.
+		      </div>
+		    </div>
+
 		    <div id="node-input-au-tab-advanced" class="au-tab" style="display:none;">
 		      <div class="form-row">
 		        <label for="node-input-emitRestoreEvents"
@@ -836,6 +911,19 @@
   | Zones                        | Zone definitions. Use **Manage zones** to edit them in the web page (including optional supervision). For backup/restore use **Settings** → **Export Zones / Import Zones**. |
 
   <br/>
+
+  ## MQTT / Home Assistant (native, optional)
+
+  In the **MQTT / HA** tab you can enable a built-in MQTT bridge. No extra flow nodes are required.
+
+  - **Broker URL**: e.g. `mqtt://localhost:1883` (use `mqtts://` for TLS). Username/password are stored as credentials.
+  - **Base topic**: per-node topics are published under `<base>/<nodeId>/`:
+    - `…/state` (retained): Home Assistant `alarm_control_panel` state (`disarmed`, `arming`, `pending`, `triggered`, `armed_away`, `armed_home`).
+    - `…/command`: accepts `ARM_AWAY`, `ARM_HOME`, `ARM_NIGHT`, `DISARM`, `TRIGGER` (plain string or `{ "action": "ARM_AWAY", "code": "1234" }`).
+    - `…/availability`: `online` / `offline` (Last Will).
+  - **HA discovery**: when on, publishes a retained MQTT Discovery config to `<prefix>/alarm_control_panel/<nodeId>/config`, so the alarm appears in Home Assistant automatically (default prefix `homeassistant`).
+
+  The bridge runs alongside the normal `msg.topic`-based inputs/outputs; you can use either or both.
 
   ## Zones (advanced, optional)
 

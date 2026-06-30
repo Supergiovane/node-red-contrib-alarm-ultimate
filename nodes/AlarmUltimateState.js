@@ -3,6 +3,7 @@
 const helpers = require('./lib/node-helpers.js');
 const { alarmInstances, alarmEmitter } = require('./lib/alarm-registry.js');
 const { attachAlarmUltimateEnvelope } = require('./lib/alarm-ultimate-envelope.js');
+const ha = require('./lib/home-assistant.js');
 
 function normalizeBoolean(value) {
   if (typeof value === 'boolean') return value;
@@ -237,6 +238,48 @@ function toHomekitAlarmCommandIn(msg) {
   return out;
 }
 
+// Output adapter: convert an Alarm event into a Home Assistant alarm_control_panel state string.
+// Sets msg.payload to one of: disarmed | arming | pending | triggered | armed_away | armed_home.
+function toHomeAssistantOut(msg, node) {
+  if (!msg || typeof msg !== 'object') return msg;
+  const au = msg.alarmUltimate && typeof msg.alarmUltimate === 'object' ? msg.alarmUltimate : null;
+  const evt =
+    (au && typeof au.event === 'string' && au.event) || (typeof msg.event === 'string' ? msg.event : '');
+  const mode = (au && typeof au.mode === 'string' && au.mode) || (typeof msg.mode === 'string' ? msg.mode : '');
+
+  const ctx = node && typeof node.context === 'function' ? node.context() : null;
+  const armMode = ctx ? ctx.get('haArmMode') : undefined;
+
+  let state = ha.eventToHaState(evt, mode, armMode);
+  if (state === null) {
+    // Unmapped event: fall back to the global mode so the state is never left stale.
+    if (mode === 'armed') state = ha.armedLabel(armMode);
+    else if (mode === 'disarmed') state = ha.HA_STATES.DISARMED;
+  }
+
+  const out = { ...(msg || {}) };
+  if (state) out.payload = state;
+  attachAlarmUltimateEnvelope(out, { homeassistant: { kind: 'alarm_control_panel', state: state || null } });
+  return out;
+}
+
+// Input adapter: convert a Home Assistant alarm command payload into an alarm control message.
+function toHomeAssistantCommandIn(msg, node) {
+  if (!msg || typeof msg !== 'object') return null;
+  const parsed = ha.parseHaCommand(msg.payload);
+  if (!parsed) return null;
+
+  // Remember the requested arm mode so the output side can report armed_home/away.
+  const ctx = node && typeof node.context === 'function' ? node.context() : null;
+  if (ctx && parsed.armMode) ctx.set('haArmMode', parsed.armMode);
+
+  const out = { ...(msg || {}) };
+  out.command = parsed.command;
+  if (parsed.code && typeof out.code !== 'string') out.code = parsed.code;
+  out.homeassistant = { ...(out.homeassistant || {}), command: parsed.command, armMode: parsed.armMode || null };
+  return out;
+}
+
 function toAxProAlarmCommandIn(msg) {
   if (!msg || typeof msg !== 'object') return null;
   const payload = msg.payload && typeof msg.payload === 'object' ? msg.payload : null;
@@ -303,6 +346,7 @@ module.exports = function (RED) {
     function applyOutputAdapter(baseMsg) {
       const msg = baseMsg && typeof baseMsg === 'object' ? baseMsg : {};
       if (adapter === 'homekit') return toHomekitSecuritySystemOut(msg, node);
+      if (adapter === 'homeassistant') return toHomeAssistantOut(msg, node);
       if (adapter === 'knx') return toKnxUltimateOut(msg);
       // axpro/default: pass-through
       return msg;
@@ -421,6 +465,7 @@ module.exports = function (RED) {
       let transformed = null;
 
       if (adapter === 'homekit') transformed = toHomekitAlarmCommandIn(inMsg);
+      else if (adapter === 'homeassistant') transformed = toHomeAssistantCommandIn(inMsg, node);
       else if (adapter === 'axpro') transformed = toAxProAlarmCommandIn(inMsg);
       else if (adapter === 'knx') {
         const b = normalizeBoolean(inMsg && inMsg.payload);

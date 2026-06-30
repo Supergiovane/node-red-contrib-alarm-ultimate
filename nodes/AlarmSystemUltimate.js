@@ -257,6 +257,20 @@ module.exports = function (RED) {
         ? config.zoneAxProZoneNameMatch.trim()
         : 'exact';
 
+    // Optional native MQTT bridge (Home Assistant alarm_control_panel + discovery).
+    const mqttEnabled = config.mqttEnabled === true;
+    const mqttUrl = typeof config.mqttUrl === 'string' ? config.mqttUrl.trim() : '';
+    const mqttBaseTopic =
+      typeof config.mqttBaseTopic === 'string' && config.mqttBaseTopic.trim().length > 0
+        ? config.mqttBaseTopic.trim()
+        : 'alarm-ultimate';
+    const mqttDiscovery = config.mqttDiscovery !== false;
+    const mqttDiscoveryPrefix =
+      typeof config.mqttDiscoveryPrefix === 'string' && config.mqttDiscoveryPrefix.trim().length > 0
+        ? config.mqttDiscoveryPrefix.trim()
+        : 'homeassistant';
+    let mqttBridge = null;
+
     const fileCacheDir =
       RED &&
       RED.settings &&
@@ -862,6 +876,14 @@ module.exports = function (RED) {
         text = 'ARMED';
       }
 
+      // Append a compact open/bypass summary so the editor status shows zone activity at a glance.
+      const openCount = getOpenZonesSnapshot().openZonesCount;
+      const bypassCount = Object.keys(state.bypass || {}).filter((k) => state.bypass[k] === true).length;
+      const extras = [];
+      if (openCount > 0) extras.push(`${openCount} open`);
+      if (bypassCount > 0) extras.push(`${bypassCount} bypass`);
+      if (extras.length) text = `${text} • ${extras.join(' • ')}`;
+
       setNodeStatus({ fill, shape, text });
       stopStatusIntervalIfIdle();
     }
@@ -954,6 +976,38 @@ module.exports = function (RED) {
         // Best-effort. Never crash runtime on listeners failures.
       }
       updateStatus();
+      publishMqttState();
+    }
+
+    // Current alarm state expressed as a base HA alarm_control_panel state.
+    // ("armed" is expanded to armed_away/home by the MQTT bridge from the last command.)
+    function currentBaseHaState() {
+      if (state.alarmActive) return 'triggered';
+      if (state.entry) return 'pending';
+      if (state.arming) return 'arming';
+      if (state.mode === 'armed') return 'armed';
+      return 'disarmed';
+    }
+
+    function publishMqttState() {
+      if (!mqttBridge) return;
+      try {
+        mqttBridge.publishState(currentBaseHaState());
+      } catch (_err) {
+        // Best-effort.
+      }
+    }
+
+    // Convert a parsed HA command into an alarm control message and inject it.
+    function handleMqttCommand(parsed) {
+      if (!parsed || typeof parsed.command !== 'string') return;
+      const msg = { topic: controlTopic };
+      if (parsed.command === 'arm') msg.command = 'arm';
+      else if (parsed.command === 'disarm') msg.command = 'disarm';
+      else if (parsed.command === 'panic') msg.command = 'panic';
+      else return;
+      if (typeof parsed.code === 'string' && parsed.code) msg.code = parsed.code;
+      node.receive(msg);
     }
 
     function emitStatus(baseMsg) {
@@ -2142,6 +2196,30 @@ module.exports = function (RED) {
 	    startOpenZonesCycle();
 	    bootstrapSupervision();
 
+    if (mqttEnabled) {
+      // Lazy-require so the alarm node still loads if the optional mqtt dependency is missing.
+      try {
+        const { createMqttBridge } = require('./lib/mqtt-bridge.js');
+        mqttBridge = createMqttBridge({
+          node,
+          url: mqttUrl,
+          baseTopic: mqttBaseTopic,
+          discovery: mqttDiscovery,
+          discoveryPrefix: mqttDiscoveryPrefix,
+          username: node.credentials ? node.credentials.mqttUsername : undefined,
+          password: node.credentials ? node.credentials.mqttPassword : undefined,
+          onCommand: handleMqttCommand,
+          onStatus: () => {},
+        });
+        mqttBridge.connect();
+        // Publish the initial state once connected (also re-sent on every reconnect by the bridge).
+        publishMqttState();
+      } catch (err) {
+        mqttBridge = null;
+        node.warn(`Alarm Ultimate: MQTT bridge disabled (${err && err.message}).`);
+      }
+    }
+
     const api = {
       id: node.id,
       name: node.name || '',
@@ -2183,10 +2261,17 @@ module.exports = function (RED) {
     };
 
 	    alarmInstances.set(node.id, api);
-	    node.on('close', () => {
+	    node.on('close', (removed, done) => {
 	      stopOpenZonesCycle();
 	      flushFileCache();
 	      alarmInstances.delete(node.id);
+	      if (mqttBridge) {
+	        const bridge = mqttBridge;
+	        mqttBridge = null;
+	        bridge.close(() => done && done());
+	        return;
+	      }
+	      if (done) done();
 	    });
 	  }
 
