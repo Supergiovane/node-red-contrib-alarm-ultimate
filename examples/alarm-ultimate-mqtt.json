@@ -1,0 +1,283 @@
+[
+  {
+    "id": "f1a2b3c4d5e60001",
+    "type": "tab",
+    "label": "Alarm Ultimate - MQTT",
+    "disabled": false,
+    "info": ""
+  },
+  {
+    "id": "f1a2b3c4d5e60002",
+    "type": "comment",
+    "z": "f1a2b3c4d5e60001",
+    "name": "MQTT integration (standard mqtt in/out nodes)",
+    "info": "AlarmSystemUltimate has NO built-in MQTT. This example wires it to a broker using Node-RED's standard `mqtt in` / `mqtt out` nodes.\n\nFirst: open the `mqtt-broker` config node and set your broker host/port/credentials.\n\nINPUT — Zone sensors (MQTT -> Alarm)\n- `mqtt in` subscribes to `home/sensors/#`.\n- A Function normalizes the payload to a boolean (true = zone open/active) and keeps `msg.topic` (the MQTT topic).\n- The Alarm matches `msg.topic` against each zone `topic`. In this example the zones use:\n    - home/sensors/front_door\n    - home/sensors/living_pir\n  So the sensor's MQTT topic must equal the zone topic.\n- Publish e.g.  topic `home/sensors/front_door`  payload `ON` / `OFF` (or `true`/`false`, `open`/`closed`, `1`/`0`).\n\nINPUT — Commands (MQTT -> Alarm)\n- `mqtt in` subscribes to `home/alarm/cmd`.\n- A Function sets `msg.topic = \"alarm\"` (the controlTopic) and builds the control message.\n- Publish to `home/alarm/cmd` either a plain string  (`arm`, `disarm`, `status`, `panic`, `siren_on`, `siren_off`, `bypass`, `reset`)\n  or a JSON object, e.g.  {\"command\":\"disarm\",\"code\":\"1234\"}  or  {\"command\":\"bypass\",\"zoneTopic\":\"home/sensors/living_pir\"}.\n\nOUTPUT — Alarm -> MQTT\n- Output 0 (All messages) -> publishes the full event JSON to `home/alarm/event`,\n  and a Function publishes the current `mode` (retained) to `home/alarm/state`.\n- Output 1 (Siren) -> publishes to `home/alarm/siren`.\n\nThe `controlTopic` is `alarm` (configurable on the node). Output topics like `alarm/event` / `alarm/siren` are produced by the node and here re-mapped onto the `home/alarm/...` MQTT namespace."
+  },
+  {
+    "id": "mqttbroker00000001",
+    "type": "mqtt-broker",
+    "name": "Local broker",
+    "broker": "localhost",
+    "port": "1883",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": ""
+  },
+  {
+    "id": "f1a2b3c4d5e60010",
+    "type": "mqtt in",
+    "z": "f1a2b3c4d5e60001",
+    "name": "Zone sensors",
+    "topic": "home/sensors/#",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "mqttbroker00000001",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 130,
+    "y": 160,
+    "wires": [
+      [
+        "f1a2b3c4d5e60011"
+      ]
+    ]
+  },
+  {
+    "id": "f1a2b3c4d5e60011",
+    "type": "function",
+    "z": "f1a2b3c4d5e60001",
+    "name": "Sensor payload -> boolean",
+    "func": "// Normalize the MQTT payload to a boolean (true = zone open/active).\n// Keep msg.topic: the Alarm matches it against each zone 'topic'.\nlet v = msg.payload;\nif (typeof v === \"string\") {\n  const s = v.trim().toLowerCase();\n  v = [\"on\", \"true\", \"1\", \"open\", \"opened\", \"active\", \"motion\", \"detected\", \"yes\"].includes(s);\n} else if (typeof v === \"object\" && v !== null && typeof v.value !== \"undefined\") {\n  v = v.value === true || v.value === 1 || v.value === \"on\";\n} else {\n  v = v === true || v === 1;\n}\nmsg.payload = v;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 380,
+    "y": 160,
+    "wires": [
+      [
+        "f1a2b3c4d5e60030"
+      ]
+    ]
+  },
+  {
+    "id": "f1a2b3c4d5e60020",
+    "type": "mqtt in",
+    "z": "f1a2b3c4d5e60001",
+    "name": "Commands",
+    "topic": "home/alarm/cmd",
+    "qos": "0",
+    "datatype": "auto",
+    "broker": "mqttbroker00000001",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 120,
+    "y": 240,
+    "wires": [
+      [
+        "f1a2b3c4d5e60021"
+      ]
+    ]
+  },
+  {
+    "id": "f1a2b3c4d5e60021",
+    "type": "function",
+    "z": "f1a2b3c4d5e60001",
+    "name": "MQTT cmd -> Alarm control msg",
+    "func": "// Accept a plain string (e.g. \"arm\", \"disarm\", \"status\") or a JSON object.\nlet p = msg.payload;\nif (typeof p === \"string\") {\n  const s = p.trim();\n  if (s.startsWith(\"{\")) {\n    try { p = JSON.parse(s); } catch (e) { p = { command: s }; }\n  } else {\n    p = { command: s };\n  }\n}\nif (!p || typeof p !== \"object\") return null;\n\nconst out = { topic: \"alarm\" }; // must equal the node's controlTopic\nif (typeof p.command === \"string\") out.command = p.command.trim().toLowerCase();\nif (typeof p.arm === \"string\") out.arm = p.arm;\nif (typeof p.mode === \"string\") out.mode = p.mode;\nif (p.disarm === true) out.disarm = true;\nif (typeof p.code === \"string\") out.code = p.code;\nif (typeof p.zoneTopic === \"string\") out.zoneTopic = p.zoneTopic;\nreturn out;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 240,
+    "wires": [
+      [
+        "f1a2b3c4d5e60030"
+      ]
+    ]
+  },
+  {
+    "id": "f1a2b3c4d5e60050",
+    "type": "inject",
+    "z": "f1a2b3c4d5e60001",
+    "name": "Sync on deploy (status)",
+    "props": [
+      {
+        "p": "topic",
+        "v": "alarm",
+        "vt": "str"
+      },
+      {
+        "p": "command",
+        "v": "status",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": true,
+    "onceDelay": 0.5,
+    "topic": "",
+    "x": 160,
+    "y": 320,
+    "wires": [
+      [
+        "f1a2b3c4d5e60030"
+      ]
+    ]
+  },
+  {
+    "id": "f1a2b3c4d5e60030",
+    "type": "AlarmSystemUltimate",
+    "z": "f1a2b3c4d5e60001",
+    "name": "Home Alarm",
+    "controlTopic": "alarm",
+    "payloadPropName": "payload",
+    "persistState": true,
+    "requireCodeForArm": false,
+    "requireCodeForDisarm": false,
+    "armCode": "",
+    "duressCode": "",
+    "exitDelaySeconds": 10,
+    "entryDelaySeconds": 30,
+    "openZonesArmingIntervalSeconds": 1,
+    "sirenDurationSeconds": 180,
+    "sirenLatchUntilDisarm": false,
+    "sirenTopic": "alarm/siren",
+    "sirenOnPayload": true,
+    "sirenOnPayloadType": "bool",
+    "sirenOffPayload": false,
+    "sirenOffPayloadType": "bool",
+    "emitRestoreEvents": false,
+    "maxLogEntries": 200,
+    "zones": "[\n  {\n    \"name\": \"Front door\",\n    \"topic\": \"home/sensors/front_door\",\n    \"type\": \"perimeter\",\n    \"entry\": true,\n    \"bypassable\": true,\n    \"chime\": true\n  },\n  {\n    \"name\": \"Living room motion\",\n    \"topic\": \"home/sensors/living_pir\",\n    \"type\": \"motion\",\n    \"entry\": false,\n    \"bypassable\": true,\n    \"cooldownSeconds\": 10\n  }\n]",
+    "x": 660,
+    "y": 220,
+    "wires": [
+      [
+        "f1a2b3c4d5e60040",
+        "f1a2b3c4d5e60042",
+        "f1a2b3c4d5e60060"
+      ],
+      [
+        "f1a2b3c4d5e60043"
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "id": "f1a2b3c4d5e60040",
+    "type": "function",
+    "z": "f1a2b3c4d5e60001",
+    "name": "Mode -> retained state",
+    "func": "// Publish the current alarm mode (retained) so subscribers always see it.\nconst p = msg.payload && typeof msg.payload === \"object\" ? msg.payload : {};\nconst mode = typeof p.mode === \"string\" ? p.mode : (typeof msg.mode === \"string\" ? msg.mode : null);\nif (!mode) return null;\nreturn { topic: \"home/alarm/state\", payload: mode, retain: true };",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 960,
+    "y": 160,
+    "wires": [
+      [
+        "f1a2b3c4d5e60041"
+      ]
+    ]
+  },
+  {
+    "id": "f1a2b3c4d5e60041",
+    "type": "mqtt out",
+    "z": "f1a2b3c4d5e60001",
+    "name": "home/alarm/state",
+    "topic": "home/alarm/state",
+    "qos": "0",
+    "retain": "true",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqttbroker00000001",
+    "x": 1230,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "id": "f1a2b3c4d5e60042",
+    "type": "mqtt out",
+    "z": "f1a2b3c4d5e60001",
+    "name": "home/alarm/event",
+    "topic": "home/alarm/event",
+    "qos": "0",
+    "retain": "",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqttbroker00000001",
+    "x": 960,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "id": "f1a2b3c4d5e60043",
+    "type": "mqtt out",
+    "z": "f1a2b3c4d5e60001",
+    "name": "home/alarm/siren",
+    "topic": "home/alarm/siren",
+    "qos": "0",
+    "retain": "true",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqttbroker00000001",
+    "x": 960,
+    "y": 280,
+    "wires": []
+  },
+  {
+    "id": "f1a2b3c4d5e60060",
+    "type": "debug",
+    "z": "f1a2b3c4d5e60001",
+    "name": "All events",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 960,
+    "y": 340,
+    "wires": []
+  }
+]

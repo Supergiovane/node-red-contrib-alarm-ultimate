@@ -3,6 +3,12 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [1.0.4] - 2026-06-30
+
+### Added
+
+- **MQTT example flow:** new `examples/alarm-ultimate-mqtt.json` showing how to wire `AlarmSystemUltimate` to an MQTT broker using Node-RED's standard `mqtt in` / `mqtt out` nodes (zone sensors, control commands, and state/event/siren outputs). Documented in `examples/README.md`.
+
 ## [1.0.3] - 2026-05-31
 
 ### Added

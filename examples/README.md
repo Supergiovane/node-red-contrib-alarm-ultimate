@@ -54,6 +54,22 @@ Import `examples/alarm-ultimate-dashboard-v2.json`.
 - Embeds the Alarm Panel via a Dashboard 2.0 `ui-template` (Vue SFC) iframe.
 - Includes basic command buttons (`arm`, `disarm`, `status`), a small sensor simulator, and two status widgets (`AlarmUltimateState`, `AlarmUltimateSiren` → `ui-text`).
 
+## MQTT (standard `mqtt in` / `mqtt out`)
+
+`AlarmSystemUltimate` has **no built-in MQTT**. To integrate with a broker, import:
+
+- `examples/alarm-ultimate-mqtt.json`
+
+This example wires the Alarm to MQTT using Node-RED's standard nodes. Open the `mqtt-broker` config node and set your broker host/port/credentials first.
+
+What it does:
+
+- **Zone sensors (MQTT → Alarm):** an `mqtt in` subscribes to `home/sensors/#`. A Function normalizes the payload to a boolean (`true` = open/active) and keeps `msg.topic` (the MQTT topic). The Alarm matches `msg.topic` against each zone `topic`, so the sensor's MQTT topic must equal the zone topic (here `home/sensors/front_door` and `home/sensors/living_pir`). Publish e.g. topic `home/sensors/front_door`, payload `ON`/`OFF` (also accepts `true`/`false`, `open`/`closed`, `1`/`0`).
+- **Commands (MQTT → Alarm):** an `mqtt in` subscribes to `home/alarm/cmd`. A Function sets `msg.topic = "alarm"` (the `controlTopic`) and builds the control message. Publish a plain string (`arm`, `disarm`, `status`, `panic`, `siren_on`, `siren_off`, `bypass`, `reset`) or JSON, e.g. `{"command":"disarm","code":"1234"}` or `{"command":"bypass","zoneTopic":"home/sensors/living_pir"}`.
+- **Alarm → MQTT:** output 0 (All messages) publishes the full event JSON to `home/alarm/event` and the current `mode` (retained) to `home/alarm/state`; output 1 (Siren) publishes to `home/alarm/siren`.
+
+The node's own output topics (`alarm/event`, `alarm/siren`, …) are derived from `controlTopic` and here re-mapped onto the `home/alarm/...` MQTT namespace by the `mqtt out` nodes.
+
 ## Home Assistant (Alarm Panel card, no MQTT)
 
 If you run Node-RED as the Home Assistant Add-on and you want to use the standard Home Assistant Alarm Panel card, import:
