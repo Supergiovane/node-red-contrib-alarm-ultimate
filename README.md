@@ -10,228 +10,108 @@
 
 # node-red-contrib-alarm-ultimate
 
-Alarm System Ultimate nodes + web panel for Node-RED.
+A complete **alarm system** for Node-RED, with a ready-to-use **web control panel**.
+
+Create zones, arm/disarm with optional code, entry/exit delays, bypass, chime, panic, siren, 24h/fire/tamper zones and an event log — all configured from a friendly editor, no programming required.
 
 <p align="center">
   <a href="https://youtu.be/HUPzhVgObBE">
     <img src="https://img.youtube.com/vi/HUPzhVgObBE/hqdefault.jpg" alt="Alarm Ultimate video (YouTube)" width="640">
   </a>
   <br>
-  <a href="https://youtu.be/HUPzhVgObBE">Watch the video on YouTube</a>
+  <a href="https://youtu.be/HUPzhVgObBE">▶ Watch the 5‑minute intro on YouTube</a>
 </p>
 
-Includes:
+### Works great with
 
-- `AlarmSystemUltimate`: main alarm node with panel-style behavior (zones, entry/exit delays, bypass, chime, 24h/fire/tamper, siren, event log, optional per-zone sensor supervision).
-- Helper nodes: `AlarmUltimateState`, `AlarmUltimateZone`, `AlarmUltimateSiren`.
-  - `AlarmUltimateState`: input/output helper for arm/disarm and state integration (Default / Homekit / Ax Pro / KNX-Ultimate).
-  - `AlarmUltimateZone`: output-only zone events splitter (no adapters).
-  - `AlarmUltimateSiren`: output-only siren state splitter.
-- Web tools: Zones JSON mapper + web Alarm Panel (embeddable in Node-RED Dashboard).
+<p>
+  <img src="resources/home-assistant-logo.png" alt="Home Assistant" height="26">
+  &nbsp;&nbsp;&nbsp;
+  <img src="resources/mqtt-logo.svg" alt="MQTT" height="26">
+</p>
 
-
-
-See the [Changelog](CHANGELOG.MD) for release notes.
+Built‑in **Home Assistant** and **MQTT** support: the alarm can appear in Home Assistant automatically (alarm panel + a sensor per zone) without writing any configuration. See [Home Assistant & MQTT](#home-assistant--mqtt).
 
 ## Table of contents
 
 - [Install](#install)
 - [Quick start](#quick-start)
-- [Screenshots](#screenshots)
-- [Nodes](#nodes)
-- [Web tools](#web-tools)
+- [The web Alarm Panel](#the-web-alarm-panel)
+- [Home Assistant & MQTT](#home-assistant--mqtt)
+- [Zones](#zones)
 - [Examples](#examples)
-- [Advanced integration reference (optional)](#advanced-integration-reference-optional)
-- [Contributing (optional)](#contributing-optional)
+- [Help & support](#help--support)
 - [Changelog](CHANGELOG.MD)
 
 ## Install
 
-- Palette Manager: Menu → **Manage palette** → **Install** → search `alarm ultimate`
-- NPM:
+In Node-RED: **Menu → Manage palette → Install**, then search for **`alarm ultimate`** and click install.
 
-```bash
-npm i node-red-contrib-alarm-ultimate
-```
+That's it — the alarm nodes and the web panel are now available.
 
 ## Quick start
 
-Beginner-friendly flow:
+1. Drag an **Alarm System** node into your flow.
+2. Double‑click it, click **Manage zones**, and add at least one zone (give it a name and a topic, e.g. `sensor/frontdoor`). Click **Done**.
+3. Click **Deploy** (top right).
+4. Open the **web Alarm Panel** to arm/disarm and see the status (see below).
 
-1. Add an **AlarmSystemUltimate** node.
-2. Click **Manage zones** and add at least one zone (example topic: `sensor/frontdoor`). For backup/restore use **Export Zones** / **Import Zones** in the **Settings** page.
-   **Important:** after editing zones, click **Done** in the Node-RED editor to save (if you click **Cancel**, changes are lost).
-3. Send sensor messages to the Alarm node:
-   - open: `msg.topic="sensor/frontdoor"`, `msg.payload=true`
-   - close: `msg.topic="sensor/frontdoor"`, `msg.payload=false`
-4. Arm/disarm by sending a control message to the Alarm node:
-   - `msg.topic = controlTopic` (default `alarm`)
-   - `msg.command = "arm"` or `msg.command = "disarm"`
-5. Connect a **Debug** node to the Alarm output to see events.
+To make the alarm react to your real sensors, send each sensor's state to the Alarm node:
 
-Optional (recommended):
+- door/window opened → message with `topic = sensor/frontdoor` and `payload = true` (also accepts `open`, `on`, `1`)
+- closed → same topic with `payload = false` (also `closed`, `off`, `0`)
 
-- For sensor integrations that don't use `msg.topic`, use **Zones → Zone input adapter** in the `AlarmSystemUltimate` editor (KNX-Ultimate: `knx.destination`, AX Pro: `payload.zoneUpdate`).
-- Use `AlarmUltimateState` in **Input** mode to normalize arm/disarm commands (e.g. HomeKit) and inject them into the selected Alarm node.
-- Use `AlarmUltimateState` in **Output** mode with an **Adapter** to format state events for external systems (HomeKit / KNX / AX Pro / ...).
-- Use `AlarmUltimateZone` / `AlarmUltimateSiren` output-only nodes to split Alarm outputs into dedicated streams.
-- For distributed flows, use Node-RED built-in `link in` / `link out` to fan-in sensors/commands and fan-out Alarm outputs (see `examples/alarm-ultimate-link-bus.json`).
+> Using **Home Assistant**, **MQTT** or **KNX**? You usually don't need to build this by hand — see the sections and examples below.
 
-## Screenshots
+## The web Alarm Panel
 
-### Alarm Panel (web)
+A full keypad‑style panel is included and opens right from your browser:
+
+- **Alarm Panel:** `http://<your-node-red>/alarm-ultimate/alarm-panel`
+- **Zones helper (visual zone editor):** `http://<your-node-red>/alarm-ultimate/alarm-json-mapper`
+
+From the panel you can arm/disarm (with code if enabled), bypass zones, trigger panic, and read the event log. It can also be embedded in the **Node-RED Dashboard** — see the ready‑made flows in [Examples](#examples).
 
 <p align="center">
-  <img src="docs/images/alarm-panel-mock.svg" alt="Alarm Panel mock" width="900">
+  <img src="docs/images/alarm-panel-mock.svg" alt="Alarm Panel" width="900">
 </p>
 
-### Flow overview
+## Home Assistant & MQTT
 
-<p align="center">
-  <img src="docs/images/flow-overview.svg" alt="Typical flow overview" width="900">
-</p>
+Open the Alarm node and go to the **MQTT / HA** tab:
 
-## Nodes
+1. Tick **Enable MQTT** and enter your **Broker URL** (e.g. `mqtt://192.168.1.10:1883`) and, if needed, username/password.
+2. Leave **HA discovery** and **Publish zones** enabled.
+3. **Deploy.**
 
-### Alarm System Ultimate 
+Your alarm now appears automatically in Home Assistant (same MQTT broker) as an **Alarm panel** entity, with **one sensor per zone**, all grouped under a single device. Arm/disarm from Home Assistant and the state stays in sync both ways.
 
-Main node that:
+Prefer to wire it yourself, or already use the Home Assistant Add‑on? There are ready‑to‑import example flows for both — see [Examples](#examples).
 
-- Receives **control commands** on `msg.topic === controlTopic`
-- Receives **sensor messages** on any other topic and matches them to a configured zone
+## Zones
 
-It emits events and state updates on **9 outputs** (see the node help in the editor for full details). Output #1 (**All messages**) is a superset and may emit a single message or an array (event + siren at the same time).
+Each zone is a sensor the alarm watches. From **Manage zones** you can set, per zone:
 
-Use `AlarmUltimateState` (Output mode + Adapter) to format state events for your integrations, and `AlarmUltimateZone` / `AlarmUltimateSiren` to split outputs into dedicated streams.
+- **Type:** perimeter, motion, 24h, fire or tamper (24h/fire/tamper always trigger, even when disarmed).
+- **Entry zone:** starts the entry countdown instead of triggering immediately.
+- **Bypassable / Chime** and more.
+- **Sensor supervision (optional):** if a sensor stops reporting for a while, the panel shows it as `MISSING` and can block arming — useful to catch dead batteries.
 
-Open zones listing features:
-
-- **Open Zones (Arming)**: open zones listing while arming (interval configurable; `0` disables)
-- **Open Zones (Cycle)**: cyclic open zones listing at a fixed interval (any alarm state; `0` disables)
-
-Arming behavior:
-
-- By default, arming is blocked if any (non-bypassed) zone is **open**.
-- If enabled in a zone, `supervision.blockArm: true` also blocks arming while the zone is **MISSING**.
-- Optional node setting: **Wait zones closed before exit delay** (when arming with open zones, the node waits for all zones to close before starting the exit delay countdown).
-
-Persistence:
-
-- Enable **Persist state** to keep armed/disarmed state, bypass list, event log and zone state across Node-RED restarts/deploys.
-
-#### Optional per-zone sensor supervision
-
-You can enable **sensor supervision** per zone to detect devices that stop reporting.
-
-- Supervision starts **immediately** when the node runs.
-- If a zone does not receive a **valid** sensor update for `timeoutSeconds`, the node emits `supervision_lost` and the Alarm Panel shows `… • MISSING`.
-- The next valid sensor update emits `supervision_restored`.
-- If `blockArm: true`, arming is blocked while the zone is missing.
-
-“Valid” means the message value can be converted to boolean using the Alarm node **With Input** property (default `msg.payload`), e.g. `true/false`, `open/closed`, `on/off`, `1/0`.
-
-Example zone:
-
-```json
-{
-  "name": "Front door",
-  "topic": "sensor/frontdoor",
-  "type": "perimeter",
-  "supervision": { "enabled": true, "timeoutSeconds": 120, "blockArm": true }
-}
-```
-
-### Helper nodes (I/O)
-
-`AlarmUltimateState` and `AlarmUltimateZone` can work in two modes:
-
-- **Output**: emit Alarm events to the flow (no wiring from the Alarm node required).
-- **Input**: receive messages from the flow, apply an **Adapter**, and inject them into the selected Alarm node.
-
-`AlarmUltimateSiren` remains output-only and emits siren telegrams.
-
-- `Alarm State` (`AlarmUltimateState`): emits `.../event` telegrams (`msg.event`, `msg.payload = { event, mode, ... }`)
-- `Alarm Zone` (`AlarmUltimateZone`): emits `zone_open` / `zone_close` as `.../event` telegrams
-- `Alarm Siren` (`AlarmUltimateSiren`): emits siren telegrams (`msg.topic = <controlTopic>/siren`, `msg.event = siren_on|siren_off`, `msg.payload = true|false`)
-
-### Advanced integration (optional): `msg.alarmUltimate`
-
-If you are just wiring nodes in Node-RED, you can safely skip this section.
-
-All nodes in this package add a stable, versioned object to every output message:
-
-```js
-msg.alarmUltimate = {
-  v: 1,
-  ts: 1700000000000,
-  kind: "event|siren|open_zones|any_zone_open|command|...",
-  alarm: { id, name, controlTopic },
-  event: "armed|disarmed|zone_open|siren_on|...",
-  mode: "armed|disarmed",
-  reason: "init|timeout|manual|...",
-};
-```
-
-Adapters and advanced integrations can use `msg.alarmUltimate` as a consistent source of alarm details.
-
-## Web tools
-
-These web pages are available from your Node-RED editor at:
-
-- Zones JSON Mapper: `/alarm-ultimate/alarm-json-mapper`
-- Alarm Panel: `/alarm-ultimate/alarm-panel`
-
-The Alarm Panel supports:
-
-- Preselect node: `/alarm-ultimate/alarm-panel?id=<alarmNodeId>`
-- Embed mode (for Dashboard iframes): `/alarm-ultimate/alarm-panel?embed=1&id=<alarmNodeId>`
-- Views: `view=keypad`, `view=zones`, `view=log` (e.g. `/alarm-ultimate/alarm-panel?embed=1&view=log&id=<alarmNodeId>`)
-
-The Zones JSON Mapper supports:
-
-- Sample message mapping (e.g. KNX Ultimate): map `topic`/`payload` fields and generate a zone template.
-- ETS Group Addresses export (TSV): paste the exported table and generate zones in batch (boolean datapoints only).
-- Quality-of-life: bulk apply (Kind/Supervision), sorting, duplicate-topic skipping on import, persisted Step 1 input.
-
-The Settings page supports:
-
-- Backup/restore: **Export Zones** / **Import Zones** for zone definitions.
+Zones can be exported/imported for backup from the **Settings** page, and there is a visual **Zones helper** to build them from a sample message (e.g. KNX) or an ETS group‑address list.
 
 ## Examples
 
-- `examples/alarm-ultimate-basic.json`: ready-to-import flow with `AlarmSystemUltimate`, injects and debug nodes.
-- `examples/alarm-ultimate-dashboard.json`: Node-RED Dashboard example embedding the Alarm Panel in a `ui_template` iframe.
-- `examples/alarm-ultimate-dashboard-controls.json`: Node-RED Dashboard example with the embedded panel plus command buttons (and a small sensor simulator).
-- `examples/alarm-ultimate-dashboard-v2.json`: Dashboard 2.0 example for `@flowfuse/node-red-dashboard` (Alarm Panel + basic controls + status).
-- `examples/alarm-ultimate-home-assistant-alarm-panel.json`: Home Assistant Add-on example (no MQTT) using the HA Alarm Panel card.
+Import any of these from **Menu → Import** (or see [`examples/`](examples/)):
 
-See `examples/README.md`.
+- **`alarm-ultimate-basic.json`** — a minimal working flow to try it out.
+- **`alarm-ultimate-mqtt.json`** — connect the alarm to an MQTT broker.
+- **`alarm-ultimate-home-assistant-alarm-panel.json`** — use it with the Home Assistant Add‑on and the HA Alarm Panel card.
+- **`alarm-ultimate-dashboard.json` / `-controls.json` / `-v2.json`** — embed the panel in the Node-RED Dashboard.
 
-## Contributing (optional)
+## Help & support
 
-Run tests:
-
-```bash
-npm test
-```
-
-## Advanced integration reference (optional)
-
-If you are using the package normally in flows, you can ignore this section.
-
-When Node-RED authentication is enabled, the admin endpoints use these permissions (if available):
-
-- `AlarmSystemUltimate.read`
-- `AlarmSystemUltimate.write`
-
-HTTP admin endpoints:
-
-- `GET /alarm-ultimate/alarm/nodes`
-- `GET /alarm-ultimate/alarm/:id/state`
-- `GET /alarm-ultimate/alarm/:id/log`
-- `POST /alarm-ultimate/alarm/:id/command`
-- `GET /alarm-ultimate/alarm-json-mapper`
-- `GET /alarm-ultimate/alarm-panel`
+- Questions or bug reports: [open an issue][issues-url].
+- Release notes: [Changelog](CHANGELOG.MD).
 
 <!-- Badges (reference-style links) -->
 
