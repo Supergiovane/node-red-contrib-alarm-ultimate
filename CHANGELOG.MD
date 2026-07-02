@@ -3,6 +3,17 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [2.1.0] - 2026-07-02
+
+### Added
+
+- **Shared MQTT broker configuration node (`AlarmUltimateMqtt-config`):** broker URL, credentials, base topic and discovery prefix now live in a config node selected in the Alarm System node's **MQTT / HA** tab. All Alarm System nodes referencing the same broker configuration share a **single MQTT connection** (reference-counted: opened by the first panel, closed by the last), instead of each node opening its own.
+
+### Changed
+
+- **Availability topics:** the shared connection tracks its own availability on `<base>/_bridge/availability` (retained, Last Will); each panel keeps its `<base>/<name>/availability` topic. Home Assistant discovery now references both (`availability_mode: all`), so entities go unavailable when either the whole connection drops or a single panel is removed.
+- **Migration / backward compatibility:** flows saved with broker settings on the Alarm node itself keep working unchanged (private connection per node, as before) and log a deprecation warning; the **MQTT / HA** tab shows a migration hint listing the stored legacy values (URL, base topic, discovery prefix, username and password) ready to be copied into the broker configuration. Selecting a broker configuration takes precedence over the legacy per-node settings.
+
 ## [2.0.0] - 2026-06-30
 
 ### Changed

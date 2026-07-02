@@ -1,0 +1,87 @@
+<script type="text/javascript">
+  RED.nodes.registerType("AlarmUltimateMqtt-config", {
+    category: "config",
+    defaults: {
+      name: { value: "" },
+      url: { value: "", required: true },
+      baseTopic: { value: "alarm-ultimate" },
+      discoveryPrefix: { value: "homeassistant" },
+    },
+    credentials: {
+      username: { type: "text" },
+      password: { type: "password" },
+    },
+    label: function () {
+      return this.name || this.url || "Alarm MQTT broker";
+    },
+  });
+</script>
+
+<script type="text/html" data-template-name="AlarmUltimateMqtt-config">
+  <div class="form-row">
+    <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+    <input type="text" id="node-config-input-name" placeholder="(optional)" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-config-input-url"><i class="fa fa-server"></i> Broker URL</label>
+    <input type="text" id="node-config-input-url" placeholder="mqtt://localhost:1883" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-config-input-username"><i class="fa fa-user"></i> Username</label>
+    <input type="text" id="node-config-input-username" placeholder="(optional)" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-config-input-password"><i class="fa fa-lock"></i> Password</label>
+    <input type="password" id="node-config-input-password" placeholder="(optional)" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-config-input-baseTopic"><i class="fa fa-tag"></i> Base topic</label>
+    <input type="text" id="node-config-input-baseTopic" placeholder="alarm-ultimate" />
+  </div>
+
+  <div class="form-row">
+    <label for="node-config-input-discoveryPrefix"><i class="fa fa-folder-o"></i> Discovery prefix</label>
+    <input type="text" id="node-config-input-discoveryPrefix" placeholder="homeassistant" />
+  </div>
+
+  <div class="form-tips">
+    One MQTT connection is opened per broker configuration and shared by every
+    <b>Alarm System</b> node that references it. Each Alarm node keeps its own topics under
+    <code>&lt;base&gt;/&lt;name&gt;/…</code>, so multiple panels can share this connection safely.
+  </div>
+</script>
+
+<script type="text/markdown" data-help-name="AlarmUltimateMqtt-config">
+  <p>Shared MQTT broker configuration for <b>Alarm System</b> nodes.</p>
+
+  All Alarm System nodes that reference this configuration share a **single MQTT connection**,
+  instead of each opening its own. Configure the broker once here, then select it in the
+  **MQTT / HA** tab of every Alarm System node.
+
+  ## Settings
+
+  | Setting          | Description                                                                                                       |
+  | ---------------- | ----------------------------------------------------------------------------------------------------------------- |
+  | Broker URL       | e.g. `mqtt://localhost:1883` (use `mqtts://` for TLS).                                                              |
+  | Username/Password| Optional; stored as Node-RED credentials.                                                                           |
+  | Base topic       | All alarm topics live under it: each panel publishes to `<base>/<name>/…` (default `alarm-ultimate`).               |
+  | Discovery prefix | Home Assistant MQTT Discovery prefix (default `homeassistant`).                                                     |
+
+  ## Availability / Last Will
+
+  The connection tracks its own availability on `<base>/_bridge/availability` (`online`/`offline`,
+  retained, with Last Will). Each Alarm panel additionally has its own
+  `<base>/<name>/availability` topic; Home Assistant discovery references **both**, so entities go
+  unavailable when either the whole connection drops or that single panel is removed.
+
+  ## Notes
+
+  - The connection is opened when the first Alarm node using it starts, and closed when the last
+    one stops.
+  - Give each Alarm System node a unique **name**: topics and Home Assistant ids are derived from
+    it, so unique names keep panels sharing this broker cleanly separated.
+</script>

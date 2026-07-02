@@ -1,16 +1,22 @@
 'use strict';
 
-// Optional native MQTT bridge for the Alarm System node.
+// Per-panel MQTT/Home Assistant bridge for the Alarm System node.
 //
-// When enabled it:
+// It runs on top of a shared MQTT connection (see mqtt-connection.js) — normally owned by an
+// "Alarm MQTT broker" config node and shared by every alarm panel that references it; in legacy
+// mode the panel creates a private connection with the broker settings stored on the node.
+//
+// For its own panel it:
 // - publishes the current alarm state (Home Assistant alarm_control_panel states) to a retained state topic,
 // - subscribes to a command topic and converts HA commands (ARM_AWAY/ARM_HOME/DISARM/TRIGGER...) into alarm commands,
 // - optionally publishes a Home Assistant MQTT Discovery config so the alarm appears automatically in HA,
-// - tracks an availability (online/offline) topic via Last Will.
+// - tracks availability (online/offline). The Last Will lives on the shared connection's
+//   availability topic; when that topic differs from the panel's own, discovery uses both
+//   (availability_mode "all") so entities go unavailable when either the connection drops
+//   ungracefully or this panel is closed.
 //
 // The bridge is best-effort: a broker that is down or misconfigured must never crash the runtime.
 
-const mqtt = require('mqtt');
 const ha = require('./home-assistant.js');
 
 function sanitizeBaseTopic(value) {
@@ -19,18 +25,34 @@ function sanitizeBaseTopic(value) {
   return (s || 'alarm-ultimate').replace(/[#+]/g, '').replace(/^\/+|\/+$/g, '') || 'alarm-ultimate';
 }
 
+// Topics and Home Assistant ids are derived from the node NAME (clearer than the internal node
+// id), slugified to a topic-safe form. Falls back to the sanitized node id when the node has no
+// name. Leading/trailing "_" are stripped, so a panel can never collide with the connection's
+// reserved "_bridge" availability subtree.
+function panelId(node) {
+  const slug = String((node && node.name) || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  return slug || String((node && node.id) || 'alarm').replace(/[^A-Za-z0-9_-]/g, '');
+}
+
+function panelAvailabilityTopic(baseTopic, node) {
+  return `${sanitizeBaseTopic(baseTopic)}/${panelId(node)}/availability`;
+}
+
 function createMqttBridge(options) {
   const opts = options || {};
   const node = opts.node;
+  const connection = opts.connection;
   const onCommand = typeof opts.onCommand === 'function' ? opts.onCommand : () => {};
   const onStatus = typeof opts.onStatus === 'function' ? opts.onStatus : () => {};
 
-  const url = typeof opts.url === 'string' ? opts.url.trim() : '';
   const baseTopic = sanitizeBaseTopic(opts.baseTopic);
   const discovery = opts.discovery !== false;
   const discoveryPrefix = (typeof opts.discoveryPrefix === 'string' && opts.discoveryPrefix.trim()) || 'homeassistant';
-  const username = typeof opts.username === 'string' && opts.username ? opts.username : undefined;
-  const password = typeof opts.password === 'string' && opts.password ? opts.password : undefined;
 
   // Optional per-zone binary_sensor discovery. `zones` items: { id, name, deviceClass }.
   const zones = Array.isArray(opts.zones) ? opts.zones : [];
@@ -38,15 +60,7 @@ function createMqttBridge(options) {
   const getZoneStates = typeof opts.getZoneStates === 'function' ? opts.getZoneStates : () => ({});
 
   const name = (node && node.name) || 'Alarm Ultimate';
-  // Topics and Home Assistant ids are derived from the node NAME (clearer than the internal node id),
-  // slugified to a topic-safe form. Falls back to the sanitized node id when the node has no name.
-  const slug = String((node && node.name) || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '');
-  const id = slug || String((node && node.id) || 'alarm').replace(/[^A-Za-z0-9_-]/g, '');
+  const id = panelId(node);
   const uniqueId = `alarm_ultimate_${id}`;
 
   const root = `${baseTopic}/${id}`;
@@ -59,8 +73,16 @@ function createMqttBridge(options) {
   // homeassistant/status; also cover the configured discovery prefix in case it differs.
   const birthTopics = Array.from(new Set(['homeassistant/status', `${discoveryPrefix}/status`]));
 
-  let client = null;
-  let closed = false;
+  // With a shared connection the Last Will belongs to the connection, not to this panel, so
+  // discovery must reference both availability topics. In legacy mode the connection's Will is
+  // this panel's own availability topic and a single topic suffices (same behaviour as before).
+  const connectionAvailability = connection && connection.availabilityTopic;
+  const useSharedAvailability = !!(connectionAvailability && connectionAvailability !== availabilityTopic);
+
+  // Registration token for the shared connection's reference counting.
+  const bridgeUser = { id: (node && node.id) || uniqueId };
+
+  let active = false;
   let lastArmMode = null;
   let lastState = null;
   const lastZoneStates = {};
@@ -77,23 +99,36 @@ function createMqttBridge(options) {
   }
 
   function publishRaw(topic, payload, retain) {
-    if (!client || closed) return;
+    if (!connection || !active) return;
     try {
-      client.publish(topic, payload, { retain: retain === true, qos: 0 });
+      connection.publish(topic, payload, retain === true);
     } catch (_err) {
       // best-effort
     }
   }
 
+  // Availability section shared by the panel and zone discovery configs.
+  function applyAvailability(config) {
+    if (useSharedAvailability) {
+      config.availability = [
+        { topic: connectionAvailability, payload_available: 'online', payload_not_available: 'offline' },
+        { topic: availabilityTopic, payload_available: 'online', payload_not_available: 'offline' },
+      ];
+      config.availability_mode = 'all';
+    } else {
+      config.availability_topic = availabilityTopic;
+      config.payload_available = 'online';
+      config.payload_not_available = 'offline';
+    }
+    return config;
+  }
+
   function buildDiscoveryConfig() {
-    return {
+    return applyAvailability({
       name,
       unique_id: uniqueId,
       state_topic: stateTopic,
       command_topic: commandTopic,
-      availability_topic: availabilityTopic,
-      payload_available: 'online',
-      payload_not_available: 'offline',
       payload_arm_away: 'ARM_AWAY',
       payload_arm_home: 'ARM_HOME',
       payload_arm_night: 'ARM_NIGHT',
@@ -109,7 +144,7 @@ function createMqttBridge(options) {
         manufacturer: 'node-red-contrib-alarm-ultimate',
         model: 'Alarm System Ultimate',
       },
-    };
+    });
   }
 
   // Publish a base alarm state. `baseState` is one of: disarmed | arming | pending | triggered | armed.
@@ -123,22 +158,19 @@ function createMqttBridge(options) {
   }
 
   function buildZoneDiscovery(zone) {
-    const config = {
+    const config = applyAvailability({
       name: zone.name,
       unique_id: `${uniqueId}_${zone.id}`,
       state_topic: zoneStateTopic(zone.id),
       payload_on: 'open',
       payload_off: 'closed',
-      availability_topic: availabilityTopic,
-      payload_available: 'online',
-      payload_not_available: 'offline',
       device: {
         identifiers: [uniqueId],
         name,
         manufacturer: 'node-red-contrib-alarm-ultimate',
         model: 'Alarm System Ultimate',
       },
-    };
+    });
     if (zone.deviceClass) config.device_class = zone.deviceClass;
     return config;
   }
@@ -204,87 +236,34 @@ function createMqttBridge(options) {
   }
 
   function connect() {
-    if (!url) {
-      onStatus({ state: 'error', detail: 'missing url' });
+    if (active || !connection) {
+      if (!connection) onStatus({ state: 'error', detail: 'missing connection' });
       return;
     }
-    const connectOpts = {
-      reconnectPeriod: 5000,
-      connectTimeout: 15000,
-      will: { topic: availabilityTopic, payload: 'offline', retain: true, qos: 0 },
-    };
-    if (username) connectOpts.username = username;
-    if (password) connectOpts.password = password;
-
-    try {
-      client = mqtt.connect(url, connectOpts);
-    } catch (err) {
-      onStatus({ state: 'error', detail: err && err.message });
-      return;
-    }
-
-    client.on('connect', () => {
-      log(`connected to ${url}`);
-      announce();
-      try {
-        client.subscribe(commandTopic, { qos: 0 });
-        birthTopics.forEach((t) => client.subscribe(t, { qos: 0 }));
-      } catch (_err) {
-        // best-effort
-      }
-      onStatus({ state: 'connected' });
-    });
-    client.on('message', handleIncoming);
-    client.on('reconnect', () => onStatus({ state: 'reconnect' }));
-    client.on('offline', () => onStatus({ state: 'offline' }));
-    client.on('error', (err) => {
-      if (node && typeof node.warn === 'function') node.warn(`MQTT error: ${err && err.message}`);
-      onStatus({ state: 'error', detail: err && err.message });
-    });
+    active = true;
+    connection.onStatus(onStatus);
+    connection.subscribe(commandTopic, handleIncoming);
+    birthTopics.forEach((t) => connection.subscribe(t, handleIncoming));
+    // Announces now if the shared connection is already up, and again on every (re)connect.
+    connection.onConnect(announce);
+    connection.register(bridgeUser);
   }
 
   function close(done) {
-    closed = true;
-    const c = client;
-    client = null;
-
-    let finished = false;
-    function finish() {
-      if (finished) return;
-      finished = true;
-      clearTimeout(guard);
-      // Force-close the socket and stop reconnection attempts; never wait on the broker.
-      if (c) {
-        try {
-          c.end(true);
-        } catch (_err) {
-          // ignore
-        }
-      }
+    if (!active || !connection) {
       if (typeof done === 'function') done();
-    }
-
-    // Hard cap so stopping/redeploying is never blocked when the broker is slow or unreachable.
-    const guard = setTimeout(finish, 700);
-    if (typeof guard.unref === 'function') guard.unref();
-
-    if (!c) {
-      finish();
       return;
     }
-
-    if (c.connected) {
-      // Best-effort retained "offline" before a graceful disconnect (the Last Will only fires on
-      // an ungraceful drop). The guard above bounds how long we wait for it.
-      try {
-        c.publish(availabilityTopic, 'offline', { retain: true, qos: 0 }, () => finish());
-      } catch (_err) {
-        finish();
-      }
-    } else {
-      // Not connected: nothing can be flushed, so close immediately.
-      finish();
-    }
+    // Best-effort retained per-panel "offline" while the shared connection is still up (a private
+    // legacy connection publishes it itself on close, since its Will topic is this panel's).
+    if (useSharedAvailability) publishRaw(availabilityTopic, 'offline', true);
+    active = false;
+    connection.offConnect(announce);
+    connection.offStatus(onStatus);
+    connection.unsubscribe(commandTopic, handleIncoming);
+    birthTopics.forEach((t) => connection.unsubscribe(t, handleIncoming));
+    // Last user out closes the underlying connection (never blocks; bounded internally).
+    connection.deregister(bridgeUser, done);
   }
 
   return {
@@ -296,4 +275,4 @@ function createMqttBridge(options) {
   };
 }
 
-module.exports = { createMqttBridge };
+module.exports = { createMqttBridge, sanitizeBaseTopic, panelAvailabilityTopic };

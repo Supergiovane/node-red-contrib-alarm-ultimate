@@ -161,6 +161,21 @@ module.exports = function (RED) {
       sendToolAssetFile(res, req.params.file);
     });
 
+    // Legacy MQTT credentials for the migration hint in the editor (pre-config-node flows).
+    // The editor never receives password-type credentials, so this endpoint exposes them —
+    // write permission required — so the user can copy them into the broker config node.
+    RED.httpAdmin.get('/alarm-ultimate/alarm/:id/mqtt-legacy-credentials', needsWrite, (req, res) => {
+      const target = RED.nodes.getNode(req.params.id);
+      if (!target || target.type !== 'AlarmSystemUltimate') {
+        res.sendStatus(404);
+        return;
+      }
+      res.json({
+        username: (target.credentials && target.credentials.mqttUsername) || '',
+        password: (target.credentials && target.credentials.mqttPassword) || '',
+      });
+    });
+
     RED.httpAdmin.get('/alarm-ultimate/alarm/nodes', needsRead, (req, res) => {
       const nodes = Array.from(alarmInstances.values()).map((api) => ({
         id: api.id,
@@ -259,7 +274,12 @@ module.exports = function (RED) {
         : 'exact';
 
     // Optional native MQTT bridge (Home Assistant alarm_control_panel + discovery).
+    // Broker settings live in a shared "Alarm MQTT broker" config node (one connection for all
+    // panels). The per-node url/baseTopic/prefix/credentials remain as a legacy fallback for
+    // flows saved before the config node existed.
     const mqttEnabled = config.mqttEnabled === true;
+    const mqttBrokerNode =
+      typeof config.mqttBroker === 'string' && config.mqttBroker ? RED.nodes.getNode(config.mqttBroker) : null;
     const mqttUrl = typeof config.mqttUrl === 'string' ? config.mqttUrl.trim() : '';
     const mqttBaseTopic =
       typeof config.mqttBaseTopic === 'string' && config.mqttBaseTopic.trim().length > 0
@@ -2323,24 +2343,50 @@ module.exports = function (RED) {
     if (mqttEnabled) {
       // Lazy-require so the alarm node still loads if the optional mqtt dependency is missing.
       try {
-        const { createMqttBridge } = require('./lib/mqtt-bridge.js');
-        mqttBridge = createMqttBridge({
-          node,
-          url: mqttUrl,
-          baseTopic: mqttBaseTopic,
-          discovery: mqttDiscovery,
-          discoveryPrefix: mqttDiscoveryPrefix,
-          username: node.credentials ? node.credentials.mqttUsername : undefined,
-          password: node.credentials ? node.credentials.mqttPassword : undefined,
-          zones: mqttZoneMeta,
-          publishZones: mqttPublishZones,
-          getZoneStates: getMqttZoneStates,
-          onCommand: handleMqttCommand,
-          onStatus: () => {},
-        });
-        mqttBridge.connect();
-        // Publish the initial state once connected (also re-sent on every reconnect by the bridge).
-        publishMqttState();
+        const { createMqttBridge, panelAvailabilityTopic } = require('./lib/mqtt-bridge.js');
+        let connection = null;
+        let bridgeBaseTopic = mqttBaseTopic;
+        let bridgeDiscoveryPrefix = mqttDiscoveryPrefix;
+        if (mqttBrokerNode && typeof mqttBrokerNode.getConnection === 'function') {
+          // Shared connection owned by the "Alarm MQTT broker" config node.
+          connection = mqttBrokerNode.getConnection();
+          bridgeBaseTopic = mqttBrokerNode.baseTopic;
+          bridgeDiscoveryPrefix = mqttBrokerNode.discoveryPrefix;
+        } else if (mqttUrl) {
+          // Legacy fallback: broker settings stored on this node (flows saved before the
+          // config node existed). Private connection, Last Will on this panel's topic.
+          const { createMqttConnection } = require('./lib/mqtt-connection.js');
+          connection = createMqttConnection({
+            url: mqttUrl,
+            username: node.credentials ? node.credentials.mqttUsername : undefined,
+            password: node.credentials ? node.credentials.mqttPassword : undefined,
+            availabilityTopic: panelAvailabilityTopic(bridgeBaseTopic, node),
+            log: (msg) => node.log(`[mqtt] ${msg}`),
+            warn: (msg) => node.warn(msg),
+          });
+          node.warn(
+            'Alarm Ultimate: MQTT broker settings stored on this node are deprecated. Select an "Alarm MQTT broker" config node in the MQTT / HA tab so multiple Alarm nodes share one connection.'
+          );
+        }
+        if (connection) {
+          mqttBridge = createMqttBridge({
+            node,
+            connection,
+            baseTopic: bridgeBaseTopic,
+            discovery: mqttDiscovery,
+            discoveryPrefix: bridgeDiscoveryPrefix,
+            zones: mqttZoneMeta,
+            publishZones: mqttPublishZones,
+            getZoneStates: getMqttZoneStates,
+            onCommand: handleMqttCommand,
+            onStatus: () => {},
+          });
+          mqttBridge.connect();
+          // Publish the initial state once connected (also re-sent on every reconnect by the bridge).
+          publishMqttState();
+        } else {
+          node.warn('Alarm Ultimate: MQTT is enabled but no broker is configured (MQTT / HA tab).');
+        }
       } catch (err) {
         mqttBridge = null;
         node.warn(`Alarm Ultimate: MQTT bridge disabled (${err && err.message}).`);

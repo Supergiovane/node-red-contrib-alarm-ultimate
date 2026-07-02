@@ -80,11 +80,13 @@ From the panel you can arm/disarm (with code if enabled), bypass zones, trigger 
 
 Open the Alarm node and go to the **MQTT / HA** tab:
 
-1. Tick **Enable MQTT** and enter your **Broker URL** (e.g. `mqtt://192.168.1.10:1883`) and, if needed, username/password.
+1. Tick **Enable MQTT** and select (or create) an **Alarm MQTT broker** configuration with your **Broker URL** (e.g. `mqtt://192.168.1.10:1883`) and, if needed, username/password.
 2. Leave **HA discovery** and **Publish zones** enabled.
 3. **Deploy.**
 
 Your alarm now appears automatically in Home Assistant (same MQTT broker) as an **Alarm panel** entity, with **one sensor per zone**, all grouped under a single device. Arm/disarm from Home Assistant and the state stays in sync both ways.
+
+Have more than one Alarm node? Point them all at the same broker configuration: they share a **single MQTT connection**, and you enter the broker settings only once.
 
 Prefer to wire it yourself, or already use the Home Assistant Add‑on? There are ready‑to‑import example flows for both — see [Examples](#examples).
 
