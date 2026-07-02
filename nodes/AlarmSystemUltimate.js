@@ -1065,8 +1065,19 @@ module.exports = function (RED) {
         suffix += 1;
       }
       zoneIdByKey.set(zone.key, zoneId);
-      mqttZoneMeta.push({ id: zoneId, name: zone.name || zone.key, deviceClass: zoneDeviceClass(zone.type) });
+      mqttZoneMeta.push({
+        id: zoneId,
+        name: zone.name || zone.key,
+        deviceClass: zoneDeviceClass(zone.type),
+        supervised: isZoneSupervised(zone),
+      });
     });
+
+    // A zone is supervised (for MQTT availability purposes) when supervision is enabled with a
+    // real timeout: only those zones get a per-zone availability topic in HA discovery.
+    function isZoneSupervised(zone) {
+      return !!(zone && zone.supervisionEnabled === true && (Number(zone.supervisionTimeoutMs) || 0) > 0);
+    }
 
     function getMqttZoneStates() {
       const out = {};
@@ -1086,6 +1097,30 @@ module.exports = function (RED) {
       if (!zoneId) return;
       try {
         mqttBridge.publishZoneState(zoneId, open === true);
+      } catch (_err) {
+        // Best-effort.
+      }
+    }
+
+    // Supervision-driven availability: { zoneId: available } for supervised zones only.
+    function getMqttZoneAvailability() {
+      const out = {};
+      for (const zone of zones) {
+        if (!zone || !zone.key || !isZoneSupervised(zone)) continue;
+        const zoneId = zoneIdByKey.get(zone.key);
+        if (!zoneId) continue;
+        const meta = state.zoneState[zone.key];
+        out[zoneId] = !(meta && meta.supervisionLost === true);
+      }
+      return out;
+    }
+
+    function publishMqttZoneAvailability(zone, available) {
+      if (!mqttBridge || !zone) return;
+      const zoneId = zoneIdByKey.get(zone.key);
+      if (!zoneId) return;
+      try {
+        mqttBridge.publishZoneAvailability(zoneId, available !== false);
       } catch (_err) {
         // Best-effort.
       }
@@ -1774,6 +1809,8 @@ module.exports = function (RED) {
           },
           { topic: controlTopic, _alarmUltimateSupervision: { zoneTopic: zoneKey } }
         );
+        // Mark the zone unavailable in Home Assistant (retained per-zone availability topic).
+        publishMqttZoneAvailability(zone, false);
       }, timeoutMs);
 
       supervisionTimers.set(zoneKey, handle);
@@ -2127,6 +2164,8 @@ module.exports = function (RED) {
             },
             baseMsg
           );
+          // Zone is alive again: mark it available in Home Assistant.
+          publishMqttZoneAvailability(zone, true);
         }
         scheduleSupervisionTimer(zone);
       }
@@ -2378,6 +2417,7 @@ module.exports = function (RED) {
             zones: mqttZoneMeta,
             publishZones: mqttPublishZones,
             getZoneStates: getMqttZoneStates,
+            getZoneAvailability: getMqttZoneAvailability,
             onCommand: handleMqttCommand,
             onStatus: () => {},
           });

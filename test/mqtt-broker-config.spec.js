@@ -246,6 +246,57 @@ describe('Alarm MQTT broker config node (shared connection)', function () {
     expect(discovery.availability).to.equal(undefined);
   });
 
+  it('marks a supervised zone unavailable in HA when supervision is lost, available again on restore', async function () {
+    const flow = [
+      { id: 'flow1', type: 'tab', label: 'flow' },
+      {
+        id: 'broker1',
+        type: 'AlarmUltimateMqtt-config',
+        url: `mqtt://127.0.0.1:${broker.port}`,
+        baseTopic: 'alarm-ultimate',
+        discoveryPrefix: 'homeassistant',
+      },
+      alarmFlowNode('alarmA', 'Panel One', {
+        mqttBroker: 'broker1',
+        zones:
+          '[{"name":"Front","topic":"sensor/frontdoor","type":"perimeter","supervision":{"enabled":true,"timeoutSeconds":0.15,"blockArm":false}},' +
+          '{"name":"Back","topic":"sensor/backdoor","type":"perimeter"}]',
+      }),
+    ];
+
+    await loadNode([brokerConfigNode, alarmNode], flow);
+    await waitFor(() => lastPayload(broker, 'alarm-ultimate/panel_one/state') === 'disarmed');
+
+    const zoneAvailabilityTopic = 'alarm-ultimate/panel_one/zone/sensor_frontdoor/availability';
+
+    // Supervised zone discovery references its own availability topic too (mode "all").
+    const supervised = JSON.parse(
+      lastPayload(broker, 'homeassistant/binary_sensor/panel_one_sensor_frontdoor/config')
+    );
+    expect(supervised.availability_mode).to.equal('all');
+    expect(supervised.availability.map((a) => a.topic)).to.have.members([
+      'alarm-ultimate/_bridge/availability',
+      'alarm-ultimate/panel_one/availability',
+      zoneAvailabilityTopic,
+    ]);
+    // Unsupervised zones keep the panel-level availability only.
+    const unsupervised = JSON.parse(
+      lastPayload(broker, 'homeassistant/binary_sensor/panel_one_sensor_backdoor/config')
+    );
+    expect(unsupervised.availability.map((a) => a.topic)).to.have.members([
+      'alarm-ultimate/_bridge/availability',
+      'alarm-ultimate/panel_one/availability',
+    ]);
+
+    // Announced as available, then unavailable once the supervision timeout expires.
+    expect(lastPayload(broker, zoneAvailabilityTopic)).to.equal('online');
+    await waitFor(() => lastPayload(broker, zoneAvailabilityTopic) === 'offline');
+
+    // A valid sensor update restores supervision and availability.
+    helper.getNode('alarmA').receive({ topic: 'sensor/frontdoor', payload: true });
+    await waitFor(() => lastPayload(broker, zoneAvailabilityTopic) === 'online');
+  });
+
   it('exposes legacy MQTT credentials to the editor migration hint', async function () {
     const flow = [
       { id: 'flow1', type: 'tab', label: 'flow' },

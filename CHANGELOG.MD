@@ -3,6 +3,12 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [2.1.1] - 2026-07-02
+
+### Added
+
+- **Supervised zones report "Unavailable" in Home Assistant:** zones with sensor supervision enabled get a per-zone availability topic (`<base>/<name>/zone/<zone>/availability`, retained). When supervision reports the sensor missing the zone entity becomes Unavailable in HA, and turns available again on the next valid sensor update. Discovery references connection, panel and zone availability with `availability_mode: all`.
+
 ## [2.1.0] - 2026-07-02
 
 ### Added

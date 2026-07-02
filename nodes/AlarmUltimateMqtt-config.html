@@ -76,7 +76,9 @@
   The connection tracks its own availability on `<base>/_bridge/availability` (`online`/`offline`,
   retained, with Last Will). Each Alarm panel additionally has its own
   `<base>/<name>/availability` topic; Home Assistant discovery references **both**, so entities go
-  unavailable when either the whole connection drops or that single panel is removed.
+  unavailable when either the whole connection drops or that single panel is removed. Zones with
+  **sensor supervision** enabled also get a per-zone `<base>/<name>/zone/<zone>/availability`
+  topic, so a missing sensor shows as Unavailable in Home Assistant.
 
   ## Notes
 

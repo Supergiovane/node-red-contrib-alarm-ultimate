@@ -54,10 +54,13 @@ function createMqttBridge(options) {
   const discovery = opts.discovery !== false;
   const discoveryPrefix = (typeof opts.discoveryPrefix === 'string' && opts.discoveryPrefix.trim()) || 'homeassistant';
 
-  // Optional per-zone binary_sensor discovery. `zones` items: { id, name, deviceClass }.
+  // Optional per-zone binary_sensor discovery. `zones` items: { id, name, deviceClass, supervised }.
   const zones = Array.isArray(opts.zones) ? opts.zones : [];
   const publishZones = opts.publishZones === true && zones.length > 0;
   const getZoneStates = typeof opts.getZoneStates === 'function' ? opts.getZoneStates : () => ({});
+  // Supervised zones get their own availability topic (see below); { zoneId: boolean available }.
+  const getZoneAvailability = typeof opts.getZoneAvailability === 'function' ? opts.getZoneAvailability : () => ({});
+  const supervisedZoneIds = new Set(zones.filter((z) => z && z.supervised === true).map((z) => z.id));
 
   const name = (node && node.name) || 'Alarm Ultimate';
   const id = panelId(node);
@@ -86,9 +89,13 @@ function createMqttBridge(options) {
   let lastArmMode = null;
   let lastState = null;
   const lastZoneStates = {};
+  const lastZoneAvailability = {};
 
   function zoneStateTopic(zoneId) {
     return `${root}/zone/${zoneId}/state`;
+  }
+  function zoneAvailabilityTopic(zoneId) {
+    return `${root}/zone/${zoneId}/availability`;
   }
   function zoneDiscoveryTopic(zoneId) {
     return `${discoveryPrefix}/binary_sensor/${id}_${zoneId}/config`;
@@ -107,18 +114,25 @@ function createMqttBridge(options) {
     }
   }
 
-  // Availability section shared by the panel and zone discovery configs.
-  function applyAvailability(config) {
-    if (useSharedAvailability) {
-      config.availability = [
-        { topic: connectionAvailability, payload_available: 'online', payload_not_available: 'offline' },
-        { topic: availabilityTopic, payload_available: 'online', payload_not_available: 'offline' },
-      ];
-      config.availability_mode = 'all';
-    } else {
-      config.availability_topic = availabilityTopic;
+  // Availability section shared by the panel and zone discovery configs. Supervised zones pass
+  // their own availability topic as `extraTopic`, so they also go unavailable in Home Assistant
+  // when sensor supervision reports them missing.
+  function applyAvailability(config, extraTopic) {
+    const topics = [];
+    if (useSharedAvailability) topics.push(connectionAvailability);
+    topics.push(availabilityTopic);
+    if (extraTopic) topics.push(extraTopic);
+    if (topics.length === 1) {
+      config.availability_topic = topics[0];
       config.payload_available = 'online';
       config.payload_not_available = 'offline';
+    } else {
+      config.availability = topics.map((topic) => ({
+        topic,
+        payload_available: 'online',
+        payload_not_available: 'offline',
+      }));
+      config.availability_mode = 'all';
     }
     return config;
   }
@@ -158,19 +172,22 @@ function createMqttBridge(options) {
   }
 
   function buildZoneDiscovery(zone) {
-    const config = applyAvailability({
-      name: zone.name,
-      unique_id: `${uniqueId}_${zone.id}`,
-      state_topic: zoneStateTopic(zone.id),
-      payload_on: 'open',
-      payload_off: 'closed',
-      device: {
-        identifiers: [uniqueId],
-        name,
-        manufacturer: 'node-red-contrib-alarm-ultimate',
-        model: 'Alarm System Ultimate',
+    const config = applyAvailability(
+      {
+        name: zone.name,
+        unique_id: `${uniqueId}_${zone.id}`,
+        state_topic: zoneStateTopic(zone.id),
+        payload_on: 'open',
+        payload_off: 'closed',
+        device: {
+          identifiers: [uniqueId],
+          name,
+          manufacturer: 'node-red-contrib-alarm-ultimate',
+          model: 'Alarm System Ultimate',
+        },
       },
-    });
+      supervisedZoneIds.has(zone.id) ? zoneAvailabilityTopic(zone.id) : null
+    );
     if (zone.deviceClass) config.device_class = zone.deviceClass;
     return config;
   }
@@ -184,6 +201,16 @@ function createMqttBridge(options) {
     publishRaw(zoneStateTopic(zoneId), payload, true);
   }
 
+  // Publish a supervised zone's availability (retained): offline when sensor supervision reports
+  // the zone missing, online when it is (or comes back) alive. No-op for unsupervised zones.
+  function publishZoneAvailability(zoneId, available) {
+    if (!publishZones || !zoneId || !supervisedZoneIds.has(zoneId)) return;
+    const payload = available === false ? 'offline' : 'online';
+    if (lastZoneAvailability[zoneId] === payload) return;
+    lastZoneAvailability[zoneId] = payload;
+    publishRaw(zoneAvailabilityTopic(zoneId), payload, true);
+  }
+
   function publishAllZones() {
     if (!publishZones) return;
     for (const zone of zones) {
@@ -194,6 +221,11 @@ function createMqttBridge(options) {
       // Force a publish on (re)connect even if the cached value is unchanged.
       delete lastZoneStates[zoneId];
       publishZoneState(zoneId, states[zoneId] === true);
+    });
+    const availability = getZoneAvailability() || {};
+    Object.keys(availability).forEach((zoneId) => {
+      delete lastZoneAvailability[zoneId];
+      publishZoneAvailability(zoneId, availability[zoneId] !== false);
     });
   }
 
@@ -271,6 +303,7 @@ function createMqttBridge(options) {
     close,
     publishState,
     publishZoneState,
+    publishZoneAvailability,
     topics: { stateTopic, commandTopic, availabilityTopic, discoveryTopic },
   };
 }
