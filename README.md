@@ -16,10 +16,6 @@ Create zones, arm/disarm with optional code, entry/exit delays, bypass, chime, p
 [![GitHub issues][issues-image]][issues-url]
 
 <p align="center">
-  <a href="https://youtube.com/playlist?list=PL9Yh1bjbLAYrybBZKykfKLDrRAspj9to4&si=j0mLqVMBcHKjBpNY">
-    <img src="img/readmemain.png" alt="Alarm Ultimate videos (YouTube playlist)" width="640">
-  </a>
-  <br>
   <a href="https://youtube.com/playlist?list=PL9Yh1bjbLAYrybBZKykfKLDrRAspj9to4&si=j0mLqVMBcHKjBpNY">▶ Watch the Alarm Ultimate video playlist on YouTube</a>
 </p>
 
