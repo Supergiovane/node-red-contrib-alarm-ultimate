@@ -2,21 +2,22 @@
   <img src="docs/images/banner.png" alt="Alarm Ultimate for Node-RED" width="300">
 </p>
 
+## A complete **alarm system** for Node-RED, with a ready-to-use **web control panel**.
+
+Create zones, arm/disarm with optional code, entry/exit delays, bypass, chime, panic, siren, 24h/fire/tamper zones and an event log — all configured from a friendly editor, no programming required.
+<br/>
+<br/>
+<br/>
+
 [![NPM version][npm-version-image]][npm-url]
 [![NPM downloads][npm-downloads-image]][npm-url]
 [![Node-RED Flows][flows-image]][flows-url]
 [![License][license-image]][license-url]
 [![GitHub issues][issues-image]][issues-url]
 
-# node-red-contrib-alarm-ultimate
-
-A complete **alarm system** for Node-RED, with a ready-to-use **web control panel**.
-
-Create zones, arm/disarm with optional code, entry/exit delays, bypass, chime, panic, siren, 24h/fire/tamper zones and an event log — all configured from a friendly editor, no programming required.
-
 <p align="center">
   <a href="https://youtube.com/playlist?list=PL9Yh1bjbLAYrybBZKykfKLDrRAspj9to4&si=j0mLqVMBcHKjBpNY">
-    <img src="https://img.youtube.com/vi/HUPzhVgObBE/hqdefault.jpg" alt="Alarm Ultimate videos (YouTube playlist)" width="640">
+    <img src="img/readmemain.png" alt="Alarm Ultimate videos (YouTube playlist)" width="640">
   </a>
   <br>
   <a href="https://youtube.com/playlist?list=PL9Yh1bjbLAYrybBZKykfKLDrRAspj9to4&si=j0mLqVMBcHKjBpNY">▶ Watch the Alarm Ultimate video playlist on YouTube</a>
