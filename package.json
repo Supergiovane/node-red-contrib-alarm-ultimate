@@ -6,8 +6,19 @@
   "license": "MIT",
   "keywords": [
     "node-red",
+    "node-red-contrib",
     "alarm",
-    "security"
+    "alarm-system",
+    "security",
+    "intrusion",
+    "zone",
+    "siren",
+    "home-assistant",
+    "mqtt",
+    "knx",
+    "iot",
+    "smarthome",
+    "home-automation"
   ],
   "repository": {
     "type": "git",
