@@ -3,6 +3,12 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [2.1.2] - 2026-07-10
+
+### Changed
+
+- **Docs:** redesigned the logo and added the new Max Supervibe README banner.
+
 ## [2.1.1] - 2026-07-02
 
 ### Added
