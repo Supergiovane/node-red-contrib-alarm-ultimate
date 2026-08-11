@@ -3,6 +3,14 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [2.1.3] - 2026-08-11
+
+### Fixed
+
+- **Home Assistant Ingress web tools returned 404:** Alarm Panel, zone manager, editor API requests
+  and Dashboard 2 examples now preserve the session-specific Ingress path instead of using
+  Node-RED's internal `httpAdminRoot` as a browser URL.
+
 ## [2.1.2] - 2026-07-10
 
 ### Changed

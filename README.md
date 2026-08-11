@@ -71,6 +71,11 @@ A full keypad‑style panel is included and opens right from your browser:
 - **Alarm Panel:** `http://<your-node-red>/alarm-ultimate/alarm-panel`
 - **Zones helper (visual zone editor):** `http://<your-node-red>/alarm-ultimate/alarm-json-mapper`
 
+When Node-RED runs as the Home Assistant add-on, open these pages from the buttons in the
+Node-RED editor. Home Assistant Ingress adds a session-specific prefix to the URL; a manually
+typed URL such as `http://<home-assistant>:8123/alarm-ultimate/...` targets Home Assistant itself
+and returns 404. The editor buttons preserve the Ingress prefix automatically.
+
 From the panel you can arm/disarm (with code if enabled), bypass zones, trigger panic, and read the event log. It can also be embedded in the **Node-RED Dashboard** — see the ready‑made flows in [Examples](#examples).
 
 <p align="center">

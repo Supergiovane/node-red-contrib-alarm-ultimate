@@ -1,3 +1,4 @@
+<script src="resources/node-red-contrib-alarm-ultimate/alarm-ultimate-editor-urls.js"></script>
 <script type="text/javascript">
   RED.nodes.registerType("AlarmUltimateState", {
     category: "Alarm Ultimate",
@@ -32,9 +33,9 @@
     },
     oneditprepare: function () {
       const alarmSelect = $("#node-input-alarmId");
-      const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
-      const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
-      const url = `${root}alarm-ultimate/alarm/nodes`;
+      const editorUrl = (path) =>
+        window.AlarmUltimateEditorUrls.resolve(path, window.location);
+      const url = editorUrl("alarm-ultimate/alarm/nodes");
       const panelButton = $("#node-input-alarm-panel");
       const ioSelect = $("#node-input-io");
       const topicRow = $("#au-row-topic");
@@ -72,7 +73,7 @@
         evt.preventDefault();
         const alarmId = alarmSelect.val() || this.alarmId || "";
         const idPart = alarmId ? `?id=${encodeURIComponent(alarmId)}` : "";
-        const targetUrl = `${root}alarm-ultimate/alarm-panel${idPart}`;
+        const targetUrl = editorUrl(`alarm-ultimate/alarm-panel${idPart}`);
         window.open(
           withAccessToken(targetUrl),
           "_blank",

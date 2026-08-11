@@ -1,3 +1,4 @@
+<script src="resources/node-red-contrib-alarm-ultimate/alarm-ultimate-editor-urls.js"></script>
 <script type="text/javascript">
   RED.nodes.registerType("AlarmSystemUltimate", {
     category: "Alarm Ultimate",
@@ -76,6 +77,8 @@
       const initialNodeName = String(this.name || "");
 	      const origin = window.location.origin;
 	      const openerOrigin = origin;
+	      const editorUrl = (path) =>
+	        window.AlarmUltimateEditorUrls.resolve(path, window.location);
 	      const tabs = RED.tabs.create({
 	        id: "node-input-au-tabs",
 	        onchange: function (tab) {
@@ -124,7 +127,7 @@
 	          // Password-type credentials never reach the editor; fetch the stored value from the
 	          // runtime (write permission required, works once the node has been deployed).
 	          $("#au-mqtt-legacy-password").text("…");
-	          $.getJSON("alarm-ultimate/alarm/" + nodeId + "/mqtt-legacy-credentials")
+	          $.getJSON(editorUrl("alarm-ultimate/alarm/" + nodeId + "/mqtt-legacy-credentials"))
 	            .done(function (data) {
 	              $("#au-mqtt-legacy-password").text((data && data.password) || "(not set)");
 	            })
@@ -350,21 +353,17 @@
       }
 
       function openZonesManager() {
-        const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
-        const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
         const currentName = String($("#node-input-name").val() || "").trim();
         const namePart = currentName ? `&name=${encodeURIComponent(currentName)}` : "";
         const idPart = nodeId ? `?id=${encodeURIComponent(nodeId)}${namePart}` : "";
-        const targetUrl = `${root}alarm-ultimate/alarm-json-mapper${idPart}`;
+        const targetUrl = editorUrl(`alarm-ultimate/alarm-json-mapper${idPart}`);
         window.open(withAccessToken(targetUrl), "_blank");
       }
 
       $("#node-input-zones-panel").on("click", function (evt) {
         evt.preventDefault();
-        const httpAdminRoot = (RED.settings && RED.settings.httpAdminRoot) || "/";
-        const root = httpAdminRoot.endsWith("/") ? httpAdminRoot : `${httpAdminRoot}/`;
         const idPart = nodeId ? `?id=${encodeURIComponent(nodeId)}` : "";
-        const targetUrl = `${root}alarm-ultimate/alarm-panel${idPart}`;
+        const targetUrl = editorUrl(`alarm-ultimate/alarm-panel${idPart}`);
         window.open(
           withAccessToken(targetUrl),
           "_blank",
@@ -941,7 +940,7 @@
 
   ### Editor and web pages
 
-  - **Panel**: `/alarm-ultimate/alarm-panel` (supports `?id=<alarmNodeId>` and `?embed=1&id=<alarmNodeId>`).
+  - **Panel**: use the **Open Alarm Panel** button above. The page supports `?id=<alarmNodeId>` and `?embed=1&id=<alarmNodeId>`; the button also preserves the Home Assistant Ingress path.
   - **Zones**: use **Manage zones** to open `/alarm-ultimate/alarm-json-mapper` and sync zones back into the editor. Click **Done** in the Node-RED node editor to apply/save.
   - **Settings**: open `/alarm-ultimate/alarm-settings` to **Export Zones** / **Import Zones**.
   - **Name**: optional label shown in the Alarm Panel.
