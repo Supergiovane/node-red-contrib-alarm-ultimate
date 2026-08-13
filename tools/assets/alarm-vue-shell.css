@@ -2,7 +2,7 @@
   color-scheme: light;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --mono: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --soft-radius: 4px;
+  --soft-radius: 0;
   --hb-primary: #ff9800;
   --hb-primary-dark: #ef6c00;
   --bg: #f4f4f4;
@@ -141,6 +141,11 @@ textarea {
   flex-direction: column;
 }
 
+.alarm-nav-group {
+  display: flex;
+  flex-direction: column;
+}
+
 .alarm-nav-link {
   width: 100%;
   display: flex;
@@ -214,6 +219,32 @@ textarea {
   font-weight: 500;
 }
 
+.alarm-nav-submenu {
+  display: flex;
+  flex-direction: column;
+  margin: -4px 0 6px 38px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.alarm-nav-sublink {
+  padding: 7px 8px;
+  color: rgba(255, 255, 255, 0.78);
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.alarm-nav-sublink:hover,
+.alarm-nav-sublink.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.alarm-nav-sublink.active {
+  font-weight: 700;
+}
+
 .alarm-page-shell.sidebar-collapsed .alarm-sidebar {
   align-items: center;
   padding: 14px 10px;
@@ -221,6 +252,7 @@ textarea {
 
 .alarm-page-shell.sidebar-collapsed .alarm-sidebar-copy,
 .alarm-page-shell.sidebar-collapsed .alarm-nav-copy,
+.alarm-page-shell.sidebar-collapsed .alarm-nav-submenu,
 .alarm-page-shell.sidebar-collapsed .alarm-sidebar-footer {
   display: none;
 }

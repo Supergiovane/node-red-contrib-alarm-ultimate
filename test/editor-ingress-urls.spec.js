@@ -61,6 +61,16 @@ describe('Alarm Ultimate editor URLs', function () {
     }
   });
 
+  it('opens the Alarm System editor on the Zones tab', function () {
+    const html = fs.readFileSync(
+      path.join(__dirname, '..', 'nodes', 'AlarmSystemUltimate.html'),
+      'utf8'
+    );
+
+    expect(html).to.include('tabs.activateTab("node-input-au-tab-zones")');
+    expect(html).not.to.include('tabs.activateTab("node-input-au-tab-general")');
+  });
+
   it('registers every inline editor definition', function () {
     const root = path.join(__dirname, '..', 'nodes');
     const expectedTypes = {

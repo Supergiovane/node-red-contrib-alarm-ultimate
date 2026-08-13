@@ -30,16 +30,22 @@
               <span class="alarm-nav-title">Control Panel</span>
             </span>
           </a>
-          <a class="alarm-nav-link" :class="{ active: currentPage === 'mapper' }" :href="mapperUrl">
-            <span class="alarm-nav-icon" aria-hidden="true">
-              <svg class="alarm-nav-svg" viewBox="0 0 24 24">
-                <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
-              </svg>
-            </span>
-            <span class="alarm-nav-copy">
-              <span class="alarm-nav-title">Zones</span>
-            </span>
-          </a>
+          <div class="alarm-nav-group">
+            <a class="alarm-nav-link" :class="{ active: currentPage === 'mapper' }" :href="mapperUrl">
+              <span class="alarm-nav-icon" aria-hidden="true">
+                <svg class="alarm-nav-svg" viewBox="0 0 24 24">
+                  <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
+                </svg>
+              </span>
+              <span class="alarm-nav-copy">
+                <span class="alarm-nav-title">Zones</span>
+              </span>
+            </a>
+            <div class="alarm-nav-submenu">
+              <a class="alarm-nav-sublink" :class="{ active: currentPage === 'mapper' && zonesView === 'list' }" :href="mapperUrl">Zone list</a>
+              <a class="alarm-nav-sublink" :class="{ active: currentPage === 'mapper' && zonesView === 'wizard' }" :href="mapperWizardUrl">Import wizard</a>
+            </div>
+          </div>
           <a class="alarm-nav-link" :class="{ active: currentPage === 'settings' }" :href="settingsUrl">
             <span class="alarm-nav-icon" aria-hidden="true">
               <svg class="alarm-nav-svg" viewBox="0 0 24 24">
@@ -89,8 +95,8 @@
                   <input id="code" type="password" autocomplete="one-time-code" placeholder="(optional)" />
                 </div>
                 <div class="buttons">
-                  <button class="primary" id="btnArm">Arm</button>
-                  <button class="danger" id="btnDisarm">Disarm</button>
+                  <button class="primary" id="btnArm" disabled>Arm</button>
+                  <button class="danger" id="btnDisarm" disabled>Disarm</button>
                 </div>
                 <div class="kbd" aria-label="Keypad">
                   <button data-k="1">1</button>
@@ -227,6 +233,7 @@
       let pollTimer = null;
       let nodeStateTimer = null;
       let nodeStateById = new Map();
+      let commandPending = false;
 
       let logFilter = "all"; // all | alarm | arming | zones | errors
       let logsById = new Map(); // alarmId -> entries[]
@@ -913,6 +920,28 @@
 	          return st && typeof st === "object" ? st : { label: "Unknown", cls: "" };
 	        }
 
+        function isFullyDisarmed(state) {
+          if (!state || state.mode !== "disarmed") return false;
+          if (state.alarmActive) return false;
+          if (state.arming && state.arming.active) return false;
+          if (state.entry && state.entry.active) return false;
+          return true;
+        }
+
+        function updateArmDisarmButtons() {
+          const ids = Array.from(selectedIds);
+          const states = ids.map((id) => nodeStateById.get(id));
+          const allKnown = ids.length > 0 && states.every((state) => Boolean(state));
+          const allDisarmed = allKnown && states.every((state) => isFullyDisarmed(state));
+
+          if (els.btnArm) {
+            els.btnArm.disabled = commandPending || !allDisarmed;
+          }
+          if (els.btnDisarm) {
+            els.btnDisarm.disabled = commandPending || !allKnown || allDisarmed;
+          }
+        }
+
 	        function setSelectedIds(next) {
 	          const ids = Array.isArray(next) ? next.map(String).filter(Boolean) : [];
 	          selectedIds = new Set(ids);
@@ -946,10 +975,16 @@
         }
 
 	        function renderNodeButtons() {
-	          if (!els.nodeButtons) return;
+	          if (!els.nodeButtons) {
+              updateArmDisarmButtons();
+              return;
+            }
 	          updateSelectAllVisibility();
 	          els.nodeButtons.innerHTML = "";
-	          if (!nodesList.length) return;
+	          if (!nodesList.length) {
+              updateArmDisarmButtons();
+              return;
+            }
 
 	          nodesList.forEach((n) => {
 	            const state = nodeStateById.get(n.id);
@@ -960,10 +995,11 @@
             btn.dataset.id = n.id;
             const name = n.name ? n.name : n.id;
             btn.innerHTML = `<span class="dot"></span><span>${escapeHtml(name)}</span>`;
-            btn.addEventListener("click", () => toggleSelectedId(n.id));
-            els.nodeButtons.appendChild(btn);
-          });
-        }
+	            btn.addEventListener("click", () => toggleSelectedId(n.id));
+	            els.nodeButtons.appendChild(btn);
+	          });
+            updateArmDisarmButtons();
+	        }
 
 		      async function loadNodes() {
 		        const res = await fetch(apiUrl("/alarm-ultimate/alarm/nodes"), {
@@ -1293,7 +1329,10 @@
 		      }
 
 		      els.btnArm.addEventListener("click", async () => {
+	          if (els.btnArm.disabled) return;
 		        playKeyClick("action");
+	          commandPending = true;
+	          updateArmDisarmButtons();
 		        try {
 	          await sendCommand({ command: "arm", code: codeValue() });
           if (els.cmdStatus.style.display === "none") {
@@ -1301,10 +1340,16 @@
           }
         } catch (err) {
           showCmdStatus(err.message, "err");
+        } finally {
+          commandPending = false;
+          updateArmDisarmButtons();
         }
       });
       els.btnDisarm.addEventListener("click", async () => {
+        if (els.btnDisarm.disabled) return;
         playKeyClick("action");
+        commandPending = true;
+        updateArmDisarmButtons();
         try {
           await sendCommand({ command: "disarm", code: codeValue() });
           if (els.cmdStatus.style.display === "none") {
@@ -1312,6 +1357,9 @@
           }
         } catch (err) {
           showCmdStatus(err.message, "err");
+        } finally {
+          commandPending = false;
+          updateArmDisarmButtons();
         }
       });
 

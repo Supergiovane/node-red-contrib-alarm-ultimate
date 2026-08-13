@@ -5,14 +5,19 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Zones (Node-RED)</title>
+  <script>
+    document.documentElement.classList.toggle(
+      "zones-wizard-view",
+      new URLSearchParams(window.location.search).get("zonesView") === "wizard",
+    );
+  </script>
   <link rel="stylesheet" href="./alarm-tools/assets/alarm-vue-shell.css" />
   <link rel="stylesheet" href="./alarm-tools/assets/alarm-tools-pages.css" />
   <style>
     /* Beginner-first polish, scoped to this page only. */
 
-    /* Show "Your zones" first; the importer becomes a secondary block below. */
-    .alarm-mapper-page #zones-card { order: 1; }
-    .alarm-mapper-page #wizard-card { order: 2; }
+    html:not(.zones-wizard-view) .alarm-mapper-page #wizard-card { display: none; }
+    html.zones-wizard-view .alarm-mapper-page #zones-card { display: none; }
 
     /* Zones card = the main task. */
     .alarm-mapper-page #zones-card h2 { font-size: 16px; }
@@ -22,6 +27,26 @@
     /* Importer card = secondary, lighter, clearly optional. */
     .alarm-mapper-page #wizard-card { background: rgba(0, 0, 0, 0.015); }
     .alarm-mapper-page #wizard-card > h2 { font-size: 13px; color: var(--muted); }
+    .alarm-mapper-page #wizard > .grid { grid-template-columns: 1fr; }
+    .alarm-mapper-page .wizard-parse-actions { align-items: stretch; }
+    .alarm-mapper-page .wizard-parse-actions select { flex: 0 1 260px; }
+    .alarm-mapper-page .wizard-secondary-actions { margin-top: 6px; }
+    .alarm-mapper-page .wizard-step-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .alarm-mapper-page .wizard-step-heading h2 { margin: 0; }
+    .alarm-mapper-page #zone-table-body tr.zone-row-new > td,
+    .alarm-mapper-page #zone-table-body tr.zone-row-new:nth-child(even) > td {
+      background: #e8f5e9;
+    }
+    .alarm-mapper-page #zone-table-body tr.zone-row-new input,
+    .alarm-mapper-page #zone-table-body tr.zone-row-new select {
+      background: #f1fbf2;
+      border-color: #81c784;
+    }
 
     /* Collapsible "Advanced filters" inside the importer. */
     .alarm-mapper-page details.adv-filters {
@@ -68,16 +93,22 @@
             <span class="alarm-nav-title">Control Panel</span>
           </span>
         </a>
-        <a class="alarm-nav-link" :class="{ active: currentPage === 'mapper' }" :href="mapperUrl">
-          <span class="alarm-nav-icon" aria-hidden="true">
-            <svg class="alarm-nav-svg" viewBox="0 0 24 24">
-              <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
-            </svg>
-          </span>
-          <span class="alarm-nav-copy">
-            <span class="alarm-nav-title">Zones</span>
-          </span>
-        </a>
+        <div class="alarm-nav-group">
+          <a class="alarm-nav-link" :class="{ active: currentPage === 'mapper' }" :href="mapperUrl">
+            <span class="alarm-nav-icon" aria-hidden="true">
+              <svg class="alarm-nav-svg" viewBox="0 0 24 24">
+                <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
+              </svg>
+            </span>
+            <span class="alarm-nav-copy">
+              <span class="alarm-nav-title">Zones</span>
+            </span>
+          </a>
+          <div class="alarm-nav-submenu">
+            <a class="alarm-nav-sublink" :class="{ active: currentPage === 'mapper' && zonesView === 'list' }" :href="mapperUrl">Zone list</a>
+            <a class="alarm-nav-sublink" :class="{ active: currentPage === 'mapper' && zonesView === 'wizard' }" :href="mapperWizardUrl">Import wizard</a>
+          </div>
+        </div>
         <a class="alarm-nav-link" :class="{ active: currentPage === 'settings' }" :href="settingsUrl">
           <span class="alarm-nav-icon" aria-hidden="true">
             <svg class="alarm-nav-svg" viewBox="0 0 24 24">
@@ -101,18 +132,15 @@
       <div class="alarm-content">
         <main>
           <section class="card" id="wizard-card">
-            <h2>Import many zones at once</h2>
+            <h2>Import zones wizard</h2>
             <p class="section-intro">Optional. Bulk-create zones from a KNX, Home Assistant or JSON sample instead of adding them one by one.</p>
-            <div class="buttons">
-              <button id="btn-wizard-toggle">Open importer</button>
-            </div>
-            <div id="wizard" style="display:none;">
+            <div id="wizard">
               <div class="grid">
                 <section class="card" id="wizard-step1">
                   <h2>Step 1 — Paste data</h2>
                   <textarea id="input" spellcheck="false"
                     placeholder="Paste JSON here (message/HA export) or TSV (ETS export).&#10;&#10;Tip: this tool also accepts JS-style objects with unquoted keys and // comments."></textarea>
-                  <div class="buttons">
+                  <div class="buttons wizard-parse-actions">
                     <select id="sampleKind" style="max-width: 260px;">
                       <option value="">(optional) load a sample…</option>
                       <option value="knx">JSON message (KNX)</option>
@@ -120,9 +148,11 @@
                       <option value="ha">Home Assistant states (JSON)</option>
                       <option value="ha_registry">Home Assistant entity registry (JSON)</option>
                     </select>
-                    <button id="btn-load-sample">Load sample</button>
-                    <button id="btn-clear">Clear</button>
-                    <button class="primary" id="btn-parse">Parse / detect</button>
+                    <button class="primary" id="btn-parse">Parse</button>
+                  </div>
+                  <div class="buttons wizard-secondary-actions">
+                    <button class="mini" id="btn-load-sample">Load sample</button>
+                    <button class="mini" id="btn-clear">Clear</button>
                   </div>
                   <p class="hint">
                     Parse detects the format and unlocks the next step.
@@ -130,8 +160,11 @@
                   <div id="parse-status" class="status warn" style="display: none"></div>
                 </section>
 
-                <section class="card disabled" id="wizard-step2">
-                  <h2>Step 2 — Map & generate</h2>
+                <section class="card" id="wizard-step2" style="display:none;">
+                  <div class="wizard-step-heading">
+                    <h2>Step 2 — Map & generate</h2>
+                    <button class="mini" id="btn-wizard-back" type="button">Back to Step 1</button>
+                  </div>
                   <div id="ets-hint" class="status ok" style="display: none"></div>
                   <div id="ha-hint" class="status ok" style="display: none"></div>
                   <div id="ets-mapping" style="display: none">
@@ -224,21 +257,16 @@
 
           <section class="card" id="zones-card">
             <h2>Your zones</h2>
-            <p class="section-intro">These are the sensors your alarm watches. Add or edit them here, then click <b>Done</b> in the Node-RED editor to save.</p>
+            <p class="section-intro">These are the sensors your alarm watches. Add or edit them here, then click <b>Save</b>.</p>
             <div class="buttons">
               <button class="primary" id="btn-zone-add">+ Add zone</button>
-              <button type="button" class="primary" id="btn-goto-importer">Import zones wizard</button>
-            </div>
-            <p id="zone-context" class="hint"></p>
-            <div id="zone-apply-reminder" class="callout" style="display:none;">
-              <p class="title">Important / Importante — save your changes</p>
-              <p class="text" id="zone-apply-text"></p>
+              <button type="button" id="btn-zone-save">Save</button>
             </div>
             <p class="hint" style="margin-top:4px;">
               Connection: <span id="zone-connection" class="pill">Not connected</span>
             </p>
             <p id="zone-autosave" class="hint" style="display:none;"></p>
-            <div style="overflow:auto; border:1px solid var(--border); border-radius:10px;">
+            <div style="overflow:auto; border:1px solid var(--border); border-radius:0;">
               <table>
                 <thead>
                   <tr>
@@ -327,10 +355,7 @@
       appendZones: document.getElementById("appendZones"),
       btnGenerate: document.getElementById("btn-generate"),
       btnZoneAdd: document.getElementById("btn-zone-add"),
-      btnWizardToggle: document.getElementById("btn-wizard-toggle"),
-      zoneContext: document.getElementById("zone-context"),
-      zoneApplyReminder: document.getElementById("zone-apply-reminder"),
-      zoneApplyText: document.getElementById("zone-apply-text"),
+      btnZoneSave: document.getElementById("btn-zone-save"),
       zoneAutosave: document.getElementById("zone-autosave"),
       zoneConnection: document.getElementById("zone-connection"),
       zoneTableBody: document.getElementById("zone-table-body"),
@@ -350,7 +375,9 @@
       btnBulkKind: document.getElementById("btn-bulk-kind"),
       bulkSupEnabled: document.getElementById("bulk-sup-enabled"),
       bulkSupBlockArm: document.getElementById("bulk-sup-blockArm"),
+      wizardStep1: document.getElementById("wizard-step1"),
       wizardStep2: document.getElementById("wizard-step2"),
+      btnWizardBack: document.getElementById("btn-wizard-back"),
       wizard: document.getElementById("wizard"),
     };
 
@@ -470,9 +497,38 @@
     let zonesJsonText = "[]";
     let editorConnected = false;
     let isEditingZoneTable = false;
+    let newlyGeneratedZoneTopics = new Set();
     const INPUT_STORAGE_KEY = "alarm-ultimate:json-mapper:step1";
+    const PARSED_INPUT_STORAGE_KEY = "alarm-ultimate:json-mapper:parsed-input";
     const DEFAULT_SUPERVISION_TIMEOUT_SECONDS = 120;
     let inputSaveTimer = null;
+
+    function inputFingerprint(text) {
+      const value = String(text || "");
+      let hash = 2166136261;
+      for (let i = 0; i < value.length; i += 1) {
+        hash ^= value.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      return `${value.length}:${hash >>> 0}`;
+    }
+
+    function clearRememberedParse() {
+      try {
+        window.sessionStorage.removeItem(PARSED_INPUT_STORAGE_KEY);
+      } catch (_err) {
+        // ignore
+      }
+    }
+
+    function rememberSuccessfulParse() {
+      if (!els.input) return;
+      try {
+        window.sessionStorage.setItem(PARSED_INPUT_STORAGE_KEY, inputFingerprint(els.input.value));
+      } catch (_err) {
+        // ignore
+      }
+    }
 
     function saveStep1InputImmediate(text) {
       try {
@@ -511,7 +567,10 @@
 
     restoreStep1Input();
     if (els.input) {
-      els.input.addEventListener("input", scheduleSaveStep1Input);
+      els.input.addEventListener("input", () => {
+        clearRememberedParse();
+        scheduleSaveStep1Input();
+      });
       els.input.addEventListener("change", scheduleSaveStep1Input);
     }
 
@@ -702,13 +761,21 @@
     }
 
     function flushZonesToEditor(quiet) {
-      if (!page.alarmNodeId) return;
-      if (!canTalkToEditor()) return;
+      if (!page.alarmNodeId) return true;
+      if (!canTalkToEditor()) return true;
       const errors = validateModel();
-      if (errors && errors.length > 0) return;
+      if (errors && errors.length > 0) {
+        showStatus(
+          els.zoneListStatus,
+          "warn",
+          `Zones: ${errors[0]}${errors.length > 1 ? ` (+${errors.length - 1} more)` : ""}`,
+        );
+        return false;
+      }
       if (autoSaveTimer) window.clearTimeout(autoSaveTimer);
       autoSaveTimer = null;
       sendZonesToEditor(quiet !== false);
+      return true;
     }
 
     function validateModel() {
@@ -940,6 +1007,9 @@
       zonesModel.forEach((zone, index) => {
         const tr = document.createElement("tr");
         tr.dataset.index = String(index);
+        if (newlyGeneratedZoneTopics.has(String(zone && zone.topic ? zone.topic : "").trim())) {
+          tr.classList.add("zone-row-new");
+        }
 
         const tdValue = document.createElement("td");
         const valueInput = document.createElement("input");
@@ -1527,12 +1597,53 @@
       el.appendChild(pre);
     }
 
+    function showWizardStep(step) {
+      const showStep2 = Number(step) === 2;
+      if (els.wizardStep1) els.wizardStep1.style.display = showStep2 ? "none" : "";
+      if (els.wizardStep2) els.wizardStep2.style.display = showStep2 ? "" : "none";
+    }
+
+    function showZoneListAfterGeneration(generatedZones) {
+      const topics = (Array.isArray(generatedZones) ? generatedZones : [])
+        .map((zone) => String(zone && zone.topic ? zone.topic : "").trim())
+        .filter(Boolean);
+      if (!topics.length) return;
+
+      newlyGeneratedZoneTopics = new Set(topics);
+      flushZonesToEditor(true);
+      renderZones();
+
+      document.documentElement.classList.remove("zones-wizard-view");
+      const shell = window.__alarmMapperVueShell;
+      let targetUrl = "";
+      if (shell) {
+        shell.zonesView = "list";
+        targetUrl = shell.mapperUrl || "";
+      }
+      if (!targetUrl) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("zonesView");
+        targetUrl = url.toString();
+      }
+      window.history.replaceState({}, "", targetUrl);
+
+      window.setTimeout(() => {
+        const card = document.getElementById("zones-card");
+        if (!card) return;
+        try {
+          card.scrollIntoView({ behavior: "smooth", block: "start" });
+        } catch (_err) {
+          card.scrollIntoView();
+        }
+      }, 0);
+    }
+
     function parseAndPopulate() {
       hideStatus(els.parseStatus);
       hideStatus(els.genStatus);
       hideStatus(els.etsHint);
       hideStatus(els.haHint);
-      if (els.wizardStep2) els.wizardStep2.classList.add("disabled");
+      showWizardStep(1);
       els.jsonMapping.style.display = "";
       els.etsMapping.style.display = "none";
       els.haMapping.style.display = "none";
@@ -1541,6 +1652,7 @@
       const result = parseInput(els.input.value);
       if (!result.ok) {
         parsedObject = null;
+        clearRememberedParse();
         showStatus(
           els.parseStatus,
           "err",
@@ -1549,7 +1661,8 @@
         return;
       }
 
-      if (els.wizardStep2) els.wizardStep2.classList.remove("disabled");
+      rememberSuccessfulParse();
+      showWizardStep(2);
 
       if (
         result.value &&
@@ -1725,18 +1838,21 @@
         let appended = zones.length;
         let skippedExisting = 0;
         let skippedBatch = 0;
+        let generatedZones = [];
         if (append) {
           const filtered = filterNewZonesByTopicUniqueness(zones);
           appended = filtered.kept.length;
           skippedExisting = filtered.skippedExisting;
           skippedBatch = filtered.skippedBatch;
           const start = zonesModel.length;
+          generatedZones = filtered.kept.map((z, idx) => cleanZoneForJson(z, start + idx));
           zonesModel = zonesModel.concat(
-            filtered.kept.map((z, idx) => cleanZoneForJson(z, start + idx)),
+            generatedZones,
           );
           renderZones();
         } else {
-          zonesModel = zones.map((z, idx) => cleanZoneForJson(z, idx));
+          generatedZones = zones.map((z, idx) => cleanZoneForJson(z, idx));
+          zonesModel = generatedZones;
           renderZones();
         }
         const skippedGroups = allRows.length - leafRows.length;
@@ -1750,6 +1866,7 @@
           `${append && (skippedExisting || skippedBatch) ? `, ${skippedExisting} duplicate topics already present, ${skippedBatch} duplicate topics in import` : ""}` +
           ").",
         );
+        showZoneListAfterGeneration(generatedZones);
         return;
       }
 
@@ -1788,18 +1905,21 @@
         let appended = zones.length;
         let skippedExisting = 0;
         let skippedBatch = 0;
+        let generatedZones = [];
         if (append) {
           const filtered = filterNewZonesByTopicUniqueness(zones);
           appended = filtered.kept.length;
           skippedExisting = filtered.skippedExisting;
           skippedBatch = filtered.skippedBatch;
           const start = zonesModel.length;
+          generatedZones = filtered.kept.map((z, idx) => cleanZoneForJson(z, start + idx));
           zonesModel = zonesModel.concat(
-            filtered.kept.map((z, idx) => cleanZoneForJson(z, start + idx)),
+            generatedZones,
           );
           renderZones();
         } else {
-          zonesModel = zones.map((z, idx) => cleanZoneForJson(z, idx));
+          generatedZones = zones.map((z, idx) => cleanZoneForJson(z, idx));
+          zonesModel = generatedZones;
           renderZones();
         }
         const skippedNonEntity = states.length - eligible.length;
@@ -1813,6 +1933,7 @@
           `${append && (skippedExisting || skippedBatch) ? `, ${skippedExisting} duplicate topics already present, ${skippedBatch} duplicate topics in import` : ""}` +
           ").",
         );
+        showZoneListAfterGeneration(generatedZones);
         return;
       }
 
@@ -1853,18 +1974,21 @@
         let appended = zones.length;
         let skippedExisting = 0;
         let skippedBatch = 0;
+        let generatedZones = [];
         if (append) {
           const filtered = filterNewZonesByTopicUniqueness(zones);
           appended = filtered.kept.length;
           skippedExisting = filtered.skippedExisting;
           skippedBatch = filtered.skippedBatch;
           const start = zonesModel.length;
+          generatedZones = filtered.kept.map((z, idx) => cleanZoneForJson(z, start + idx));
           zonesModel = zonesModel.concat(
-            filtered.kept.map((z, idx) => cleanZoneForJson(z, start + idx)),
+            generatedZones,
           );
           renderZones();
         } else {
-          zonesModel = zones.map((z, idx) => cleanZoneForJson(z, idx));
+          generatedZones = zones.map((z, idx) => cleanZoneForJson(z, idx));
+          zonesModel = generatedZones;
           renderZones();
         }
         const skippedNonEntity = entities.length - eligible.length;
@@ -1879,6 +2003,7 @@
           `${append && (skippedExisting || skippedBatch) ? `, ${skippedExisting} duplicate topics already present, ${skippedBatch} duplicate topics in import` : ""}` +
           ").",
         );
+        showZoneListAfterGeneration(generatedZones);
         return;
       }
 
@@ -1905,6 +2030,7 @@
         payload: valueValue,
       };
       const zone = buildZoneTemplate(normalized, nameValue);
+      let generatedZone = null;
       if (append) {
         const candidateTopic = String(zone && zone.topic ? zone.topic : "").trim();
         if (!candidateTopic) {
@@ -1916,9 +2042,11 @@
           return;
         }
         addZone(zone);
+        generatedZone = zone;
       } else {
         const cleaned = cleanZoneForJson(zone, 0);
         zonesModel = [cleaned];
+        generatedZone = cleaned;
         renderZones();
       }
 
@@ -1928,6 +2056,7 @@
         "ok",
         `${append ? "Appended" : "Replaced with"} 1 zone using topic="${toOneLine(topicValue)}" and value="${valuePath}".`,
       );
+      showZoneListAfterGeneration([generatedZone]);
     }
 
     els.btnParse.addEventListener("click", () => parseAndPopulate());
@@ -1935,13 +2064,14 @@
     els.btnClear.addEventListener("click", () => {
       els.input.value = "";
       saveStep1InputImmediate("");
+      clearRememberedParse();
       parsedObject = null;
       lastGenerated = null;
       hideStatus(els.parseStatus);
       hideStatus(els.genStatus);
       hideStatus(els.etsHint);
       hideStatus(els.haHint);
-      if (els.wizardStep2) els.wizardStep2.classList.add("disabled");
+      showWizardStep(1);
       els.jsonMapping.style.display = "";
       els.etsMapping.style.display = "none";
       if (els.etsAddressFilter) els.etsAddressFilter.value = "";
@@ -1961,58 +2091,49 @@
 
     function loadSample(kind) {
       const k = String(kind || "").trim();
+      clearRememberedParse();
       if (k === "knx") els.input.value = KNX_SAMPLE;
       else if (k === "ets") els.input.value = ETS_SAMPLE;
       else if (k === "ha") els.input.value = HA_SAMPLE;
       else if (k === "ha_registry") els.input.value = HA_REGISTRY_SAMPLE;
       else return;
       saveStep1InputImmediate(els.input.value);
-      parseAndPopulate();
+      showStatus(els.parseStatus, "ok", "Sample loaded. Click Parse to continue.");
     }
 
     els.btnLoadSample.addEventListener("click", () => loadSample(els.sampleKind ? els.sampleKind.value : ""));
 
+    if (els.btnWizardBack) {
+      els.btnWizardBack.addEventListener("click", () => showWizardStep(1));
+    }
+
+    function restoreParsedWizardStep() {
+      if (!document.documentElement.classList.contains("zones-wizard-view")) return;
+      if (!els.input || !String(els.input.value || "").trim()) return;
+      try {
+        const parsedInput = window.sessionStorage.getItem(PARSED_INPUT_STORAGE_KEY);
+        if (parsedInput === inputFingerprint(els.input.value)) {
+          parseAndPopulate();
+        }
+      } catch (_err) {
+        // ignore
+      }
+    }
+
+    restoreParsedWizardStep();
+
     els.btnZoneAdd.addEventListener("click", () => addZone(null));
 
-    function toggleWizard(forceOpen) {
-      if (!els.wizard) return;
-      const isOpen = els.wizard.style.display !== "none";
-      const nextOpen = forceOpen === true ? true : forceOpen === false ? false : !isOpen;
-      els.wizard.style.display = nextOpen ? "" : "none";
-      if (els.btnWizardToggle) {
-        els.btnWizardToggle.textContent = nextOpen ? "Hide importer" : "Open importer";
-      }
-      if (nextOpen) {
-        setTimeout(() => {
-          try {
-            els.wizard.scrollIntoView({ behavior: "smooth", block: "start" });
-            if (els.input) els.input.focus();
-          } catch (_err) {
-            // ignore
-          }
-        }, 0);
-      }
-    }
-
-    if (els.btnWizardToggle) {
-      els.btnWizardToggle.addEventListener("click", () => toggleWizard());
-    }
-
-    // Shortcut from the Zones card: open the importer and scroll to its section.
-    const btnGotoImporter = document.getElementById("btn-goto-importer");
-    if (btnGotoImporter) {
-      btnGotoImporter.addEventListener("click", () => {
-        toggleWizard(true);
-        setTimeout(() => {
-          const card = document.getElementById("wizard-card");
-          if (card) {
-            try {
-              card.scrollIntoView({ behavior: "smooth", block: "start" });
-            } catch (_err) {
-              card.scrollIntoView();
-            }
-          }
-        }, 60);
+    if (els.btnZoneSave) {
+      els.btnZoneSave.addEventListener("click", () => {
+        if (!flushZonesToEditor(false)) return;
+        const shell = window.__alarmMapperVueShell;
+        const panelUrl = shell && shell.panelMainUrl
+          ? shell.panelMainUrl
+          : document.querySelector('.alarm-nav-link[href*="alarm-panel"]')?.href;
+        if (panelUrl) {
+          window.setTimeout(() => window.location.assign(panelUrl), 50);
+        }
       });
     }
 
@@ -2159,30 +2280,6 @@
       renderZones();
     });
 
-    function renderZoneContext(nodeName) {
-      const name = String(nodeName || "").trim() || page.alarmNodeName;
-      if (page.alarmNodeId) {
-        const label = name ? `${name}` : "(unnamed Alarm)";
-        const prefix = document.createTextNode("Target Alarm: ");
-        const pill = document.createElement("span");
-        pill.className = "pill";
-        pill.textContent = label;
-        const suffix = document.createTextNode(" • synced automatically");
-        els.zoneContext.replaceChildren(prefix, pill, suffix);
-        if (els.zoneApplyReminder && els.zoneApplyText) {
-          els.zoneApplyReminder.style.display = "";
-          els.zoneApplyText.innerHTML =
-            `Changes made here are synced into the Node-RED edit dialog, but they are <b>not saved</b> until you click <span class="kbd">Done</span> in the Node-RED node editor. ` +
-            `If you close the dialog or click <span class="kbd">Cancel</span>, your zone changes will be lost.`;
-        }
-        return;
-      }
-      els.zoneContext.textContent =
-        "Tip: open this page from the Alarm node editor to load/save zones automatically.";
-      if (els.zoneApplyReminder) els.zoneApplyReminder.style.display = "none";
-    }
-    renderZoneContext();
-
     // Bulk controls (apply changes to all zones).
     if (els.btnBulkKind && els.bulkKind) {
       els.btnBulkKind.addEventListener("click", () => applyBulkKind(els.bulkKind.value));
@@ -2259,9 +2356,6 @@
         setZonesFromJson(data.zonesJson);
         // Align lastAutosaved with the normalized JSON to avoid immediate re-save.
         lastAutoSavedJson = zonesJsonText;
-        if (typeof data.nodeName === "string") {
-          renderZoneContext(data.nodeName);
-        }
         showStatus(els.genStatus, "ok", `Loaded ${zonesModel.length} zones from Alarm editor.`);
         setAutosaveHint(`Autosave: loaded ${zonesModel.length} zones.`);
       } catch (err) {

@@ -185,7 +185,7 @@
 .alarm-content .pill {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid var(--line);
   font-size: 11px;
   color: var(--muted);
@@ -379,7 +379,7 @@
 .alarm-panel-page button.node .dot {
   width: 8px;
   height: 8px;
-  border-radius: 999px;
+  border-radius: 0;
   background: #9e9e9e;
 }
 
@@ -406,6 +406,23 @@
   padding: 10px;
   font-family: var(--mono);
   font-size: 14px;
+}
+
+.alarm-panel-page .kbd button[data-k="0"],
+.alarm-panel-page .kbd button[data-k="1"],
+.alarm-panel-page .kbd button[data-k="2"],
+.alarm-panel-page .kbd button[data-k="3"],
+.alarm-panel-page .kbd button[data-k="4"],
+.alarm-panel-page .kbd button[data-k="5"],
+.alarm-panel-page .kbd button[data-k="6"],
+.alarm-panel-page .kbd button[data-k="7"],
+.alarm-panel-page .kbd button[data-k="8"],
+.alarm-panel-page .kbd button[data-k="9"] {
+  width: min(100%, 64px);
+  aspect-ratio: 1;
+  justify-self: center;
+  padding: 0;
+  border-radius: 50%;
 }
 
 .alarm-panel-page .zone-open {
@@ -494,7 +511,7 @@
   font-family: var(--mono);
   font-size: 12px;
   padding: 1px 7px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid var(--line);
   background: #fff;
   color: var(--text);

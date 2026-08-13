@@ -24,7 +24,7 @@
     return a.endsWith('/') ? a + b : a + '/' + b;
   }
 
-  function computeTargetUrl(root, page, params, sourceParams) {
+  function computeTargetUrl(root, page, params, sourceParams, targetParams) {
     const target = new URLSearchParams();
     const copyKeys = ['id', 'name', 'embed', 'access_token'];
     for (const key of copyKeys) {
@@ -35,6 +35,13 @@
     if (page === 'panel') {
       const view = asText(sourceParams && sourceParams.view);
       if (view) target.set('view', view);
+    }
+
+    const extraParams = targetParams && typeof targetParams === 'object' ? targetParams : {};
+    for (const [key, value] of Object.entries(extraParams)) {
+      const text = asText(value);
+      if (text) target.set(key, text);
+      else target.delete(key);
     }
 
     const query = target.toString();
@@ -56,6 +63,7 @@
     const adminRoot = resolveHttpAdminRoot(global.location.pathname || '/');
     const sourceParams = {
       view: asText(params.get('view')),
+      zonesView: asText(params.get('zonesView')),
     };
 
     return global.Vue.createApp({
@@ -69,14 +77,23 @@
           adminRoot,
           params,
           sourceParams,
+          zonesView: sourceParams.zonesView === 'wizard' ? 'wizard' : 'list',
         };
       },
       computed: {
         panelUrl() {
           return computeTargetUrl(this.adminRoot, 'panel', this.params, this.sourceParams);
         },
+        panelMainUrl() {
+          return computeTargetUrl(this.adminRoot, 'panel', this.params, this.sourceParams, { view: '' });
+        },
         mapperUrl() {
           return computeTargetUrl(this.adminRoot, 'mapper', this.params, this.sourceParams);
+        },
+        mapperWizardUrl() {
+          return computeTargetUrl(this.adminRoot, 'mapper', this.params, this.sourceParams, {
+            zonesView: 'wizard',
+          });
         },
         settingsUrl() {
           return computeTargetUrl(this.adminRoot, 'settings', this.params, this.sourceParams);

@@ -3,6 +3,26 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [2.1.6] - 2026-08-13
+
+### Added
+
+- **Zones navigation:** the zone list and import wizard are now separate entries in a **Zones** submenu.
+- **Explicit zone save action:** the zone list now has a **Save** button beside **Add zone** that flushes
+  pending in-memory edits to the Node-RED editor and returns to the main Control Panel.
+- **State-aware Control Panel actions:** **Arm** is available only when all selected alarms are disarmed;
+  **Disarm** is disabled when they are already disarmed. Both actions are locked while a command is running.
+
+### Changed
+
+- **Import wizard flow:** parsing now advances from a dedicated Step 1 to Step 2, with a back button.
+  Returning to an already parsed, unchanged input skips Step 1. Generating zones opens the zone list and
+  highlights newly generated rows in light green.
+- **Zones page cleanup:** removed the target-alarm row and the bilingual save reminder.
+- **Web UI styling:** panels, controls and labels now use square corners; numeric keypad buttons remain round.
+- **Alarm editor default tab:** opening an Alarm System Ultimate node now starts on **Zones** instead of
+  **General**.
+
 ## [2.1.5] - 2026-08-13
 
 ### Changed
