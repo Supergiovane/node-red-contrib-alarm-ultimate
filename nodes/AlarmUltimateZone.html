@@ -35,97 +35,82 @@
     oneditprepare: function () {
       const alarmSelect = $("#node-input-alarmId");
       const zoneSelect = $("#node-input-zoneTopic");
-      const panelButton = $("#node-input-alarm-panel");
 
       function editorUrl(path) {
         return window.AlarmUltimateEditorUrls.resolve(path, window.location);
-      }
-
-      function getEditorAccessToken() {
-        try {
-          const tokens =
-            RED && RED.settings && typeof RED.settings.get === "function"
-              ? RED.settings.get("auth-tokens")
-              : null;
-          return tokens && typeof tokens.access_token === "string"
-            ? tokens.access_token.trim()
-            : "";
-        } catch (_err) {
-          return "";
-        }
-      }
-
-      function withAccessToken(url) {
-        const token = getEditorAccessToken();
-        if (!token) return url;
-        const sep = url.includes("?") ? "&" : "?";
-        return `${url}${sep}access_token=${encodeURIComponent(token)}`;
       }
 
       function apiUrl(path) {
         return editorUrl(path);
       }
 
-      panelButton.off("click").on("click", (evt) => {
-        evt.preventDefault();
-        const alarmId = alarmSelect.val() || this.alarmId || "";
-        const idPart = alarmId ? `?id=${encodeURIComponent(alarmId)}` : "";
-        const targetUrl = editorUrl(`alarm-ultimate/alarm-panel${idPart}`);
-        window.open(
-          withAccessToken(targetUrl),
-          "_blank",
-          "noopener,noreferrer",
-        );
-      });
-
       function loadAlarms() {
-        return $.getJSON(apiUrl("alarm-ultimate/alarm/nodes"))
-          .done((data) => {
-            const nodes = Array.isArray(data && data.nodes) ? data.nodes : [];
-            alarmSelect.empty();
-            alarmSelect.append($("<option></option>").attr("value", "").text("-- select --"));
-            nodes.forEach((n) => {
-              const label = n.name ? `${n.name} (${n.id})` : n.id;
-              alarmSelect.append($("<option></option>").attr("value", n.id).text(label));
-            });
-            if (this.alarmId) alarmSelect.val(this.alarmId);
-          })
-          .fail(() => { });
+        const nodes = [];
+        try {
+          RED.nodes.eachNode((n) => {
+            if (n && n.type === "AlarmSystemUltimate") {
+              nodes.push({ id: n.id, name: String(n.name || "") });
+            }
+          });
+        } catch (_err) { }
+        nodes.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
+        alarmSelect.empty();
+        alarmSelect.append($("<option></option>").attr("value", "").text("-- select --"));
+        nodes.forEach((n) => {
+          const label = n.name ? `${n.name} (${n.id})` : n.id;
+          alarmSelect.append($("<option></option>").attr("value", n.id).text(label));
+        });
+        if (this.alarmId) alarmSelect.val(this.alarmId);
       }
 
       function loadZones(alarmId) {
         zoneSelect.empty();
         zoneSelect.append($("<option></option>").attr("value", "").text("-- select alarm first --"));
         if (!alarmId) return;
+
+        function renderZones(zones) {
+          zoneSelect.empty();
+          zoneSelect.append($("<option></option>").attr("value", "").text("-- select --"));
+          zoneSelect.append($("<option></option>").attr("value", "__all__").text("All zones"));
+          zones.forEach((z) => {
+            const topic = z.topic || "";
+            const label = z.name
+              ? topic
+                ? `${z.name} (${topic})`
+                : z.name
+              : topic;
+            zoneSelect.append($("<option></option>").attr("value", topic).text(label));
+          });
+          if (this.zoneTopic) zoneSelect.val(this.zoneTopic);
+          try {
+            zoneSelect.trigger("change");
+          } catch (_err) { }
+        }
+
+        try {
+          const alarmNode = RED.nodes.node(alarmId);
+          if (alarmNode && typeof alarmNode.zones === "string") {
+            const raw = alarmNode.zones.trim();
+            const zones = raw ? JSON.parse(raw) : [];
+            if (Array.isArray(zones)) {
+              renderZones.call(this, zones.filter((z) => z && typeof z === "object"));
+              return;
+            }
+          }
+        } catch (_err) { }
+
         $.getJSON(apiUrl(`alarm-ultimate/alarm/${encodeURIComponent(alarmId)}/state`))
           .done((data) => {
             const zones = Array.isArray(data && data.zones) ? data.zones : [];
-            zoneSelect.empty();
-            zoneSelect.append($("<option></option>").attr("value", "").text("-- select --"));
-            zoneSelect.append($("<option></option>").attr("value", "__all__").text("All zones"));
-            zones.forEach((z) => {
-              const topic = z.topic || "";
-              const label = z.name
-                ? topic
-                  ? `${z.name} (${topic})`
-                  : z.name
-                : topic;
-              zoneSelect.append($("<option></option>").attr("value", topic).text(label));
-            });
-            if (this.zoneTopic) zoneSelect.val(this.zoneTopic);
-            // Force Node-RED editor to re-run validation (async loaded options may leave the field in error state).
-            try {
-              zoneSelect.trigger("change");
-            } catch (_err) { }
+            renderZones.call(this, zones);
           })
           .fail(() => { });
       }
 
       alarmSelect.on("change", () => loadZones(alarmSelect.val()));
 
-      try {
-        loadAlarms.call(this).always(() => loadZones.call(this, this.alarmId));
-      } catch (err) { }
+      loadAlarms.call(this);
+      loadZones.call(this, this.alarmId);
     },
   });
 </script>
@@ -138,13 +123,6 @@
       rel="noopener noreferrer"
       href="https://youtube.com/playlist?list=PL9Yh1bjbLAYrybBZKykfKLDrRAspj9to4&amp;si=j0mLqVMBcHKjBpNY"
     ><i class="fa fa-youtube-play" style="color:#cc0000;"></i> See it on YouTube</a>
-  </div>
-
-  <div class="form-row">
-    <label>WEB PAGE</label>
-    <button type="button" class="red-ui-button" id="node-input-alarm-panel">
-      <i class="fa fa-keyboard-o"></i> Panel
-    </button>
   </div>
 
   <div class="form-row">
@@ -195,5 +173,4 @@ Notes:
 
 - The zone list is loaded automatically from the selected Alarm node.
 - No wire from the Alarm node is required: just select the Alarm node in this editor.
-- Use the **Panel** button to open the Alarm Panel preselected on the chosen Alarm node.
 </script>

@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 const { expect } = require('chai');
 
 const editorUrls = require('../resources/alarm-ultimate-editor-urls.js');
@@ -36,7 +37,6 @@ describe('Alarm Ultimate editor URLs', function () {
     const editorFiles = [
       'AlarmSystemUltimate.html',
       'AlarmUltimateZone.html',
-      'AlarmUltimateState.html',
       'AlarmUltimateSiren.html',
     ];
 
@@ -46,6 +46,76 @@ describe('Alarm Ultimate editor URLs', function () {
         'resources/node-red-contrib-alarm-ultimate/alarm-ultimate-editor-urls.js'
       );
       expect(html, filename).to.include('AlarmUltimateEditorUrls.resolve');
+    }
+  });
+
+  it('does not show the web page button in Alarm State and Alarm Zone', function () {
+    const root = path.join(__dirname, '..', 'nodes');
+    for (const filename of ['AlarmUltimateState.html', 'AlarmUltimateZone.html']) {
+      const html = fs.readFileSync(path.join(root, filename), 'utf8');
+      expect(html, filename).not.to.include('node-input-alarm-panel');
+      expect(html, filename).not.to.include('<label>WEB PAGE</label>');
+    }
+  });
+
+  it('registers every inline editor definition', function () {
+    const root = path.join(__dirname, '..', 'nodes');
+    const expectedTypes = {
+      'AlarmSystemUltimate.html': 'AlarmSystemUltimate',
+      'AlarmUltimateZone.html': 'AlarmUltimateZone',
+      'AlarmUltimateState.html': 'AlarmUltimateState',
+      'AlarmUltimateSiren.html': 'AlarmUltimateSiren',
+    };
+
+    for (const [filename, expectedType] of Object.entries(expectedTypes)) {
+      const html = fs.readFileSync(path.join(root, filename), 'utf8');
+      const scriptMatch = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/);
+      expect(scriptMatch, filename).not.to.equal(null);
+
+      const registered = [];
+      vm.runInNewContext(scriptMatch[1], {
+        RED: {
+          nodes: {
+            registerType(type, definition) {
+              registered.push({ type, definition });
+            },
+          },
+          validators: {
+            number() {
+              return () => true;
+            },
+          },
+        },
+      });
+      expect(registered.map((entry) => entry.type), filename).to.deep.equal([expectedType]);
+
+      if (expectedType === 'AlarmUltimateState') {
+        const definition = registered[0].definition;
+        expect(definition.inputs).to.equal(0);
+        expect(definition.outputs).to.equal(1);
+
+        const inputNode = { io: 'in', wires: [[]] };
+        definition.onadd.call(inputNode);
+        expect(inputNode.inputs).to.equal(1);
+        expect(inputNode.outputs).to.equal(0);
+        expect(inputNode.wires).to.deep.equal([]);
+      }
+    }
+  });
+
+  it('lists Alarm System nodes from the editor model', function () {
+    const root = path.join(__dirname, '..', 'nodes');
+    const selectorFiles = [
+      'AlarmUltimateZone.html',
+      'AlarmUltimateState.html',
+      'AlarmUltimateSiren.html',
+    ];
+
+    for (const filename of selectorFiles) {
+      const html = fs.readFileSync(path.join(root, filename), 'utf8');
+      expect(html, filename).to.include('RED.nodes.eachNode');
+      expect(html, filename).to.include('n.type === "AlarmSystemUltimate"');
+      expect(html, filename).not.to.include('alarm-ultimate/alarm/nodes');
     }
   });
 

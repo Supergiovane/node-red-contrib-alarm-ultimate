@@ -3,6 +3,20 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [2.1.4] - 2026-08-13
+
+### Fixed
+
+- **Alarm State disappeared when dropped on the flow:** the editor definition now exposes numeric
+  input/output counts and updates them safely when switching between Input and Output mode.
+- **Alarm Zone did not list Alarm System nodes:** Alarm Zone, Alarm State and Alarm Siren now read
+  Alarm System nodes directly from the editor model, including nodes that have not been deployed yet.
+  Alarm Zone also reads zones from the flow configuration before falling back to the runtime API.
+
+### Changed
+
+- Removed the **WEB PAGE / Panel** button from the Alarm Zone and Alarm State editors.
+
 ## [2.1.3] - 2026-08-11
 
 ### Fixed

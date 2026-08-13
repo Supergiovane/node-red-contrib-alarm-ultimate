@@ -29,7 +29,6 @@
       const alarmSelect = $("#node-input-alarmId");
       const editorUrl = (path) =>
         window.AlarmUltimateEditorUrls.resolve(path, window.location);
-      const url = editorUrl("alarm-ultimate/alarm/nodes");
       const panelButton = $("#node-input-alarm-panel");
 
       function getEditorAccessToken() {
@@ -65,20 +64,22 @@
         );
       });
 
+      const nodes = [];
       try {
-        $.getJSON(url)
-          .done((data) => {
-            const nodes = Array.isArray(data && data.nodes) ? data.nodes : [];
-            alarmSelect.empty();
-            alarmSelect.append($("<option></option>").attr("value", "").text("-- select --"));
-            nodes.forEach((n) => {
-              const label = n.name ? `${n.name} (${n.id})` : n.id;
-              alarmSelect.append($("<option></option>").attr("value", n.id).text(label));
-            });
-            if (this.alarmId) alarmSelect.val(this.alarmId);
-          })
-          .fail(() => {});
-      } catch (err) {}
+        RED.nodes.eachNode((n) => {
+          if (n && n.type === "AlarmSystemUltimate") {
+            nodes.push({ id: n.id, name: String(n.name || "") });
+          }
+        });
+      } catch (_err) { }
+      nodes.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
+      alarmSelect.empty();
+      alarmSelect.append($("<option></option>").attr("value", "").text("-- select --"));
+      nodes.forEach((n) => {
+        const label = n.name ? `${n.name} (${n.id})` : n.id;
+        alarmSelect.append($("<option></option>").attr("value", n.id).text(label));
+      });
+      if (this.alarmId) alarmSelect.val(this.alarmId);
     },
   });
 </script>
