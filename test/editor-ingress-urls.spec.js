@@ -37,7 +37,6 @@ describe('Alarm Ultimate editor URLs', function () {
     const editorFiles = [
       'AlarmSystemUltimate.html',
       'AlarmUltimateZone.html',
-      'AlarmUltimateSiren.html',
     ];
 
     for (const filename of editorFiles) {
@@ -49,9 +48,13 @@ describe('Alarm Ultimate editor URLs', function () {
     }
   });
 
-  it('does not show the web page button in Alarm State and Alarm Zone', function () {
+  it('does not show the web page button in Alarm State, Zone and Siren', function () {
     const root = path.join(__dirname, '..', 'nodes');
-    for (const filename of ['AlarmUltimateState.html', 'AlarmUltimateZone.html']) {
+    for (const filename of [
+      'AlarmUltimateState.html',
+      'AlarmUltimateZone.html',
+      'AlarmUltimateSiren.html',
+    ]) {
       const html = fs.readFileSync(path.join(root, filename), 'utf8');
       expect(html, filename).not.to.include('node-input-alarm-panel');
       expect(html, filename).not.to.include('<label>WEB PAGE</label>');

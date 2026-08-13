@@ -3,6 +3,12 @@
 > Stable release track from `0.3.0`.
 > Previous pre-release history is preserved below.
 
+## [2.1.5] - 2026-08-13
+
+### Changed
+
+- Removed the **WEB PAGE / Panel** button from the Alarm Siren editor.
+
 ## [2.1.4] - 2026-08-13
 
 ### Fixed

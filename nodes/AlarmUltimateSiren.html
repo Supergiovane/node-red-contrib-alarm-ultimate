@@ -1,4 +1,3 @@
-<script src="resources/node-red-contrib-alarm-ultimate/alarm-ultimate-editor-urls.js"></script>
 <script type="text/javascript">
   RED.nodes.registerType("AlarmUltimateSiren", {
     category: "Alarm Ultimate",
@@ -27,42 +26,6 @@
     },
     oneditprepare: function () {
       const alarmSelect = $("#node-input-alarmId");
-      const editorUrl = (path) =>
-        window.AlarmUltimateEditorUrls.resolve(path, window.location);
-      const panelButton = $("#node-input-alarm-panel");
-
-      function getEditorAccessToken() {
-        try {
-          const tokens =
-            RED && RED.settings && typeof RED.settings.get === "function"
-              ? RED.settings.get("auth-tokens")
-              : null;
-          return tokens && typeof tokens.access_token === "string"
-            ? tokens.access_token.trim()
-            : "";
-        } catch (_err) {
-          return "";
-        }
-      }
-
-      function withAccessToken(urlValue) {
-        const token = getEditorAccessToken();
-        if (!token) return urlValue;
-        const sep = urlValue.includes("?") ? "&" : "?";
-        return `${urlValue}${sep}access_token=${encodeURIComponent(token)}`;
-      }
-
-      panelButton.off("click").on("click", (evt) => {
-        evt.preventDefault();
-        const alarmId = alarmSelect.val() || this.alarmId || "";
-        const idPart = alarmId ? `?id=${encodeURIComponent(alarmId)}` : "";
-        const targetUrl = editorUrl(`alarm-ultimate/alarm-panel${idPart}`);
-        window.open(
-          withAccessToken(targetUrl),
-          "_blank",
-          "noopener,noreferrer",
-        );
-      });
 
       const nodes = [];
       try {
@@ -92,13 +55,6 @@
       rel="noopener noreferrer"
       href="https://youtube.com/playlist?list=PL9Yh1bjbLAYrybBZKykfKLDrRAspj9to4&amp;si=j0mLqVMBcHKjBpNY"
     ><i class="fa fa-youtube-play" style="color:#cc0000;"></i> See it on YouTube</a>
-  </div>
-
-  <div class="form-row">
-    <label>WEB PAGE</label>
-    <button type="button" class="red-ui-button" id="node-input-alarm-panel">
-      <i class="fa fa-keyboard-o"></i> Panel
-    </button>
   </div>
 
   <div class="form-row">
@@ -141,5 +97,4 @@ Output message (same format as the Alarm node siren output):
 Notes:
 
 - No wire from the Alarm node is required: just select the Alarm node in this editor.
-- Use the **Panel** button to open the Alarm Panel preselected on the chosen Alarm node.
 </script>
