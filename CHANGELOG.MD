@@ -1,8 +1,5 @@
 # Changelog
 
-> Stable release track from `0.3.0`.
-> Previous pre-release history is preserved below.
-
 ## [2.1.6] - 2026-08-13
 
 ### Added
@@ -306,7 +303,7 @@
 - **Output-only helper nodes:** `Alarm State`, `Alarm Zone`, `Alarm Siren` now emit the same “default telegrams” as `AlarmSystemUltimate`:
   - events on `.../event` (`msg.event`, `msg.payload = { event, mode, ... }`)
   - siren on `.../siren` (`msg.event = siren_on|siren_off`, `msg.payload = boolean`)
-- **Output Adapter:** preset-based dropdown (removed the old “mode” selector). Added preset **Homekit Alarm** (replaces the former *Homekit Alarm Status*) which handles both alarm state and siren outputs.
+- **Output Adapter:** preset-based dropdown (removed the old “mode” selector). Added preset **Homekit Alarm** (replaces the former _Homekit Alarm Status_) which handles both alarm state and siren outputs.
 - **Output Adapter presets:** added reverse (Alarm → flow) presets to format outputs for downstream systems (KNX/HA/Boolean/AX Pro). Presets are resilient: unknown inputs are passed through (not dropped).
 - **Input Adapter:** now adds `msg.alarmUltimate` (kind `command`) to its output messages.
 
