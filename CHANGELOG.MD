@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **Cerebrum Ultimate:** every Alarm System Ultimate panel publishes its state (disarmed, arming, armed, pending, triggered), siren and zones (open/closed, bypassed, supervision lost) to Cerebrum Ultimate, read-only, when Cerebrum is installed in the same Node-RED. MCP clients can read them through the Cerebrum MCP server. Arming, disarming, bypass and codes are never exposed. See the [Cerebrum Ultimate documentation](https://www.maxsupervibe.com/docs/cerebrum-ultimate/).
+
 ## [2.1.6] - 2026-08-13
 
 ### Added

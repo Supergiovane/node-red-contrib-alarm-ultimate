@@ -5,6 +5,7 @@ const path = require('path');
 
 const { alarmInstances, alarmEmitter } = require('./lib/alarm-registry.js');
 const { attachAlarmUltimateEnvelope } = require('./lib/alarm-ultimate-envelope.js');
+const { createAlarmCerebrumIntegration } = require('./lib/alarm-cerebrum.js');
 const utils = require('./utils.js');
 
 function getAnyFromObject(obj, propertyPath) {
@@ -236,6 +237,8 @@ module.exports = function (RED) {
     RED.nodes.createNode(this, config);
     const node = this;
     const REDUtil = RED.util;
+    // Read-only publication to Cerebrum Ultimate (optional), created with the panel API.
+    let cerebrumIntegration = null;
 
     const setNodeStatus = helpers.createStatus(node);
     const timerBag = helpers.createTimerBag(node);
@@ -851,6 +854,12 @@ module.exports = function (RED) {
     }
 
     function updateStatus() {
+      // Every state change refreshes the status: publish it to Cerebrum too.
+      try {
+        if (cerebrumIntegration) cerebrumIntegration.refresh();
+      } catch (_err) {
+        // Cerebrum must never break the alarm.
+      }
       let fill = 'grey';
       let shape = 'ring';
       let text = 'DISARMED';
@@ -2474,7 +2483,18 @@ module.exports = function (RED) {
     };
 
 	    alarmInstances.set(node.id, api);
+	    try {
+	      cerebrumIntegration = createAlarmCerebrumIntegration({ alarmId: node.id, getUiState });
+	    } catch (_err) {
+	      cerebrumIntegration = null;
+	    }
 	    node.on('close', (removed, done) => {
+	      try {
+	        if (cerebrumIntegration) cerebrumIntegration.dispose();
+	      } catch (_err) {
+	        // ignore
+	      }
+	      cerebrumIntegration = null;
 	      stopOpenZonesCycle();
 	      flushFileCache();
 	      alarmInstances.delete(node.id);

@@ -134,3 +134,7 @@ Import any of these from **Menu → Import** (or see [`examples/`](examples/)):
 [flows-image]: https://img.shields.io/badge/Node--RED%20Flows-library-8f0000?logo=nodered&logoColor=white
 [license-image]: https://img.shields.io/npm/l/node-red-contrib-alarm-ultimate.svg
 [issues-image]: https://img.shields.io/github/issues/Supergiovane/node-red-contrib-alarm-ultimate.svg
+
+## Cerebrum Ultimate
+
+When **Cerebrum Ultimate** is installed in the same Node-RED, every Alarm System Ultimate panel is published to it automatically, read-only: the panel state (disarmed, arming, armed, pending, triggered), the siren and every zone (open/closed, bypassed, supervision lost). Arming, disarming, bypass and codes are never exposed. Cerebrum can use them in chat, in its history and as triggers of JavaScript routines, and MCP clients such as Claude can read them through the Cerebrum MCP server. Nothing has to be configured, and nothing can be switched or changed from Cerebrum through this link. Without Cerebrum nothing changes. See the [Cerebrum Ultimate documentation](https://www.maxsupervibe.com/docs/cerebrum-ultimate/).
